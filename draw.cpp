@@ -6,7 +6,7 @@
 #include <GL/glu.h>
 
 namespace draw {
-  Vec2i camera_pos;
+  Vec2f camera_pos;
 
   void draw_wall(Vec2i pos) {
     float x = (pos.x - camera_pos.x) * TILE_WIDTH;
@@ -49,6 +49,22 @@ namespace draw {
   }
 
   void draw_agent(Vec2i pos, const Color & color) {
+    float x = (pos.x - camera_pos.x) * TILE_WIDTH;
+    float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
+
+    glTranslatef(x, y, 0.0f);
+
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_QUADS);
+      glVertex2f(-AGENT_WIDTH/2, -AGENT_HEIGHT/2);
+      glVertex2f( AGENT_WIDTH/2, -AGENT_HEIGHT/2);
+      glVertex2f( AGENT_WIDTH/2,  AGENT_HEIGHT/2);
+      glVertex2f(-AGENT_WIDTH/2,  AGENT_HEIGHT/2);
+    glEnd();
+
+    glTranslatef(-x, -y, 0.0f);
+  }
+  void draw_agent(Vec2f pos, const Color & color) {
     float x = (pos.x - camera_pos.x) * TILE_WIDTH;
     float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
 

@@ -27,12 +27,13 @@ static const Color WALL_COLOR(0.7f, 0.7f, 0.75f);
 static const Color FLOOR_COLOR(0.3f, 0.3f, 0.3f);
 
 namespace draw {
-  extern Vec2i camera_pos;
+  extern Vec2f camera_pos;
 
   void draw_wall(Vec2i pos);
   void draw_floor(Vec2i pos);
 
   void draw_agent(Vec2i pos, const Color & color);
+  void draw_agent(Vec2f pos, const Color & color);
   void draw_path(const std::vector<Vec2i> & path, const Color & color);
 }
 
