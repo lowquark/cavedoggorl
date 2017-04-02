@@ -9,6 +9,7 @@
 #include <map>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -18,8 +19,15 @@
 #include "Map.hpp"
 #include "AStar.hpp"
 #include "Entity.hpp"
+#include "BinPacker.hpp"
 #include "draw.hpp"
 #include "game.hpp"
+
+
+static constexpr int TILES_X = 30;
+static constexpr int TILES_Y = 24;
+static constexpr int WINDOW_WIDTH  = TILE_WIDTH * TILES_X;
+static constexpr int WINDOW_HEIGHT = TILE_HEIGHT * TILES_Y;
 
 /*
 namespace mytime {
@@ -55,9 +63,13 @@ namespace mytime {
 }
 */
 
+std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
+
 SDL_Window * window = nullptr;
 bool quit_signal = false;
 
+draw::FontAtlas font_atlas;
+draw::TextBin muh_text(font_atlas);
 
 struct MuhView : public game::View {
   struct AgentSprite {
@@ -125,14 +137,11 @@ struct MuhView : public game::View {
     tile_sprites.resize(tiles_x, tiles_y);
   }
   void on_tile_load(game::Id type_id, const Vec2i & pos) override {
-    printf("%s: %lu, (%d, %d)\n", __PRETTY_FUNCTION__, type_id, pos.x, pos.y);
     TileSprite sprite;
     sprite.type_id = type_id;
     tile_sprites.set(pos, sprite);
   }
   void on_agent_load(game::Id agent_id, game::Id type_id, const Vec2i & pos, const Color & color) override {
-    printf("%s: %lu, %lu, (%d, %d)\n", __PRETTY_FUNCTION__, agent_id, type_id, pos.x, pos.y);
-
     AgentSprite sprite;
     sprite.type_id = type_id;
     sprite.pos = pos;
@@ -141,20 +150,17 @@ struct MuhView : public game::View {
   }
 
   void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override {
-    printf("%s: %lu, (%d, %d), (%d, %d)\n", __PRETTY_FUNCTION__, agent_id, from.x, from.y, to.x, to.y);
-
     auto agent_kvpair_it = agent_sprites.find(agent_id);
 
     if(agent_kvpair_it != agent_sprites.end()) {
       auto & agent = agent_kvpair_it->second;
-      //agent.pos = to;
+      agent.pos = to;
 
-      active_animations.push_back(new AgentMoveAnimation(agent, from, to));
-      active_animations.back()->start();
+      //active_animations.push_back(new AgentMoveAnimation(agent, from, to));
+      //active_animations.back()->start();
     }
   }
   void on_agent_death(game::Id agent_id) override {
-    printf("%s: %lu\n", __PRETTY_FUNCTION__, agent_id);
   }
 
   void draw() {
@@ -166,6 +172,9 @@ struct MuhView : public game::View {
     gluOrtho2D(0.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 0.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     auto sprite_kvpair_it = agent_sprites.find(1);
     if(sprite_kvpair_it != agent_sprites.end()) {
@@ -191,12 +200,36 @@ struct MuhView : public game::View {
       // Draw the agent if not hidden
       draw::draw_agent(sprite.pos, sprite.color);
 
+      /*
       // Draw the path for debugging
       auto agent = game::debug::get_agent(kvpairs.first);
       if(agent) {
         draw::draw_path(agent->path, agent->color);
       }
+      */
     }
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 0.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    if((rand() % 30) == 0) {
+      std::string text = original_message;
+      for(size_t i = 0 ; i < text.size() ; i ++) {
+        if(text[i] != '\n' && text[i] != ' ') {
+          text[i] = (rand() % 64) + 32;
+        }
+      }
+      muh_text.set_text(text);
+      muh_text.update_layout();
+    } else {
+      muh_text.set_text(original_message);
+      muh_text.update_layout();
+    }
+
+    muh_text.draw();
 
     SDL_GL_SwapWindow(window);
   }
@@ -304,10 +337,29 @@ void run() {
 }
 
 int main(int argc, char ** argv) {
+  // I hate these
+  TTF_Init();
   SDL_Init(SDL_INIT_VIDEO);
+  IMG_Init(IMG_INIT_PNG);
+
+
+  const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+  printf("Loading font from %s... ", font);
+  fflush(stdout);
+
+  font_atlas.set_font(font);
+
+  for(int i = 32 ; i < 128 ; i ++) {
+    uint32_t code_point = i;
+    font_atlas.load(code_point);
+  }
+
+  printf("Finished\n");
+  fflush(stdout);
+
 
   window = SDL_CreateWindow(
-      "mvp",
+      "Scary Colors",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
       WINDOW_WIDTH,
@@ -318,11 +370,18 @@ int main(int argc, char ** argv) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
 
     if(gl_ctx != nullptr) {
+      font_atlas.load_textures();
+
+      muh_text.set_rect(Rect2i(50, 50, 100, 100));
+      muh_text.set_text(original_message);
+      muh_text.update_layout();
+
       game::view(&muh_view);
       game::load_world();
 
       run();
 
+      font_atlas.unload_textures();
       SDL_GL_DeleteContext(gl_ctx);
       gl_ctx = nullptr;
     } else {
@@ -335,6 +394,9 @@ int main(int argc, char ** argv) {
     fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
   }
 
+
+  TTF_Quit();
+  IMG_Quit();
   SDL_Quit();
 
   return 0;

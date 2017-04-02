@@ -58,4 +58,23 @@ typedef Vec2<unsigned int> Vec2u;
 typedef Vec2<float> Vec2f;
 typedef Vec2<double> Vec2d;
 
+template <typename T>
+struct Rect2 {
+  Vec2<T> pos;
+  Vec2<T> size;
+
+  Rect2() = default;
+  Rect2(T x, T y, T w, T h)
+    : pos(x, y)
+    , size(w, h) {}
+  Rect2(const Vec2<T> & pos, const Vec2<T> & size)
+    : pos(pos)
+    , size(size) {}
+};
+
+typedef Rect2<int> Rect2i;
+typedef Rect2<unsigned int> Rect2u;
+typedef Rect2<float> Rect2f;
+typedef Rect2<double> Rect2d;
+
 #endif

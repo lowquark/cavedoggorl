@@ -109,7 +109,7 @@ namespace game {
       move_attack(agent, next_pos);
     }
 
-    agent.time = (rand() % 10) + 4;
+    agent.time = (rand() % 7) + 4;
   }
 
 
