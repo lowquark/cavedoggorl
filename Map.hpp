@@ -2,6 +2,7 @@
 #define MAP_HPP
 
 #include "Vec2.hpp"
+#include <vector>
 
 template <typename T>
 class Map {
