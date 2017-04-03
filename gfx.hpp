@@ -29,7 +29,7 @@ namespace gfx {
   };
 
   class View : public game::View {
-    Vec2u _window_size;
+    Rect2i _rect;
 
     std::deque<Animation *> queued_animations;
     std::vector<Animation *> active_animations;
@@ -44,15 +44,17 @@ namespace gfx {
     void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override;
     void on_agent_death(game::Id agent_id) override;
 
+    Vec2i mouse_location(Vec2i local_mouse);
+
     void step_animations();
     void draw();
 
     public:
-    const Vec2u & window_size() const {
-      return _window_size;
+    const Rect2i & rect() const {
+      return _rect;
     }
-    void window_size(const Vec2u & size) {
-      _window_size = size;
+    void set_rect(const Rect2i & rect) {
+      _rect = rect;
     }
 
     void skip_animations();
@@ -60,9 +62,6 @@ namespace gfx {
 
     void update();
   };
-
-  void init();
-  void deinit();
 
   void load();
   void unload();

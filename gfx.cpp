@@ -2,11 +2,6 @@
 #include "gfx.hpp"
 
 namespace gfx {
-  static draw::FontAtlas font_atlas;
-  static draw::TextBin muh_text(font_atlas);
-
-  static std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
-
   class AgentMoveAnimation : public Animation {
     AgentSprite & sprite;
     Vec2i from;
@@ -72,6 +67,10 @@ namespace gfx {
   void View::on_agent_death(game::Id agent_id) {
   }
 
+  Vec2i View::mouse_location(Vec2i local_mouse) {
+    return Vec2i();
+  }
+
   void View::step_animations() {
     if(active_animations.empty()) {
       if(!queued_animations.empty()) {
@@ -100,24 +99,20 @@ namespace gfx {
   }
 
   void View::draw() {
-    glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0.0f, _window_size.x, _window_size.y, 0.0f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    glTranslatef(_rect.pos.x, _rect.pos.y, 0.0f);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // TODO: Implement on_control_agent event to receive this id
     auto sprite_kvpair_it = agent_sprites.find(1);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
-      draw::camera_pos = sprite.pos - Vec2f(_window_size.x / TILE_WIDTH /2, _window_size.y / TILE_HEIGHT / 2);
+      draw::camera_pos = sprite.pos - Vec2f((float)_rect.size.x / TILE_WIDTH /2,
+                                            (float)_rect.size.y / TILE_HEIGHT / 2);
     }
 
+    // TODO: Only iterate over visible tiles
     for(int j = 0 ; j < tile_sprites.h() ; j ++) {
       for(int i = 0 ; i < tile_sprites.w() ; i ++) {
         auto pos = Vec2i(i, j);
@@ -133,11 +128,11 @@ namespace gfx {
     for(auto & kvpairs : agent_sprites) {
       auto & sprite = kvpairs.second;
 
-      // Draw the agent if not hidden
+      // TODO: Draw the agent only if not hidden
       draw::draw_agent(sprite.pos, sprite.color);
 
       /*
-      // Draw the path for debugging
+      // Draw the path for debugging purposes
       auto agent = game::debug::get_agent(kvpairs.first);
       if(agent) {
         draw::draw_path(agent->path, agent->color);
@@ -145,27 +140,7 @@ namespace gfx {
       */
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0.0f, _window_size.x, _window_size.y, 0.0f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    if((rand() % 30) == 0) {
-      std::string text = original_message;
-      for(size_t i = 0 ; i < text.size() ; i ++) {
-        if(text[i] != '\n' && text[i] != ' ') {
-          text[i] = (rand() % 64) + 32;
-        }
-      }
-      muh_text.set_text(text);
-      muh_text.update_layout();
-    } else {
-      muh_text.set_text(original_message);
-      muh_text.update_layout();
-    }
-
-    muh_text.draw();
+    glTranslatef(-_rect.pos.x, -_rect.pos.y, 0.0f);
   }
 
   void View::skip_animations() {
@@ -195,37 +170,9 @@ namespace gfx {
   }
 
 
-  void init() {
-    // I hate these
-    TTF_Init();
-
-    const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-    printf("Loading font from %s... ", font);
-    fflush(stdout);
-
-    font_atlas.set_font(font);
-
-    for(int i = 32 ; i < 128 ; i ++) {
-      uint32_t code_point = i;
-      font_atlas.load(code_point);
-    }
-
-    printf("Finished\n");
-    fflush(stdout);
-  }
-  void deinit() {
-    TTF_Quit();
-  }
-
   void load() {
-    font_atlas.load_textures();
-
-    muh_text.set_rect(Rect2i(50, 50, 100, 100));
-    muh_text.set_text(original_message);
-    muh_text.update_layout();
   }
   void unload() {
-    font_atlas.unload_textures();
   }
 }
 
