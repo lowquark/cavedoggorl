@@ -103,6 +103,16 @@ namespace draw {
     }
   }
 
+  void draw_rect(const Rect2i & rect, const Color & color) {
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_QUADS);
+      glVertex2f(rect.pos.x,               rect.pos.y);
+      glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
+      glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
+      glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
+    glEnd();
+  }
+
   static const Vec2u text_texture_size(512, 512);
 
   FontAtlas::FontAtlas() {
@@ -239,23 +249,25 @@ namespace draw {
   static std::vector<Rect2i> clip_stack;
 
   void clip(const Rect2i & rect) {
-    // Increment the stencil buffer in this region, but only if previous stencil tests pass
-    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    if(clip_stack.size() < 255) {
+      // Increment the stencil buffer in this region, but only if previous stencil tests pass
+      glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-    glBegin(GL_QUADS);
-      glVertex2f(rect.pos.x,               rect.pos.y);
-      glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
-      glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
-      glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
-    glEnd();
+      glBegin(GL_QUADS);
+        glVertex2f(rect.pos.x,               rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
+        glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
+      glEnd();
 
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-    clip_stack.push_back(rect);
+      clip_stack.push_back(rect);
 
-    glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
+      glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
+    }
   }
   void unclip() {
     if(clip_stack.size()) {

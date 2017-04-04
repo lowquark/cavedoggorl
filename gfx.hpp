@@ -44,8 +44,6 @@ namespace gfx {
     void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override;
     void on_agent_death(game::Id agent_id) override;
 
-    Vec2i mouse_location(Vec2i local_mouse);
-
     void step_animations();
     void draw();
 
@@ -56,6 +54,10 @@ namespace gfx {
     void set_rect(const Rect2i & rect) {
       _rect = rect;
     }
+
+    Vec2i mouse_location(Vec2i local_mouse);
+
+    bool look_str(std::string & dst, Vec2i location) const;
 
     void skip_animations();
     bool are_animations_finished();

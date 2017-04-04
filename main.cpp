@@ -39,50 +39,6 @@ gfx::View muh_view;
 int skip_countdown = 0;
 
 void update() {
-  glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-
-  glEnable(GL_STENCIL_TEST);
-
-  draw::clip(muh_view.rect());
-  muh_view.update();
-  draw::unclip();
-
-  // Draw some cool text
-  /*
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  */
-
-  if((rand() % 30) == 0) {
-    std::string text = original_message;
-    for(size_t i = 0 ; i < text.size() ; i ++) {
-      if(text[i] != '\n' && text[i] != ' ') {
-        text[i] = (rand() % 64) + 32;
-      }
-    }
-    muh_text.set_text(text);
-    muh_text.update_layout();
-  } else {
-    muh_text.set_text(original_message);
-    muh_text.update_layout();
-  }
-
-  draw::clip(muh_text.rect());
-  muh_text.draw();
-  draw::unclip();
-
-  SDL_GL_SwapWindow(window);
-
   if(skip_countdown > 0) {
     skip_countdown --;
   }
@@ -97,6 +53,8 @@ void update() {
         quit_signal = true;
         return;
       }
+
+      muh_view.skip_animations();
 
       if(muh_view.are_animations_finished()) {
         if(skip_countdown == 0) {
@@ -124,6 +82,70 @@ void update() {
       }
     }
   }
+
+  glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  glEnable(GL_STENCIL_TEST);
+
+  draw::clip(muh_view.rect());
+  muh_view.update();
+  draw::unclip();
+
+  // Draw some cool text
+  /*
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  */
+
+  /*
+  if((rand() % 30) == 0) {
+    std::string text = original_message;
+    for(size_t i = 0 ; i < text.size() ; i ++) {
+      if(text[i] != '\n' && text[i] != ' ') {
+        text[i] = (rand() % 64) + 32;
+      }
+    }
+    muh_text.set_text(text);
+    muh_text.update_layout();
+  } else {
+    muh_text.set_text(original_message);
+    muh_text.update_layout();
+  }
+  */
+
+  Vec2i mouse_pos;
+  SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+
+  Vec2i tile_pos = muh_view.mouse_location(mouse_pos - muh_view.rect().pos);
+  Vec2i text_pos = mouse_pos + Vec2i(20, 0);
+
+  std::string look_str;
+  if(muh_view.look_str(look_str, tile_pos)) {
+    muh_text.set_text(look_str);
+    muh_text.update_layout();
+
+    glTranslatef(text_pos.x, text_pos.y, 0.0f);
+
+    draw::draw_rect(muh_text.rect(), Color(0.05f, 0.05f, 0.05f));
+    draw::clip(muh_text.rect());
+    muh_text.draw();
+    draw::unclip();
+
+    glTranslatef(-text_pos.x, -text_pos.y, 0.0f);
+  }
+
+
+  SDL_GL_SwapWindow(window);
 
   SDL_Delay(14);
 }
@@ -177,7 +199,7 @@ int main(int argc, char ** argv) {
       gfx::load();
       font_atlas.load_textures();
 
-      muh_text.set_rect(Rect2i(50, 50, 100, 100));
+      muh_text.set_rect(Rect2i(0, 0, 300, 20));
       muh_text.set_text(original_message);
       muh_text.update_layout();
 

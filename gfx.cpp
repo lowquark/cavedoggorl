@@ -1,6 +1,8 @@
 
 #include "gfx.hpp"
 
+#include <cmath>
+
 namespace gfx {
   class AgentMoveAnimation : public Animation {
     AgentSprite & sprite;
@@ -67,10 +69,6 @@ namespace gfx {
   void View::on_agent_death(game::Id agent_id) {
   }
 
-  Vec2i View::mouse_location(Vec2i local_mouse) {
-    return Vec2i();
-  }
-
   void View::step_animations() {
     if(active_animations.empty()) {
       if(!queued_animations.empty()) {
@@ -108,7 +106,7 @@ namespace gfx {
     auto sprite_kvpair_it = agent_sprites.find(1);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
-      draw::camera_pos = sprite.pos - Vec2f((float)_rect.size.x / TILE_WIDTH /2,
+      draw::camera_pos = sprite.pos - Vec2f((float)_rect.size.x / TILE_WIDTH / 2,
                                             (float)_rect.size.y / TILE_HEIGHT / 2);
     }
 
@@ -141,6 +139,30 @@ namespace gfx {
     }
 
     glTranslatef(-_rect.pos.x, -_rect.pos.y, 0.0f);
+  }
+
+  Vec2i View::mouse_location(Vec2i local_mouse) {
+    return Vec2i(std::round((float)local_mouse.x / TILE_WIDTH) + draw::camera_pos.x,
+                 std::round((float)local_mouse.y / TILE_HEIGHT) + draw::camera_pos.y);
+  }
+
+  bool View::look_str(std::string & dst, Vec2i location) const {
+    for(auto & kvpairs : agent_sprites) {
+      auto & sprite = kvpairs.second;
+      auto & id = kvpairs.first;
+
+      Vec2i pos(round(sprite.pos.x), round(sprite.pos.y));
+      if(pos == location) {
+        if(id == 1) {
+          dst = "your nicely colored self";
+          return true;
+        } else {
+          dst = "an evil looking color";
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   void View::skip_animations() {

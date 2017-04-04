@@ -39,6 +39,8 @@ namespace draw {
   void draw_agent(Vec2f pos, const Color & color);
   void draw_path(const std::vector<Vec2i> & path, const Color & color);
 
+  void draw_rect(const Rect2i & rect, const Color & color);
+
   class FontAtlas {
     TTF_Font * font = nullptr;
 
