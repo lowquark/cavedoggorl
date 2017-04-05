@@ -22,21 +22,44 @@
 
 static std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
 
-static draw::FontAtlas font_atlas;
-static draw::TextBin muh_text(font_atlas);
-
 static constexpr int TILES_X = 30;
 static constexpr int TILES_Y = 24;
 
 static const Vec2u tile_size(32, 32);
 static const Vec2u window_size(tile_size.x * TILES_X, tile_size.y * TILES_Y);
 
+
 SDL_Window * window = nullptr;
 bool quit_signal = false;
 
 
-gfx::View muh_view;
+gfx::GridWorld grid_world;
+gfx::HUDOverlay hud;
 int skip_countdown = 0;
+
+
+class MuhView : public game::View {
+  void on_world_load(unsigned int tiles_x, unsigned int tiles_y) override {
+    grid_world.set_size(Vec2u(tiles_x, tiles_y));
+  }
+  void on_tile_load(game::Id type_id, const Vec2i & pos) override {
+    grid_world.set_tile(pos, type_id);
+  }
+  void on_agent_load(game::Id agent_id, game::Id type_id, const Vec2i & pos, const Color & color) override {
+    grid_world.add_agent(agent_id, type_id, pos, color);
+  }
+
+  void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override {
+    grid_world.move_agent(agent_id, from, to);
+  }
+  void on_agent_death(game::Id agent_id) override {
+  }
+};
+
+MuhView muh_view;
+
+
+Vec2i mouse_tile;
 
 void update() {
   if(skip_countdown > 0) {
@@ -54,9 +77,9 @@ void update() {
         return;
       }
 
-      muh_view.skip_animations();
+      grid_world.skip_animations();
 
-      if(muh_view.are_animations_finished()) {
+      if(grid_world.are_animations_finished()) {
         if(skip_countdown == 0) {
           if(event.key.keysym.sym == SDLK_w) {
             game::move_attack(game::player_agent, game::player_agent.pos + Vec2i(0, -1));
@@ -77,11 +100,32 @@ void update() {
           }
         }
       } else {
-        muh_view.skip_animations();
+        grid_world.skip_animations();
         skip_countdown = 2;
       }
     }
   }
+
+  Vec2i mouse_pos;
+  SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+
+  Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
+  if(new_mouse_tile != mouse_tile) {
+    mouse_tile = new_mouse_tile;
+
+    std::string look_str;
+    if(grid_world.look_str(look_str, mouse_tile)) {
+      look_str = std::string("You see: ") + look_str;
+      hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
+    } else {
+      hud.look_finish();
+    }
+  }
+
+
+  grid_world.tick();
+  hud.tick();
+
 
   glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -94,60 +138,9 @@ void update() {
 
   glEnable(GL_STENCIL_TEST);
 
-  draw::clip(muh_view.rect());
-  muh_view.update();
-  draw::unclip();
 
-  // Draw some cool text
-  /*
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  */
-
-  /*
-  if((rand() % 30) == 0) {
-    std::string text = original_message;
-    for(size_t i = 0 ; i < text.size() ; i ++) {
-      if(text[i] != '\n' && text[i] != ' ') {
-        text[i] = (rand() % 64) + 32;
-      }
-    }
-    muh_text.set_text(text);
-    muh_text.update_layout();
-  } else {
-    muh_text.set_text(original_message);
-    muh_text.update_layout();
-  }
-  */
-
-  Vec2i mouse_pos;
-  SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
-
-  Vec2i tile_pos = muh_view.game_pos(mouse_pos - muh_view.rect().pos);
-
-  std::string look_str;
-  if(muh_view.look_str(look_str, tile_pos)) {
-    muh_text.set_text(look_str);
-    muh_text.update_layout();
-
-    // offset from center of tile to corner of text box
-    Vec2i text_offset = Vec2i(tile_size.x/2, -muh_text.rect().size.y/2);
-    Vec2i text_pos = muh_view.rect().pos +
-                     muh_view.screen_pos(tile_pos) + 
-                     text_offset;
-
-    glTranslatef(text_pos.x, text_pos.y, 0.0f);
-
-    draw::draw_rect(muh_text.rect(), Color(0.05f, 0.05f, 0.05f));
-    draw::clip(muh_text.rect());
-    muh_text.draw();
-    draw::unclip();
-
-    glTranslatef(-text_pos.x, -text_pos.y, 0.0f);
-  }
+  grid_world.draw();
+  hud.draw();
 
 
   SDL_GL_SwapWindow(window);
@@ -174,12 +167,7 @@ int main(int argc, char ** argv) {
   main_log.logf("Loading font from %s...", font);
   main_log.flush();
 
-  font_atlas.set_font(font);
-
-  for(int i = 32 ; i < 128 ; i ++) {
-    uint32_t code_point = i;
-    font_atlas.load(code_point);
-  }
+  gfx::load_font("/usr/share/fonts/TTF/DejaVuSans.ttf");
 
   main_log.logf("Finished", font);
 
@@ -200,22 +188,15 @@ int main(int argc, char ** argv) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
 
     if(gl_ctx != nullptr) {
-      muh_view.set_rect(Rect2i(Vec2i(0, 100), window_size - Vec2i(0, 200)));
-      muh_view.set_tile_size(tile_size);
+      grid_world.set_draw_rect(Rect2i(Vec2i(0, 100), window_size - Vec2i(0, 200)));
+      grid_world.set_tile_size(tile_size);
 
       gfx::load();
-      font_atlas.load_textures();
-
-      muh_text.set_rect(Rect2i(0, 0, 300, 20));
-      muh_text.set_text(original_message);
-      muh_text.update_layout();
 
       game::view(&muh_view);
       game::load_world();
 
       run();
-
-      font_atlas.unload_textures();
 
       gfx::unload();
 
