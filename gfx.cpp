@@ -14,6 +14,18 @@ namespace gfx {
     return (p == 1.0) ? p : 1 - std::pow(2, -10 * p);
   }
 
+  // Modeled after the parabola y = x^2
+  float quadratic_ease_in(float p)
+  {
+    return p * p;
+  }
+
+  // Modeled after the parabola y = -x^2 + 2x
+  float quadratic_ease_out(float p)
+  {
+    return -(p * (p - 2));
+  }
+
   class AgentMoveAnimation : public Animation {
     AgentSprite & sprite;
     Vec2i from;
@@ -114,7 +126,7 @@ namespace gfx {
       auto & sprite = kvpairs.second;
 
       // TODO: Draw the agent only if not hidden
-      draw::draw_agent(sprite.pos, sprite.color);
+      draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
 
       /*
       // Draw the path for debugging purposes
@@ -234,7 +246,9 @@ namespace gfx {
     if(look_enabled) {
       const int dist = 20;
 
-      int offset = round(dist*exponential_ease_in((float)look_ease_timer / look_ease_timer_max));
+      float pos_ease = exponential_ease_out((float)(look_ease_timer_max - look_ease_timer) / look_ease_timer_max);
+      float clip_ease = quadratic_ease_out((float)(look_ease_timer_max - look_ease_timer) / look_ease_timer_max);
+      int offset = round(dist * (1.0f - pos_ease));
 
       // offset from center of tile to corner of text box
       Vec2i text_offset = Vec2i(15, -text_bin.rect().size.y/2 + offset);
@@ -242,7 +256,7 @@ namespace gfx {
 
       glTranslatef(bin_pos.x, bin_pos.y, 0.0f);
 
-      text_bin.set_rect(Rect2i(0, 0, 300, 20));
+      text_bin.set_rect(Rect2i(0, 0, clip_ease*300, 20));
 
       draw::draw_rect(text_bin.rect(), Color(0.05f, 0.05f, 0.05f));
       draw::clip(text_bin.rect());

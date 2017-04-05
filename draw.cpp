@@ -33,9 +33,11 @@ namespace draw {
 
   static Log log;
 
+  const float PIXEL_FUDGE = 0.375f;
+
   void draw_wall(Vec2i pos) {
-    float x = (pos.x - camera_pos.x) * tile_size.x;
-    float y = (pos.y - camera_pos.y) * tile_size.y;
+    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
+    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
 
     glTranslatef(x, y, 0.0f);
 
@@ -58,8 +60,8 @@ namespace draw {
     glTranslatef(-x, -y, 0.0f);
   }
   void draw_floor(Vec2i pos) {
-    float x = (pos.x - camera_pos.x) * tile_size.x;
-    float y = (pos.y - camera_pos.y) * tile_size.y;
+    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
+    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
 
     glTranslatef(x, y, 0.0f);
 
@@ -75,37 +77,32 @@ namespace draw {
     glTranslatef(-x, -y, 0.0f);
   }
 
-  void draw_agent(Vec2i pos, const Color & color) {
-    float x = (pos.x - camera_pos.x) * tile_size.x;
-    float y = (pos.y - camera_pos.y) * tile_size.y;
+  void draw_agent(Vec2f pos, unsigned int type, const Color & color) {
+    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
+    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
 
     glTranslatef(x, y, 0.0f);
 
     glDisable(GL_TEXTURE_2D);
     glColor3f(color.r, color.g, color.b);
-    glBegin(GL_QUADS);
-      glVertex2f(-AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-      glVertex2f( AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-      glVertex2f( AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-      glVertex2f(-AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-    glEnd();
+    if(type == 0) {
+      glBegin(GL_QUADS);
+        glVertex2f(-AGENT_WIDTH/2, -AGENT_HEIGHT/2);
+        glVertex2f( AGENT_WIDTH/2, -AGENT_HEIGHT/2);
+        glVertex2f( AGENT_WIDTH/2,  AGENT_HEIGHT/2);
+        glVertex2f(-AGENT_WIDTH/2,  AGENT_HEIGHT/2);
+      glEnd();
+    } else if(type == 1) {
+      glBegin(GL_TRIANGLES);
+        glVertex2f( 0.0f,   0.0f);
+        glVertex2f( (float)AGENT_WIDTH/2, -(float)AGENT_HEIGHT/2);
+        glVertex2f( (float)AGENT_WIDTH/2,  (float)AGENT_HEIGHT/2);
 
-    glTranslatef(-x, -y, 0.0f);
-  }
-  void draw_agent(Vec2f pos, const Color & color) {
-    float x = (pos.x - camera_pos.x) * tile_size.x;
-    float y = (pos.y - camera_pos.y) * tile_size.y;
-
-    glTranslatef(x, y, 0.0f);
-
-    glDisable(GL_TEXTURE_2D);
-    glColor3f(color.r, color.g, color.b);
-    glBegin(GL_QUADS);
-      glVertex2f(-AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-      glVertex2f( AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-      glVertex2f( AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-      glVertex2f(-AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-    glEnd();
+        glVertex2f( 0.0f,   0.0f);
+        glVertex2f(-(float)AGENT_WIDTH/2,  (float)AGENT_HEIGHT/2);
+        glVertex2f(-(float)AGENT_WIDTH/2, -(float)AGENT_HEIGHT/2);
+      glEnd();
+    }
 
     glTranslatef(-x, -y, 0.0f);
   }

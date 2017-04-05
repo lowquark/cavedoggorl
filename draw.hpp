@@ -19,8 +19,7 @@ namespace draw {
   void draw_wall(Vec2i pos);
   void draw_floor(Vec2i pos);
 
-  void draw_agent(Vec2i pos, const Color & color);
-  void draw_agent(Vec2f pos, const Color & color);
+  void draw_agent(Vec2f pos, unsigned int type_id, const Color & color);
   void draw_path(const std::vector<Vec2i> & path, const Color & color);
 
   void draw_rect(const Rect2i & rect, const Color & color);

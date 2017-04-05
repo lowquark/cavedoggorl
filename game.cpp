@@ -127,7 +127,7 @@ namespace game {
                                                        0.9f * rand() / RAND_MAX);
       impostor.team = 1;
 
-      if(game_view) { game_view->on_agent_load(impostor.id, 0, impostor.pos, impostor.color); }
+      if(game_view) { game_view->on_agent_load(impostor.id, 1, impostor.pos, impostor.color); }
     }
   }
 
