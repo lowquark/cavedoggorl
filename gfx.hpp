@@ -29,6 +29,8 @@ namespace gfx {
   };
 
   class View : public game::View {
+    Vec2f _camera_pos;
+    Vec2u _tile_size;
     Rect2i _rect;
 
     std::deque<Animation *> queued_animations;
@@ -48,6 +50,13 @@ namespace gfx {
     void draw();
 
     public:
+    const Vec2u & tile_size() const {
+      return _tile_size;
+    }
+    void set_tile_size(const Vec2u & tile_size) {
+      _tile_size = tile_size;
+    }
+
     const Rect2i & rect() const {
       return _rect;
     }
@@ -55,7 +64,8 @@ namespace gfx {
       _rect = rect;
     }
 
-    Vec2i mouse_location(Vec2i local_mouse);
+    Vec2i game_pos(Vec2i screen_pos);
+    Vec2i screen_pos(Vec2i game_pos);
 
     bool look_str(std::string & dst, Vec2i location) const;
 

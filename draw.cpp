@@ -9,12 +9,33 @@
 #include "Log.hpp"
 
 namespace draw {
-  Vec2f camera_pos;
-  Log log;
+  static constexpr float WALL_WIDTH  = 28;
+  static constexpr float WALL_HEIGHT = 28;
+
+  static constexpr float FLOOR_DOT_WIDTH  = 4;
+  static constexpr float FLOOR_DOT_HEIGHT = 4;
+
+  static constexpr float AGENT_WIDTH  = 12;
+  static constexpr float AGENT_HEIGHT = 12;
+
+  static const Color WALL_COLOR(0.7f, 0.7f, 0.75f);
+  static const Color FLOOR_COLOR(0.3f, 0.3f, 0.3f);
+
+  static Vec2u tile_size(32, 32);
+  void set_tile_size(const Vec2u & _tile_size) {
+    tile_size = _tile_size;
+  }
+
+  static Vec2f camera_pos;
+  void set_camera_pos(const Vec2f & _camera_pos) {
+    camera_pos = _camera_pos;
+  }
+
+  static Log log;
 
   void draw_wall(Vec2i pos) {
-    float x = (pos.x - camera_pos.x) * TILE_WIDTH;
-    float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
+    float x = (pos.x - camera_pos.x) * tile_size.x;
+    float y = (pos.y - camera_pos.y) * tile_size.y;
 
     glTranslatef(x, y, 0.0f);
 
@@ -37,8 +58,8 @@ namespace draw {
     glTranslatef(-x, -y, 0.0f);
   }
   void draw_floor(Vec2i pos) {
-    float x = (pos.x - camera_pos.x) * TILE_WIDTH;
-    float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
+    float x = (pos.x - camera_pos.x) * tile_size.x;
+    float y = (pos.y - camera_pos.y) * tile_size.y;
 
     glTranslatef(x, y, 0.0f);
 
@@ -55,8 +76,8 @@ namespace draw {
   }
 
   void draw_agent(Vec2i pos, const Color & color) {
-    float x = (pos.x - camera_pos.x) * TILE_WIDTH;
-    float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
+    float x = (pos.x - camera_pos.x) * tile_size.x;
+    float y = (pos.y - camera_pos.y) * tile_size.y;
 
     glTranslatef(x, y, 0.0f);
 
@@ -72,8 +93,8 @@ namespace draw {
     glTranslatef(-x, -y, 0.0f);
   }
   void draw_agent(Vec2f pos, const Color & color) {
-    float x = (pos.x - camera_pos.x) * TILE_WIDTH;
-    float y = (pos.y - camera_pos.y) * TILE_HEIGHT;
+    float x = (pos.x - camera_pos.x) * tile_size.x;
+    float y = (pos.y - camera_pos.y) * tile_size.y;
 
     glTranslatef(x, y, 0.0f);
 
@@ -94,10 +115,10 @@ namespace draw {
       glColor3f(color.r, color.g, color.b);
       glBegin(GL_LINES);
         for(unsigned int i = 0 ; i < path.size() - 1 ; i ++) {
-          float x0 = (path[i    ].x - camera_pos.x) * TILE_WIDTH;
-          float y0 = (path[i    ].y - camera_pos.y) * TILE_HEIGHT;
-          float x1 = (path[i + 1].x - camera_pos.x) * TILE_WIDTH;
-          float y1 = (path[i + 1].y - camera_pos.y) * TILE_HEIGHT;
+          float x0 = (path[i    ].x - camera_pos.x) * tile_size.x;
+          float y0 = (path[i    ].y - camera_pos.y) * tile_size.y;
+          float x1 = (path[i + 1].x - camera_pos.x) * tile_size.x;
+          float y1 = (path[i + 1].y - camera_pos.y) * tile_size.y;
 
           glVertex2f(x0, y0);
           glVertex2f(x1, y1);

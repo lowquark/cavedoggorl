@@ -12,25 +12,9 @@
 #include <map>
 #include <memory>
 
-static constexpr int TILE_WIDTH  = 32;
-static constexpr int TILE_HEIGHT = 32;
-
-static constexpr float WALL_WIDTH  = 28;
-static constexpr float WALL_HEIGHT = 28;
-
-static constexpr float FLOOR_DOT_WIDTH  = 4;
-static constexpr float FLOOR_DOT_HEIGHT = 4;
-
-static constexpr float AGENT_WIDTH  = 12;
-static constexpr float AGENT_HEIGHT = 12;
-
-static constexpr bool DRAW_PATHS = false;
-
-static const Color WALL_COLOR(0.7f, 0.7f, 0.75f);
-static const Color FLOOR_COLOR(0.3f, 0.3f, 0.3f);
-
 namespace draw {
-  extern Vec2f camera_pos;
+  void set_tile_size(const Vec2u & tile_size);
+  void set_camera_pos(const Vec2f & camera_pos);
 
   void draw_wall(Vec2i pos);
   void draw_floor(Vec2i pos);

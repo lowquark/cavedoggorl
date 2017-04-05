@@ -96,6 +96,8 @@ namespace gfx {
   }
 
   void View::draw() {
+    draw::set_tile_size(_tile_size);
+
     glTranslatef(_rect.pos.x, _rect.pos.y, 0.0f);
 
     glEnable(GL_BLEND);
@@ -105,9 +107,11 @@ namespace gfx {
     auto sprite_kvpair_it = agent_sprites.find(1);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
-      draw::camera_pos = sprite.pos - Vec2f((float)_rect.size.x / TILE_WIDTH / 2,
-                                            (float)_rect.size.y / TILE_HEIGHT / 2);
+      _camera_pos = sprite.pos - Vec2f((float)_rect.size.x / _tile_size.x / 2,
+                                       (float)_rect.size.y / _tile_size.y / 2);
     }
+
+    draw::set_camera_pos(_camera_pos);
 
     // TODO: Only iterate over visible tiles
     for(int j = 0 ; j < tile_sprites.h() ; j ++) {
@@ -140,9 +144,13 @@ namespace gfx {
     glTranslatef(-_rect.pos.x, -_rect.pos.y, 0.0f);
   }
 
-  Vec2i View::mouse_location(Vec2i local_mouse) {
-    return Vec2i(std::round((float)local_mouse.x / TILE_WIDTH) + draw::camera_pos.x,
-                 std::round((float)local_mouse.y / TILE_HEIGHT) + draw::camera_pos.y);
+  Vec2i View::game_pos(Vec2i screen_pos) {
+    return Vec2i(std::round((float)screen_pos.x / _tile_size.x) + _camera_pos.x,
+                 std::round((float)screen_pos.y / _tile_size.y) + _camera_pos.y);
+  }
+  Vec2i View::screen_pos(Vec2i game_pos) {
+    return Vec2i((game_pos.x - _camera_pos.x) * _tile_size.x,
+                 (game_pos.y - _camera_pos.y) * _tile_size.y);
   }
 
   bool View::look_str(std::string & dst, Vec2i location) const {

@@ -27,10 +27,9 @@ static draw::TextBin muh_text(font_atlas);
 
 static constexpr int TILES_X = 30;
 static constexpr int TILES_Y = 24;
-//static constexpr int WINDOW_WIDTH  = TILE_WIDTH * TILES_X;
-//static constexpr int WINDOW_HEIGHT = TILE_HEIGHT * TILES_Y;
 
-static const Vec2u window_size(TILE_WIDTH * TILES_X, TILE_HEIGHT * TILES_Y);
+static const Vec2u tile_size(32, 32);
+static const Vec2u window_size(tile_size.x * TILES_X, tile_size.y * TILES_Y);
 
 SDL_Window * window = nullptr;
 bool quit_signal = false;
@@ -127,13 +126,18 @@ void update() {
   Vec2i mouse_pos;
   SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
 
-  Vec2i tile_pos = muh_view.mouse_location(mouse_pos - muh_view.rect().pos);
-  Vec2i text_pos = mouse_pos + Vec2i(20, 0);
+  Vec2i tile_pos = muh_view.game_pos(mouse_pos - muh_view.rect().pos);
 
   std::string look_str;
   if(muh_view.look_str(look_str, tile_pos)) {
     muh_text.set_text(look_str);
     muh_text.update_layout();
+
+    // offset from center of tile to corner of text box
+    Vec2i text_offset = Vec2i(tile_size.x/2, -muh_text.rect().size.y/2);
+    Vec2i text_pos = muh_view.rect().pos +
+                     muh_view.screen_pos(tile_pos) + 
+                     text_offset;
 
     glTranslatef(text_pos.x, text_pos.y, 0.0f);
 
@@ -166,7 +170,6 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
-
   const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
   main_log.logf("Loading font from %s...", font);
   main_log.flush();
@@ -198,6 +201,7 @@ int main(int argc, char ** argv) {
 
     if(gl_ctx != nullptr) {
       muh_view.set_rect(Rect2i(Vec2i(0, 100), window_size - Vec2i(0, 200)));
+      muh_view.set_tile_size(tile_size);
 
       gfx::load();
       font_atlas.load_textures();
