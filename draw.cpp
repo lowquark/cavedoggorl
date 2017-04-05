@@ -6,8 +6,11 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
+#include "Log.hpp"
+
 namespace draw {
   Vec2f camera_pos;
+  Log log;
 
   void draw_wall(Vec2i pos) {
     float x = (pos.x - camera_pos.x) * TILE_WIDTH;
@@ -223,9 +226,9 @@ namespace draw {
       glGenTextures(1, &atlas_tex_id);
 
 
-      printf("atlas_tex_id: %u\n", atlas_tex_id);
-      printf("_atlas_surface->w: %u\n", _atlas_surface->w);
-      printf("_atlas_surface->h: %u\n", _atlas_surface->h);
+      log.logf<Log::DEBUG0>("atlas_tex_id: %u", atlas_tex_id);
+      log.logf<Log::DEBUG0>("_atlas_surface->w: %u", _atlas_surface->w);
+      log.logf<Log::DEBUG0>("_atlas_surface->h: %u", _atlas_surface->h);
 
       glBindTexture(GL_TEXTURE_2D, atlas_tex_id);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

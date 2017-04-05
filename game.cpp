@@ -2,12 +2,15 @@
 #include "game.hpp"
 #include "Map.hpp"
 #include "AStar.hpp"
+#include "Log.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 namespace game {
+  Log log;
+
   static View * game_view = nullptr;
   void view(View * view) {
     game_view = view;
@@ -41,7 +44,7 @@ namespace game {
     Agent * other = find_agent(dst);
     if(other && other->team != agent.team) {
       other->hp -= 10;
-      printf("Ouch! %p lost 10 hp (now at %d)\n", other, other->hp);
+      log.logf("Ouch! %p lost 10 hp (now at %d)", other, other->hp);
     } else if(can_move(dst)) {
       if(game_view) { game_view->on_agent_move(agent.id, agent.pos, dst); }
       agent.pos = dst;
@@ -129,20 +132,20 @@ namespace game {
   }
 
   void step_game() {
-    printf("player turn complete!\n");
+    log.logf("player turn complete!");
     while(true) {
       for(auto & impostor : impostor_agents) {
         impostor.time --;
         if(impostor.time <= 0) {
-          printf("time for ai turn! %p\n", &impostor);
+          log.logf("time for ai turn! %p", &impostor);
           ai_turn(impostor);
-          printf("ai turn complete! %p\n", &impostor);
+          log.logf("ai turn complete! %p", &impostor);
         }
       }
 
       player_agent.time --;
       if(player_agent.time <= 0) {
-        printf("time for player turn!\n");
+        log.logf("time for player turn!");
         return;
       }
     }

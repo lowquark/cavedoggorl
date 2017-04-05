@@ -42,7 +42,6 @@ namespace gfx {
 
 
   void View::on_world_load(unsigned int tiles_x, unsigned int tiles_y) {
-    printf("%s: %ux%u\n", __PRETTY_FUNCTION__, tiles_x, tiles_y);
     tile_sprites.resize(tiles_x, tiles_y);
   }
   void View::on_tile_load(game::Id type_id, const Vec2i & pos) {

@@ -17,6 +17,7 @@
 #include "Vec2.hpp"
 #include "game.hpp"
 #include "gfx.hpp"
+#include "Log.hpp"
 
 
 static std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
@@ -158,6 +159,8 @@ void run() {
   }
 }
 
+Log main_log;
+
 int main(int argc, char ** argv) {
   // I hate these
   SDL_Init(SDL_INIT_VIDEO);
@@ -165,8 +168,8 @@ int main(int argc, char ** argv) {
 
 
   const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-  printf("Loading font from %s... ", font);
-  fflush(stdout);
+  main_log.logf("Loading font from %s...", font);
+  main_log.flush();
 
   font_atlas.set_font(font);
 
@@ -175,11 +178,11 @@ int main(int argc, char ** argv) {
     font_atlas.load(code_point);
   }
 
-  printf("Finished\n");
-  fflush(stdout);
+  main_log.logf("Finished", font);
+
 
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
-    printf("%s\n", SDL_GetError());
+    main_log.logf<Log::ERROR>("%s", SDL_GetError());
   }
 
   window = SDL_CreateWindow(
@@ -215,13 +218,13 @@ int main(int argc, char ** argv) {
       SDL_GL_DeleteContext(gl_ctx);
       gl_ctx = nullptr;
     } else {
-      fprintf(stderr, "Failed to create GL context: %s\n", SDL_GetError());
+      main_log.logf<Log::ERROR>("Failed to create GL context: %s\n", SDL_GetError());
     }
 
     SDL_DestroyWindow(window);
     window = nullptr;
   } else {
-    fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
+    main_log.logf<Log::ERROR>("Failed to create SDL window: %s\n", SDL_GetError());
   }
 
 
