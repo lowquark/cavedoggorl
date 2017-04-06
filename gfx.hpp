@@ -82,12 +82,8 @@ namespace gfx {
     void tick();
 
 
-    const Rect2i & draw_rect() const {
-      return _draw_rect;
-    }
-    void set_draw_rect(const Rect2i & draw_rect) {
-      _draw_rect = draw_rect;
-    }
+    const Rect2i & draw_rect() const { return _draw_rect; }
+    void set_draw_rect(const Rect2i & draw_rect) { _draw_rect = draw_rect; }
 
     // draws clipped within rect
     void draw();
@@ -103,10 +99,27 @@ namespace gfx {
     draw::TextBin text_bin;
 
     public:
-    HUDOverlay();
-
     void look(Vec2i screen_pos, const std::string & look_str);
     void look_finish();
+
+    void tick();
+    void draw();
+  };
+
+  class WorldMessageLog {
+    struct Item {
+      draw::TextBin text_bin;
+      Vec2i pos;
+    };
+
+    std::deque<Item> items;
+    Rect2i _draw_rect;
+
+    public:
+    void push(const std::string & message);
+
+    const Rect2i & draw_rect() const { return _draw_rect; }
+    void set_draw_rect(const Rect2i & draw_rect) { _draw_rect = draw_rect; }
 
     void tick();
     void draw();

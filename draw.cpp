@@ -125,7 +125,8 @@ namespace draw {
   }
 
   void draw_rect(const Rect2i & rect, const Color & color) {
-    glColor3f(color.r, color.g, color.b);
+    glDisable(GL_TEXTURE_2D);
+    glColor4f(color.r, color.g, color.b, color.a);
     glBegin(GL_QUADS);
       glVertex2f(rect.pos.x,               rect.pos.y);
       glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
@@ -223,6 +224,7 @@ namespace draw {
     return succ;
   }
   // U+0x25AF is WHITE VERTICAL RECTANGLE 
+  // IN CASE YOU WERE WONDERING
   bool FontAtlas::get(Rect2i & rect, int & advance_x, GLuint & atlas_tex_id, uint32_t unicode) const {
     auto glyph_kvpair_it = glyphs.find(unicode);
 
@@ -313,33 +315,27 @@ namespace draw {
     glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
   }
 
-  void TextBin::set_text(const std::string & utf8) {
-    _text = utf8;
-  }
-  void TextBin::set_rect(const Rect2i & rect) {
-    _rect = rect;
-  }
-
-  void TextBin::update_layout() {
+  void TextBin::set(const FontAtlas & atlas, const std::string & utf8_text) {
+    _text_size = Vec2i(0, 0);
     Vec2i pos;
 
     position_data.clear();
     texcoord_data.clear();
     texture_data.clear();
 
-    for(size_t i = 0 ; i < _text.size() ; i ++) {
+    for(size_t i = 0 ; i < utf8_text.size() ; i ++) {
       Rect2i bin_rect;
       int advance_x;
       GLuint tex_id;
 
-      if(_text[i] == '\n') {
+      if(utf8_text[i] == '\n') {
         pos.x = 0;
-        pos.y += _atlas.line_skip();
-      } else if(_atlas.get(bin_rect, advance_x, tex_id, _text[i])) {
-        float left   = pos.x;
-        float right  = pos.x + bin_rect.size.x;
-        float top    = pos.y;
-        float bottom = pos.y + bin_rect.size.y;
+        pos.y += atlas.line_skip();
+      } else if(atlas.get(bin_rect, advance_x, tex_id, utf8_text[i])) {
+        int left   = pos.x;
+        int right  = pos.x + bin_rect.size.x;
+        int top    = pos.y;
+        int bottom = pos.y + bin_rect.size.y;
 
         float uv_left   = (float)(bin_rect.pos.x) / text_texture_size.x;
         float uv_right  = (float)(bin_rect.pos.x + bin_rect.size.x) / text_texture_size.x;
@@ -372,6 +368,13 @@ namespace draw {
 
         texture_data.push_back(tex_id);
 
+        if(right > _text_size.x) {
+          _text_size.x = right;
+        }
+        if(bottom > _text_size.y) {
+          _text_size.y = bottom;
+        }
+
         pos += Vec2i(advance_x, 0);
       }
     }
@@ -380,7 +383,8 @@ namespace draw {
     assert(position_data.size() == texcoord_data.size());
     assert(position_data.size() == texture_data.size() * 8);
 
-    glTranslatef(_rect.pos.x, _rect.pos.y, 0.0f);
+    draw::clip(_draw_rect);
+    glTranslatef(_draw_rect.pos.x, _draw_rect.pos.y, 0.0f);
 
     glEnable(GL_TEXTURE_2D);
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -418,7 +422,8 @@ namespace draw {
       glEnd();
     }
 
-    glTranslatef(-_rect.pos.x, -_rect.pos.y, 0.0f);
+    glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
+    draw::unclip();
   }
 }
 

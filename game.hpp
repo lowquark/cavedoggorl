@@ -2,6 +2,7 @@
 #define GAME_HPP
 
 #include <vector>
+#include <string>
 #include "Color.hpp"
 #include "Vec2.hpp"
 
@@ -16,6 +17,8 @@ namespace game {
 
     virtual void on_agent_move(Id agent_id, const Vec2i & from, const Vec2i & to) {}
     virtual void on_agent_death(Id agent_id) {}
+
+    virtual void on_message(const std::string & message) {}
   };
 
 

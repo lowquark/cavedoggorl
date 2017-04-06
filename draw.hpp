@@ -70,29 +70,24 @@ namespace draw {
   void unclip();
 
   class TextBin {
-    const FontAtlas & _atlas;
-
-    std::string _text;
-    Rect2i _rect;
+    Vec2i _text_size;
+    Rect2i _draw_rect;
 
     std::vector<float> position_data; // 4 2D verts per glyph
     std::vector<float> texcoord_data; // 4 2D verts per glyph
     std::vector<GLuint> texture_data;
 
     public:
-    TextBin(const FontAtlas & atlas)
-      : _atlas(atlas) {}
+    void set(const FontAtlas & atlas, const std::string & utf8_text);
+    void set(const FontAtlas & atlas, const std::string & utf8_text, const Vec2u & wrap_size);
 
-    void set_text(const std::string & utf8);
-    void set_rect(const Rect2i & rect);
+    // post-set text size
+    const Vec2i & text_size() const { return _text_size; }
 
-    void update_layout();
+    const Rect2i & draw_rect() const { return _draw_rect; }
+    void set_draw_rect(const Rect2i & draw_rect) { _draw_rect = draw_rect; }
+
     void draw();
-
-    const FontAtlas & atlas() const { return _atlas; }
-
-    const std::string & text() const { return _text; }
-    const Rect2i & rect() const { return _rect; }
   };
 }
 

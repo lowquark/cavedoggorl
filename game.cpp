@@ -44,6 +44,11 @@ namespace game {
     Agent * other = find_agent(dst);
     if(other && other->team != agent.team) {
       other->hp -= 10;
+
+      char message[100];
+      snprintf(message, sizeof(message), "Ouch! %p lost 10 hp (now at %d)", other, other->hp);
+      if(game_view) { game_view->on_message(message); }
+
       log.logf("Ouch! %p lost 10 hp (now at %d)", other, other->hp);
     } else if(can_move(dst)) {
       if(game_view) { game_view->on_agent_move(agent.id, agent.pos, dst); }
@@ -132,20 +137,20 @@ namespace game {
   }
 
   void step_game() {
-    log.logf("player turn complete!");
+    log.logf<Log::DEBUG1>("player turn complete!");
     while(true) {
       for(auto & impostor : impostor_agents) {
         impostor.time --;
         if(impostor.time <= 0) {
-          log.logf("time for ai turn! %p", &impostor);
+          log.logf<Log::DEBUG1>("time for ai turn! %p", &impostor);
           ai_turn(impostor);
-          log.logf("ai turn complete! %p", &impostor);
+          log.logf<Log::DEBUG1>("ai turn complete! %p", &impostor);
         }
       }
 
       player_agent.time --;
       if(player_agent.time <= 0) {
-        log.logf("time for player turn!");
+        log.logf<Log::DEBUG1>("time for player turn!");
         return;
       }
     }

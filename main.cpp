@@ -35,6 +35,7 @@ bool quit_signal = false;
 
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
+gfx::WorldMessageLog message_log;
 int skip_countdown = 0;
 
 
@@ -53,6 +54,10 @@ class MuhView : public game::View {
     grid_world.move_agent(agent_id, from, to);
   }
   void on_agent_death(game::Id agent_id) override {
+  }
+
+  void on_message(const std::string & message) override {
+    message_log.push(message);
   }
 };
 
@@ -125,6 +130,7 @@ void update() {
 
   grid_world.tick();
   hud.tick();
+  message_log.tick();
 
 
   glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
@@ -141,6 +147,7 @@ void update() {
 
   grid_world.draw();
   hud.draw();
+  message_log.draw();
 
 
   SDL_GL_SwapWindow(window);
@@ -188,7 +195,8 @@ int main(int argc, char ** argv) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
 
     if(gl_ctx != nullptr) {
-      grid_world.set_draw_rect(Rect2i(Vec2i(0, 100), window_size - Vec2i(0, 200)));
+      message_log.set_draw_rect(Rect2i(0, 0, window_size.x, 100));
+      grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size - Vec2i(0, 100)));
       grid_world.set_tile_size(tile_size);
 
       gfx::load();

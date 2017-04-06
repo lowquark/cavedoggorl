@@ -170,8 +170,8 @@ namespace gfx {
   }
 
   Vec2i GridWorld::grid_pos(Vec2i screen_pos) {
-    return Vec2i(std::round((float)screen_pos.x / _tile_size.x) + _camera_pos.x,
-                 std::round((float)screen_pos.y / _tile_size.y) + _camera_pos.y);
+    return Vec2i(std::round((float)screen_pos.x / _tile_size.x + _camera_pos.x),
+                 std::round((float)screen_pos.y / _tile_size.y + _camera_pos.y));
   }
   Vec2i GridWorld::screen_pos(Vec2i grid_pos) {
     return Vec2i((grid_pos.x - _camera_pos.x) * _tile_size.x,
@@ -219,15 +219,11 @@ namespace gfx {
   }
 
 
-  HUDOverlay::HUDOverlay() 
-    : text_bin(font_atlas) {}
-
   void HUDOverlay::look(Vec2i screen_pos, const std::string & look_str) {
     this->look_pos = screen_pos;
     this->look_str = look_str;
 
-    text_bin.set_text(look_str);
-    text_bin.update_layout();
+    text_bin.set(font_atlas, look_str);
 
     look_enabled = true;
     look_ease_timer = look_ease_timer_max;
@@ -251,21 +247,55 @@ namespace gfx {
       int offset = round(dist * (1.0f - pos_ease));
 
       // offset from center of tile to corner of text box
-      Vec2i text_offset = Vec2i(15, -text_bin.rect().size.y/2 + offset);
+      Vec2i text_offset = Vec2i(15, -text_bin.draw_rect().size.y/2 + offset);
       Vec2i bin_pos = look_pos + text_offset;
 
-      glTranslatef(bin_pos.x, bin_pos.y, 0.0f);
+      Vec2i text_size = text_bin.text_size();
+      Vec2i padding(4, 4);
 
-      text_bin.set_rect(Rect2i(0, 0, clip_ease*300, 20));
+      text_bin.set_draw_rect(Rect2i(bin_pos, Vec2i(clip_ease*text_size.x, text_size.y)));
 
-      draw::draw_rect(text_bin.rect(), Color(0.05f, 0.05f, 0.05f));
-      draw::clip(text_bin.rect());
+      draw::draw_rect(Rect2i(bin_pos - padding, text_bin.draw_rect().size + padding*2), Color(0.05f, 0.05f, 0.05f));
+
       text_bin.draw();
-      draw::unclip();
-
-      glTranslatef(-bin_pos.x, -bin_pos.y, 0.0f);
     }
   }
+
+  void WorldMessageLog::push(const std::string & message) {
+    if(items.size() > 5) {
+      items.pop_front();
+    }
+    Item item;
+    item.text_bin.set(font_atlas, message);
+    items.push_back(item);
+
+    int y = 0;
+    for(auto it = items.rbegin() ;
+        it != items.rend() ;
+        it ++) {
+      auto & item = *it;
+
+      item.pos = Vec2i(0, y);
+      y += item.text_bin.text_size().y;
+    }
+  }
+
+  void WorldMessageLog::tick() {
+  }
+  void WorldMessageLog::draw() {
+    draw::draw_rect(_draw_rect, Color(0.05f, 0.05f, 0.05f, 0.50f));
+    draw::clip(_draw_rect);
+
+    for(unsigned int i = 0 ; i < items.size() ; i ++) {
+      auto & item = items[i];
+      auto text_size = item.text_bin.text_size();
+      item.text_bin.set_draw_rect(Rect2i(Vec2i(0, _draw_rect.size.y - item.pos.y - text_size.y), text_size));
+      item.text_bin.draw();
+    }
+
+    draw::unclip();
+  }
+
 
   void load_font(const char * ttf_path) {
     font_atlas.set_font(ttf_path);
