@@ -54,10 +54,15 @@ class MuhView : public game::View {
     grid_world.move_agent(agent_id, from, to);
   }
   void on_agent_death(game::Id agent_id) override {
+    grid_world.remove_agent(agent_id);
   }
 
   void on_message(const std::string & message) override {
     message_log.push(message);
+  }
+
+  void on_control(game::Id agent_id) override {
+    grid_world.follow_agent(agent_id);
   }
 };
 
@@ -84,29 +89,18 @@ void update() {
 
       grid_world.skip_animations();
 
-      if(grid_world.are_animations_finished()) {
-        if(skip_countdown == 0) {
-          if(event.key.keysym.sym == SDLK_w) {
-            game::move_attack(game::player_agent, game::player_agent.pos + Vec2i(0, -1));
-            game::player_agent.time = (rand() % 5) + 4;
-            game::step_game(); // Returns when it's the player's turn
-          } else if(event.key.keysym.sym == SDLK_a) {
-            game::move_attack(game::player_agent, game::player_agent.pos + Vec2i(-1, 0));
-            game::player_agent.time = (rand() % 5) + 4;
-            game::step_game(); // Returns when it's the player's turn
-          } else if(event.key.keysym.sym == SDLK_s) {
-            game::move_attack(game::player_agent, game::player_agent.pos + Vec2i(0, 1));
-            game::player_agent.time = (rand() % 5) + 4;
-            game::step_game(); // Returns when it's the player's turn
-          } else if(event.key.keysym.sym == SDLK_d) {
-            game::move_attack(game::player_agent, game::player_agent.pos + Vec2i(1, 0));
-            game::player_agent.time = (rand() % 5) + 4;
-            game::step_game(); // Returns when it's the player's turn
-          }
-        }
-      } else {
-        grid_world.skip_animations();
-        skip_countdown = 2;
+      if(event.key.keysym.sym == SDLK_w) {
+        game::move_attack(Vec2i(0, -1));
+        game::step_game(); // Returns when it's the player's turn
+      } else if(event.key.keysym.sym == SDLK_a) {
+        game::move_attack(Vec2i(-1, 0));
+        game::step_game(); // Returns when it's the player's turn
+      } else if(event.key.keysym.sym == SDLK_s) {
+        game::move_attack(Vec2i(0, 1));
+        game::step_game(); // Returns when it's the player's turn
+      } else if(event.key.keysym.sym == SDLK_d) {
+        game::move_attack(Vec2i(1, 0));
+        game::step_game(); // Returns when it's the player's turn
       }
     }
   }
@@ -201,7 +195,7 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      game::view(&muh_view);
+      game::set_view(muh_view);
       game::load_world();
 
       run();

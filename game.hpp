@@ -19,6 +19,8 @@ namespace game {
     virtual void on_agent_death(Id agent_id) {}
 
     virtual void on_message(const std::string & message) {}
+
+    virtual void on_control(Id agent_id) {}
   };
 
 
@@ -42,22 +44,26 @@ namespace game {
 
     int time = 0;
 
+    bool player_controlled = false;
+
     // Rendering
-    Color color;
+    Color color = Color(1.0f, 0.0f, 1.0f);
 
     // AI
     std::vector<Vec2i> path;
-
-    Agent() : color(1.0f, 0.0f, 1.0f) {}
   };
 
-  extern Agent player_agent;
-  void move_attack(Agent & agent, Vec2i dst);
-  void view(View * view);
+  // Moves the player controlled agent
+  void move_attack(Vec2i delta);
+  void step_game();
+
+  bool is_over();
+
+  void set_view(View & view);
+  View & view();
 
   void load_world();
 
-  void step_game();
 
   namespace debug {
     const Agent * get_agent(Id id);

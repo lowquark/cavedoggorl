@@ -99,8 +99,7 @@ namespace gfx {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // TODO: Implement on_control_agent event to receive this id
-    auto sprite_kvpair_it = agent_sprites.find(1);
+    auto sprite_kvpair_it = agent_sprites.find(followed_agent_id);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
       _camera_pos = sprite.pos - Vec2f((float)_draw_rect.size.x / _tile_size.x / 2,
@@ -176,6 +175,10 @@ namespace gfx {
   Vec2i GridWorld::screen_pos(Vec2i grid_pos) {
     return Vec2i((grid_pos.x - _camera_pos.x) * _tile_size.x,
                  (grid_pos.y - _camera_pos.y) * _tile_size.y);
+  }
+
+  void GridWorld::follow_agent(game::Id agent_id) {
+    followed_agent_id = agent_id;
   }
 
   bool GridWorld::look_str(std::string & dst, Vec2i location) const {
