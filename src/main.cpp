@@ -202,6 +202,7 @@ int main(int argc, char ** argv) {
 
       game::set_view(muh_view);
       game::load_world();
+      game::step_game();
 
       run();
 

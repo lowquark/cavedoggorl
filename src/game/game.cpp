@@ -10,6 +10,12 @@
 #include <stdlib.h>
 #include <time.h>
 
+extern "C" {
+#include <lua5.1/lua.h>
+#include <lua5.1/lualib.h>
+#include <lua5.1/lauxlib.h>
+}
+
 namespace game {
   // Its big, it's heavy, it's wood
   Log log;
@@ -102,15 +108,20 @@ namespace game {
     if(agent.path.size() > 1) {
       Vec2i next_pos = agent.path[1];
       move_attack(agent, next_pos);
+    } else {
+      agent.time = 1;
     }
-
-    agent.time = (rand() % 7) + 4;
   }
 
+  static int lapi_map_size(lua_State * L) {
+    unsigned int w = luaL_checkinteger(L, 1);
+    unsigned int h = luaL_checkinteger(L, 2);
+    tiles.resize(w, h);
+    view().on_world_load(w, h);
 
-  void generate_tiles() {
-    view().on_world_load(40, 40);
-
+    return 0;
+  }
+  static int lapi_load_tile(lua_State * L) {
     Tile wall_tile;
     wall_tile.type = Tile::WALL;
     wall_tile.passable = false;
@@ -118,49 +129,79 @@ namespace game {
     floor_tile.type = Tile::FLOOR;
     floor_tile.passable = true;
 
-    for(int j = 0 ; j < 40 ; j ++) {
-      for(int i = 0 ; i < 40 ; i ++) {
-        auto pos = Vec2i(i, j);
-        //float dist_from_center = sqrt((j - 20)*(j - 20) + (i - 20)*(i - 20));
-        //if(dist_from_center > 20) {
-        if((rand() % 4) == 0) {
-          tiles.set(pos, wall_tile);
-          view().on_tile_load(wall_tile.type, pos);
-        } else {
-          tiles.set(pos, floor_tile);
-          view().on_tile_load(floor_tile.type, pos);
-        }
-      }
+    Vec2i pos;
+    pos.x = luaL_checkinteger(L, 1);
+    pos.y = luaL_checkinteger(L, 2);
+    int type_id = luaL_checkinteger(L, 3);
+
+    if(type_id == 0) {
+      tiles.set(pos, floor_tile);
+      view().on_tile_load(floor_tile.type, pos);
+    } else if(type_id == 1) {
+      tiles.set(pos, wall_tile);
+      view().on_tile_load(wall_tile.type, pos);
     }
+
+    return 0;
   }
-  void load_world() {
-    srand(time(0));
-
-    generate_tiles();
-
+  static int lapi_place_player(lua_State * L) {
+    Vec2i pos;
+    pos.x = luaL_checkinteger(L, 1);
+    pos.y = luaL_checkinteger(L, 2);
 
     all_agents.emplace_back();
     auto & player_agent = all_agents.back();
-    player_agent.id = 1;
-    player_agent.pos = Vec2i(20, 20);
+    player_agent.id = all_agents.size();
+    player_agent.pos = pos;
     player_agent.color = Color(255, 127, 0.0f);
     player_agent.team = 0;
     player_agent.player_controlled = true;
-    view().on_control(player_agent.id);
     view().on_agent_load(player_agent.id, 0, player_agent.pos, player_agent.color);
 
-    for(int i = 0 ; i < 10 ; i ++) {
-      all_agents.emplace_back();
-      auto & impostor = all_agents.back();
-      impostor.id = all_agents.size();
-      impostor.pos = Vec2i(rand() % 40, rand() % 40);
-      impostor.color = Color(50, 50, 50) + Color(205 * rand() / RAND_MAX,
-                                                 205 * rand() / RAND_MAX,
-                                                 205 * rand() / RAND_MAX);
-      impostor.team = 1;
+    return 0;
+  }
+  static int lapi_place_impostor(lua_State * L) {
+    Vec2i pos;
+    pos.x = luaL_checkinteger(L, 1);
+    pos.y = luaL_checkinteger(L, 2);
 
-      view().on_agent_load(impostor.id, 1, impostor.pos, impostor.color);
+    all_agents.emplace_back();
+    auto & impostor = all_agents.back();
+    impostor.id = all_agents.size();
+    impostor.pos = pos;
+    impostor.color = Color(50, 50, 50) + Color((float) 205 * rand() / RAND_MAX,
+                                               (float) 205 * rand() / RAND_MAX,
+                                               (float) 205 * rand() / RAND_MAX);
+    impostor.team = 1;
+
+    view().on_agent_load(impostor.id, 1, impostor.pos, impostor.color);
+
+    return 0;
+  }
+
+  void load_world() {
+    is_game_over = false;
+
+    lua_State * L = luaL_newstate();
+    luaL_openlibs(L);
+
+    lua_pushcfunction(L, lapi_load_tile);
+    lua_setglobal(L, "load_tile");
+    lua_pushcfunction(L, lapi_map_size);
+    lua_setglobal(L, "map_size");
+
+    lua_pushcfunction(L, lapi_place_player);
+    lua_setglobal(L, "place_player");
+    lua_pushcfunction(L, lapi_place_impostor);
+    lua_setglobal(L, "place_impostor");
+
+    if(luaL_dofile(L, "load_world.lua") != 0) {
+      printf("%s\n", lua_tostring(L, -1));
+      lua_pop(L, 1);
     }
+
+    lua_close(L);
+    L = nullptr;
   }
 
   // Player-centric move attack

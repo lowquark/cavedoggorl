@@ -7,7 +7,7 @@ OBJECTS := build/main.o \
 					 build/util/Log.o
 
 mvp: $(OBJECTS)
-	clang++ -g -Wall -std=c++11 -o $@ $^ -lSDL2 -lGL -lGLEW -lGLU -lSDL2_image -lSDL2_ttf
+	clang++ -g -Wall -std=c++11 -o $@ $^ -lSDL2 -lGL -lGLEW -lGLU -lSDL2_image -lSDL2_ttf -lluajit-5.1
 
 build/%.o: src/%.cpp
 	@mkdir --parents $(@D)
