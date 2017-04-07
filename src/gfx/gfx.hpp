@@ -1,9 +1,11 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 
-#include "draw.hpp"
-#include "Map.hpp"
-#include "game.hpp"
+#include <gfx/draw.hpp>
+#include <util/Map.hpp>
+
+// TODO: Get rid of this
+#include <game/game.hpp>
 
 #include <queue>
 

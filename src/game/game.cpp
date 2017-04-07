@@ -1,8 +1,10 @@
 
 #include "game.hpp"
-#include "Map.hpp"
-#include "AStar.hpp"
-#include "Log.hpp"
+
+#include <game/AStar.hpp>
+
+#include <util/Map.hpp>
+#include <util/Log.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,7 +143,7 @@ namespace game {
     auto & player_agent = all_agents.back();
     player_agent.id = 1;
     player_agent.pos = Vec2i(20, 20);
-    player_agent.color = Color(1.0f, 0.5f, 0.0f);
+    player_agent.color = Color(255, 127, 0.0f);
     player_agent.team = 0;
     player_agent.player_controlled = true;
     view().on_control(player_agent.id);
@@ -152,9 +154,9 @@ namespace game {
       auto & impostor = all_agents.back();
       impostor.id = all_agents.size();
       impostor.pos = Vec2i(rand() % 40, rand() % 40);
-      impostor.color = Color(0.1f, 0.1f, 0.1f) + Color(0.9f * rand() / RAND_MAX,
-                                                       0.9f * rand() / RAND_MAX,
-                                                       0.9f * rand() / RAND_MAX);
+      impostor.color = Color(50, 50, 50) + Color(205 * rand() / RAND_MAX,
+                                                 205 * rand() / RAND_MAX,
+                                                 205 * rand() / RAND_MAX);
       impostor.team = 1;
 
       view().on_agent_load(impostor.id, 1, impostor.pos, impostor.color);

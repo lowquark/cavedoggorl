@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <string>
-#include "Color.hpp"
-#include "Vec2.hpp"
+#include <game/Color.hpp>
+#include <util/Vec2.hpp>
 
 namespace game {
   typedef unsigned long Id;

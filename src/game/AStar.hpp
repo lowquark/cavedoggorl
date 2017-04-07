@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "Vec2.hpp"
-#include "Map.hpp"
+#include <util/Vec2.hpp>
+#include <util/Map.hpp>
 
 bool DoAStar8(std::vector<Vec2i> & path_out,
               const Map<unsigned int> & cost_map,

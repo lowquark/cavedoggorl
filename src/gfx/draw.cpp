@@ -6,8 +6,9 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#include "Log.hpp"
+#include <util/Log.hpp>
 
+namespace gfx {
 namespace draw {
   static constexpr float WALL_WIDTH  = 28;
   static constexpr float WALL_HEIGHT = 28;
@@ -425,5 +426,6 @@ namespace draw {
     glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
     draw::unclip();
   }
+}
 }
 

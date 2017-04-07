@@ -14,10 +14,11 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#include "Vec2.hpp"
-#include "game.hpp"
-#include "gfx.hpp"
-#include "Log.hpp"
+
+#include <game/game.hpp>
+#include <gfx/gfx.hpp>
+#include <util/Vec2.hpp>
+#include <util/Log.hpp>
 
 
 static std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
@@ -46,8 +47,12 @@ class MuhView : public game::View {
   void on_tile_load(game::Id type_id, const Vec2i & pos) override {
     grid_world.set_tile(pos, type_id);
   }
-  void on_agent_load(game::Id agent_id, game::Id type_id, const Vec2i & pos, const Color & color) override {
-    grid_world.add_agent(agent_id, type_id, pos, color);
+  void on_agent_load(game::Id agent_id, game::Id type_id, const Vec2i & pos, const game::Color & color) override {
+    gfx::Color gfx_color;
+    gfx_color.r = (float) color.r / 255;
+    gfx_color.g = (float) color.g / 255;
+    gfx_color.b = (float) color.b / 255;
+    grid_world.add_agent(agent_id, type_id, pos, gfx_color);
   }
 
   void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override {

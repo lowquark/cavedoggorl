@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "Vec2.hpp"
+#include <util/Vec2.hpp>
 
 // Base on the algorithm found at http://blackpawn.com/texts/lightmaps/default.html
 struct BinPacker {
