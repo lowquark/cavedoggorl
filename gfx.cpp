@@ -269,6 +269,7 @@ namespace gfx {
     item.text_bin.set(font_atlas, message);
     items.push_back(item);
 
+    const int y_pad = 10;
     int y = 0;
     for(auto it = items.rbegin() ;
         it != items.rend() ;
@@ -276,23 +277,30 @@ namespace gfx {
       auto & item = *it;
 
       item.pos = Vec2i(0, y);
-      y += item.text_bin.text_size().y;
+      y += item.text_bin.text_size().y + y_pad;
     }
   }
 
   void WorldMessageLog::tick() {
   }
   void WorldMessageLog::draw() {
-    draw::draw_rect(_draw_rect, Color(0.05f, 0.05f, 0.05f, 0.50f));
     draw::clip(_draw_rect);
+    glTranslatef(_draw_rect.pos.x, _draw_rect.pos.y, 0.0f);
 
     for(unsigned int i = 0 ; i < items.size() ; i ++) {
       auto & item = items[i];
       auto text_size = item.text_bin.text_size();
-      item.text_bin.set_draw_rect(Rect2i(Vec2i(0, _draw_rect.size.y - item.pos.y - text_size.y), text_size));
+      Vec2i bin_pos(0, _draw_rect.size.y - item.pos.y - text_size.y);
+      Vec2i padding(4, 4);
+
+      item.text_bin.set_draw_rect(Rect2i(bin_pos, text_size));
+
+      draw::draw_rect(Rect2i(bin_pos - padding, text_size + padding*2), Color(0.05f, 0.05f, 0.05f));
+
       item.text_bin.draw();
     }
 
+    glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
     draw::unclip();
   }
 
