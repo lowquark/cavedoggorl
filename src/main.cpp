@@ -94,18 +94,20 @@ void update() {
 
       grid_world.skip_animations();
 
+      // game::*() functions only return once it's the player's turn
       if(event.key.keysym.sym == SDLK_w) {
         game::move_attack(Vec2i(0, -1));
-        game::step_game(); // Returns when it's the player's turn
       } else if(event.key.keysym.sym == SDLK_a) {
         game::move_attack(Vec2i(-1, 0));
-        game::step_game(); // Returns when it's the player's turn
       } else if(event.key.keysym.sym == SDLK_s) {
         game::move_attack(Vec2i(0, 1));
-        game::step_game(); // Returns when it's the player's turn
       } else if(event.key.keysym.sym == SDLK_d) {
         game::move_attack(Vec2i(1, 0));
-        game::step_game(); // Returns when it's the player's turn
+      } else if(event.key.keysym.sym == SDLK_COMMA ||
+                event.key.keysym.sym == SDLK_PERIOD) {
+        if(event.key.keysym.mod & KMOD_SHIFT) {
+          game::activate_tile();
+        }
       }
     }
   }
@@ -201,8 +203,7 @@ int main(int argc, char ** argv) {
       gfx::load();
 
       game::set_view(muh_view);
-      game::load_world();
-      game::step_game();
+      game::new_world();
 
       run();
 

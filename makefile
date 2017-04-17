@@ -1,10 +1,18 @@
 
+all: mvp wfc
+
 OBJECTS := build/main.o \
 					 build/gfx/draw.o \
 					 build/gfx/gfx.o \
 					 build/game/game.o \
+					 build/game/view.o \
+					 build/game/level.o \
 	         build/game/AStar.o \
+	         build/game/properties.o \
 					 build/util/Log.o
+
+wfc: wfc2.cpp
+	clang++ -std=c++11 -Wall -g -o $@ $<
 
 mvp: $(OBJECTS)
 	clang++ -g -Wall -std=c++11 -o $@ $^ -lSDL2 -lGL -lGLEW -lGLU -lSDL2_image -lSDL2_ttf -lluajit-5.1

@@ -16,6 +16,11 @@ class Map {
     resize(w, h, fill);
   }
 
+  void clear() {
+    this->_w = 0;
+    this->_h = 0;
+    _data.clear();
+  }
   void resize(unsigned int w, unsigned int h, const T & fill = T()) {
     this->_w = w;
     this->_h = h;

@@ -1,4 +1,6 @@
 
+math.randomseed(os.time())
+
 map_size(40, 40)
 
 for i=0,40 do

@@ -6,6 +6,9 @@
 #include <util/Map.hpp>
 #include <util/Log.hpp>
 
+#include <game/events.hpp>
+#include <game/properties.hpp>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,75 +20,6 @@ extern "C" {
 }
 
 namespace game {
-  // Its big, it's heavy, it's wood
-  Log log;
-  // Better than bad, it's good!
-
-  static View * _view = nullptr;
-  void set_view(View & view) {
-    _view = &view;
-  }
-  // Always valid!
-  View & view() {
-    static View default_view;
-    if(_view) {
-      return *_view;
-    }
-    return default_view;
-  }
-
-  static Map<Tile> tiles(40, 40);
-
-  // We are all africans
-  static std::vector<Agent> all_agents;
-  int current_agent_idx = 0;
-  bool is_game_over = false;
-
-  Agent * find_agent(Vec2i pos) {
-    for(auto & agent : all_agents) {
-      if(agent.pos == pos) {
-        return &agent;
-      }
-    }
-    return nullptr;
-  }
-  bool can_move(Vec2i desired_pos) {
-    if(find_agent(desired_pos)) {
-      return false;
-    }
-
-    return tiles.get(desired_pos).passable;
-  }
-
-  // Generic move attack
-  void move_attack(Agent & agent, Vec2i dst) {
-    Agent * other = find_agent(dst);
-    if(other && other->team != agent.team) {
-      other->hp -= 10;
-
-      if(other->is_dead()) {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p Is solidly dead.", other);
-        view().on_message(message);
-
-        log.logf("Ouch! %p Is solidly dead.", other);
-
-        view().on_agent_death(other->id);
-      } else {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-        view().on_message(message);
-
-        log.logf("Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-      }
-    } else if(can_move(dst)) {
-      view().on_agent_move(agent.id, agent.pos, dst);
-      agent.pos = dst;
-    }
-
-    agent.time = (rand() % 5) + 4;
-  }
-
   void ai_turn(Agent & agent) {
     Map<unsigned int> tile_costs(tiles.w(), tiles.h());
     for(int y = 0 ; y < tile_costs.h() ; y ++) {
@@ -122,6 +56,10 @@ namespace game {
     return 0;
   }
   static int lapi_load_tile(lua_State * L) {
+    Object o = Object::Builder(property_factory)
+                .add_property(PROPERTY_TYPE_OBSTRUCTION)
+                .build();
+
     Tile wall_tile;
     wall_tile.type = Tile::WALL;
     wall_tile.passable = false;
@@ -153,7 +91,7 @@ namespace game {
     auto & player_agent = all_agents.back();
     player_agent.id = all_agents.size();
     player_agent.pos = pos;
-    player_agent.color = Color(255, 127, 0.0f);
+    player_agent.color = Color(255, 127, 0);
     player_agent.team = 0;
     player_agent.player_controlled = true;
     view().on_agent_load(player_agent.id, 0, player_agent.pos, player_agent.color);
@@ -179,43 +117,9 @@ namespace game {
     return 0;
   }
 
-  void load_world() {
-    is_game_over = false;
-
-    lua_State * L = luaL_newstate();
-    luaL_openlibs(L);
-
-    lua_pushcfunction(L, lapi_load_tile);
-    lua_setglobal(L, "load_tile");
-    lua_pushcfunction(L, lapi_map_size);
-    lua_setglobal(L, "map_size");
-
-    lua_pushcfunction(L, lapi_place_player);
-    lua_setglobal(L, "place_player");
-    lua_pushcfunction(L, lapi_place_impostor);
-    lua_setglobal(L, "place_impostor");
-
-    if(luaL_dofile(L, "load_world.lua") != 0) {
-      printf("%s\n", lua_tostring(L, -1));
-      lua_pop(L, 1);
-    }
-
-    lua_close(L);
-    L = nullptr;
-  }
-
-  // Player-centric move attack
-  void move_attack(Vec2i delta) {
-    if(!is_game_over) {
-      auto & agent = all_agents[current_agent_idx];
-
-      move_attack(agent, agent.pos + delta);
-    }
-  }
-
   void step_game() {
-    if(is_game_over) {
-      view().on_message("Stop stepping the game! No more player! Game over!");
+    if(!any_agents_playable()) {
+      log.log<Log::ERROR>("Cannot step the game without any player controlled agents.");
       return;
     }
 
@@ -252,23 +156,63 @@ namespace game {
           }
         }
 
-        is_game_over = true;
-        for(auto & agent : all_agents) {
-          if(agent.player_controlled) {
-            is_game_over = false;
-          }
-        }
-
-        if(is_game_over) {
-          view().on_message("No more player! Game over!");
+        if(!any_agents_playable()) {
+          view().on_message("No more playable agents! Game over!");
           return;
         }
       }
     }
   }
 
-  bool is_over() {
-    return is_game_over;
+  void clear_world() {
+    tiles.clear();
+    all_agents.clear();
+    current_agent_idx = 0;
+  }
+
+  void new_world() {
+    // save_world();
+    clear_world();
+
+    lua_State * L = luaL_newstate();
+    luaL_openlibs(L);
+
+    lua_pushcfunction(L, lapi_load_tile);
+    lua_setglobal(L, "load_tile");
+    lua_pushcfunction(L, lapi_map_size);
+    lua_setglobal(L, "map_size");
+
+    lua_pushcfunction(L, lapi_place_player);
+    lua_setglobal(L, "place_player");
+    lua_pushcfunction(L, lapi_place_impostor);
+    lua_setglobal(L, "place_impostor");
+
+    if(luaL_dofile(L, "generate_world.lua") != 0) {
+      printf("%s\n", lua_tostring(L, -1));
+      lua_pop(L, 1);
+    }
+
+    lua_close(L);
+    L = nullptr;
+
+    // make sure it's the player's turn, and everything is in a valid state
+    step_game();
+  }
+
+
+  // Player-centric commands
+  void move_attack(Vec2i delta) {
+    auto & agent = all_agents[current_agent_idx];
+    if(agent.player_controlled) {
+      move_attack(agent, agent.pos + delta);
+    } else {
+      log.log<Log::ERROR>("The current agent is not playable.");
+    }
+
+    step_game();
+  }
+  void activate_tile() {
+    new_world();
   }
 
   namespace debug {
@@ -282,3 +226,4 @@ namespace game {
     }
   }
 }
+
