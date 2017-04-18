@@ -1,27 +1,20 @@
 #ifndef GAME_HPP
 #define GAME_HPP
 
-#include <vector>
 #include <string>
-#include <game/core.hpp>
 #include <game/view.hpp>
-#include <game/Color.hpp>
+#include <game/level.hpp>
 #include <util/Vec2.hpp>
-#include <util/Map.hpp>
-
-#include <game/level.hpp> // should be "private"
 
 namespace game {
-  void new_world();
-  void load_world();
+  void create_new();
+  void save(const std::string & name);
+  void load_old(const std::string & name);
 
-  // Moves the player controlled agent
+  // Moves the player controlled agent, steps the game
   void move_attack(Vec2i delta);
+  // Causes the player controlled agent to activate a nearby tile, steps the game
   void activate_tile();
-
-  namespace debug {
-    const Agent * get_agent(Id id);
-  }
 }
 
 #endif

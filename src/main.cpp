@@ -203,9 +203,13 @@ int main(int argc, char ** argv) {
       gfx::load();
 
       game::set_view(muh_view);
-      game::new_world();
+      game::create_new();
+      game::save("asdf");
+      game::load_old("asdf");
 
       run();
+
+      //game::save("asdf");
 
       gfx::unload();
 
