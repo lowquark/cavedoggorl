@@ -2,67 +2,76 @@
 #define GAME_CORE_HPP
 
 #include <vector>
+#include <cassert>
 
 namespace game {
   typedef unsigned long Id;
 
-  class Event {
+  class BaseEvent {
     const unsigned int _type_id;
 
     public:
-    Event(unsigned int _type_id) : _type_id(_type_id) {}
-    virtual ~Event() = default;
+    BaseEvent(unsigned int _type_id) : _type_id(_type_id) {}
+    virtual ~BaseEvent() = default;
     unsigned int type_id() { return _type_id; }
   };
 
-  class Property {
+  class Object;
+
+  class BasePart {
     const unsigned int _type_id;
 
     public:
-    Property(unsigned int _type_id) : _type_id(_type_id) {}
-    virtual ~Property() = default;
+    BasePart(unsigned int _type_id) : _type_id(_type_id) {}
+    virtual ~BasePart() = default;
     unsigned int type_id() { return _type_id; }
 
-    virtual void fire_event(Event & event) {}
+    virtual void fire_event(BaseEvent & event) {}
   };
 
-  /*
-  //TODO
-  class PropertyState {
-  };
-  */
+  class BasePartState {
+    const unsigned int _type_id;
 
-  class BasePropertyFactory {
     public:
-    virtual Property * create(unsigned int type_id) = 0;
-    virtual void destroy(Property * property) = 0;
+    BasePartState(unsigned int _type_id) : _type_id(_type_id) {}
+    virtual ~BasePartState() = default;
+    unsigned int type_id() { return _type_id; }
+  };
+
+  class BasePartFactory {
+    public:
+    virtual BasePart * create(unsigned int type_id) = 0;
+    virtual void destroy(BasePart * part) = 0;
   };
 
   class Object {
     public:
     class Builder {
-      std::vector<unsigned int> type_ids;
-      BasePropertyFactory & factory;
+      std::vector<unsigned int> _type_ids;
+      BasePartFactory & factory;
 
       public:
-      Builder(BasePropertyFactory & factory)
+      Builder(BasePartFactory & factory)
         : factory(factory) {}
 
-      Builder & add_property(unsigned int type_id) {
-        type_ids.push_back(type_id);
+      Builder & add_part(unsigned int type_id) {
+        _type_ids.push_back(type_id);
         return *this;
       }
+
+      Builder & add_part(unsigned int type_id, const BasePartState & state);
+
       Object build() const {
         Object o(factory);
-        for(auto & type_id : type_ids) {
-          o.properties.push_back(factory.create(type_id));
+        for(auto & type_id : _type_ids) {
+          o.parts.push_back(factory.create(type_id));
         }
         return o;
       }
     };
 
     ~Object() {
-      for(auto & p : properties) {
+      for(auto & p : parts) {
         factory.destroy(p);
       }
     }
@@ -70,21 +79,27 @@ namespace game {
     Object(const Object & other) = delete;
     Object(Object && other)
       : factory(other.factory) {
-      properties = other.properties;
-      other.properties.clear();
+      parts = other.parts;
+      other.parts.clear();
     }
     Object & operator=(const Object & other) = delete;
     Object & operator=(Object && other) = delete;
 
-    void fire_event(Event & event);
+    void fire_event(BaseEvent & event) {
+      for(auto & p : parts) {
+        if(p) {
+          p->fire_event(event);
+        }
+      }
+    }
 
     private:
-    Object(BasePropertyFactory & factory)
+    Object(BasePartFactory & factory)
       : factory(factory) {}
 
-    std::vector<Property *> properties;
+    std::vector<BasePart *> parts;
 
-    BasePropertyFactory & factory;
+    BasePartFactory & factory;
 
     friend class builder;
   };

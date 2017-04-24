@@ -4,7 +4,8 @@
 #include <util/Map.hpp>
 #include <util/serial.hpp>
 
-#include <game/Color.hpp>
+#include <game/events.hpp>
+#include <game/properties.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -22,8 +23,6 @@ extern "C" {
 }
 
 namespace game {
-  Level level;
-
   struct AgentTurnEntry {
     Id agent_id;
     unsigned int time;
@@ -102,130 +101,7 @@ namespace game {
     return soonest_turn_it->agent_id;
   }
 
-
-  Agent * find_agent(Vec2i pos) {
-    return level.get_agent(level.find(pos));
-  }
-
-  // Generic move attack
-  void move_attack(Agent & agent, Vec2i dst) {
-    Agent * other = find_agent(dst);
-    if(other && other->team != agent.team) {
-      other->hp -= 10;
-
-      if(other->is_dead()) {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p Is solidly dead.", other);
-        view().on_message(message);
-
-        log.logf("Ouch! %p Is solidly dead.", other);
-
-        view().on_agent_death(other->id);
-      } else {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-        view().on_message(message);
-
-        log.logf("Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-      }
-    } else if(level.can_move(agent.id, dst)) {
-      view().on_agent_move(agent.id, agent.pos, dst);
-      agent.pos = dst;
-    }
-
-    agent.time = (rand() % 5) + 4;
-  }
-
-  void ai_turn(Agent & agent) {
-    /*
-    Map<unsigned int> tile_costs(level.tiles.w(), level.tiles.h());
-    for(int y = 0 ; y < tile_costs.h() ; y ++) {
-      for(int x = 0 ; x < tile_costs.w() ; x ++) {
-        unsigned int cost = level.tiles.get(Vec2i(x, y)).passable ? 1 : 1000;
-        for(auto & agent : all_agents) {
-          if(agent.pos == Vec2i(x, y)) {
-            cost += 4;
-          }
-        }
-
-        tile_costs.set(Vec2i(x, y), cost);
-      }
-    }
-
-    // TODO: Actual target-based following
-    auto & player_agent = all_agents[0];
-    DoAStar4(agent.path, tile_costs, player_agent.pos, agent.pos);
-
-    if(agent.path.size() > 1) {
-      Vec2i next_pos = agent.path[1];
-      move_attack(agent, next_pos);
-    } else {
-      agent.time = 1;
-    }
-    */
-  }
-
-
-  bool any_agents_playable() {
-    for(auto & agent : level.all_agents) {
-      if(agent && agent->player_controlled) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void step_game() {
-    // Step external ai
-
-    if(!any_agents_playable()) {
-      log.log<Log::ERROR>("Cannot step the game without any player controlled agents.");
-      return;
-    }
-
-    /*
-    log.logf<Log::DEBUG1>("player turn complete!");
-
-    while(true) {
-      auto & agent = all_agents[current_agent_idx];
-
-      agent.time --;
-      if(agent.time <= 0) {
-        if(agent.player_controlled) {
-          log.logf<Log::DEBUG1>("time for player turn!");
-          view().on_control(agent.id);
-          return;
-        } else {
-          if(!agent.is_dead()) {
-            log.logf<Log::DEBUG1>("time for ai turn! %p", &agent);
-            ai_turn(agent);
-            log.logf<Log::DEBUG1>("ai turn complete! %p", &agent);
-          }
-        }
-      } 
-
-      current_agent_idx ++;
-      if(current_agent_idx >= all_agents.size()) {
-        current_agent_idx = 0;
-
-        for(auto it = all_agents.begin() ;
-            it != all_agents.end() ; ) {
-          if(it->is_dead()) {
-            it = all_agents.erase(it);
-          } else {
-            it ++;
-          }
-        }
-
-        if(!any_agents_playable()) {
-          view().on_message("No more playable agents! Game over!");
-          return;
-        }
-      }
-    }
-    */
-  }
-
+  /*
   LevelState * generated_level_state = nullptr;
 
   static int lapi_map_size(lua_State * L) {
@@ -311,59 +187,57 @@ namespace game {
 
     return true;
   }
+  */
 
+  class PartFactory : public BasePartFactory {
+    public:
+    BasePart * create(unsigned int type_id) override {
+      switch(type_id) {
+        case PART_TYPE_PHYSICS:
+          return new PhysicsPart;
+        case PART_TYPE_AGENT:
+          return new AgentPart;
+        case PART_TYPE_AI:
+          return new AIPart;
+        case PART_TYPE_PLAYER:
+          return new PlayerPart;
+        default:
+          return nullptr;
+      }
+    }
+    void destroy(BasePart * part) override {
+      delete part;
+    }
+  };
+
+  PartFactory part_factory; 
 
   void create_new() {
-    LevelState level_state;
-    if(generate_level(level_state)) {
-      level.load(level_state);
+    Id obj_id = create_object(Object::Builder(part_factory).add_part(PART_TYPE_PHYSICS)
+                                                           .add_part(PART_TYPE_AGENT)
+                                                           .add_part(PART_TYPE_PLAYER));
 
-      unsigned int agent_id = 1;
-      for(auto & agent_state : level_state.agents) {
-        if(agent_state.is_evil) {
-        } else {
-          give_turn(agent_id, 0);
-        }
-        agent_id ++;
-      }
+    move_to(obj_id, Vec2i(0, 0));
 
-      // make sure it's the player's turn, and everything is in a valid state
-      step_game();
-    } else {
-      log.log<Log::ERROR>("Failed to generate initial level! How can this happen?\n");
-    }
+    printf("obj_id = %lu\n", obj_id);
   }
   void save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);
 
     if(os.is_open()) {
-      LevelState::write(os, level.state());
     }
   }
   void load_old(const std::string & name) {
     std::ifstream is(name, std::ifstream::binary);
 
     if(is.is_open()) {
-      LevelState level_state;
-      if(LevelState::read(is, level_state)) {
-        level.load(level_state);
-      }
     }
   }
 
 
   // Player-centric commands
   void move_attack(Vec2i delta) {
-    auto agent_id = next_turn(); 
-    auto agent = level.get_agent(agent_id);
-
-    if(agent && agent->player_controlled) {
-      move_attack(*agent, agent->pos + delta);
-    } else {
-      log.logf<Log::ERROR>("The current agent (%u) is not playable.", agent_id);
-    }
-
-    step_game();
+    move_rel(1, delta);
   }
   void activate_tile() {
   }

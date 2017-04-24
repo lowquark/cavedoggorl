@@ -8,7 +8,6 @@ OBJECTS := build/main.o \
 					 build/game/view.o \
 					 build/game/level.o \
 	         build/game/AStar.o \
-	         build/game/properties.o \
 					 build/util/Log.o \
 					 build/util/serial.o
 
