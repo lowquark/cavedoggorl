@@ -204,8 +204,8 @@ int main(int argc, char ** argv) {
 
       game::set_view(muh_view);
       game::create_new();
-      game::save("asdf");
-      game::load_old("asdf");
+      //game::save("asdf");
+      //game::load_old("asdf");
 
       run();
 

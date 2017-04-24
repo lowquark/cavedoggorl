@@ -5,45 +5,10 @@
 #include <game/events.hpp>
 #include <game/properties.hpp>
 #include <game/AStar.hpp>
+#include <util/serial.hpp>
 #include <iostream>
 
 #include <cstdio>
-
-namespace serial {
-  void write(std::ostream & os, uint8_t v) {
-    os.write((const char *)&v, 1);
-  }
-  bool read(std::istream & is, uint8_t & v) {
-    is.read((char *)&v, 1);
-    return !is.fail();
-  }
-  void write(std::ostream & os, int8_t v) {
-    write(os, (uint8_t)v);
-  }
-  bool read(std::istream & is, int8_t & v) {
-    return read(is, (uint8_t &)v);
-  }
-
-  void write(std::ostream & os, uint16_t v) {
-    uint8_t data[2];
-    data[0] = (v >> 8) & 0xFF;
-    data[1] = (v     ) & 0xFF;
-    os.write((const char *)data, 2);
-  }
-  bool read(std::istream & is, uint16_t & v) {
-    uint8_t data[2];
-    is.read((char *)&data, 2);
-    if(is.fail()) { return false; }
-    v = (data[0] << 8) | data[1];
-    return true;
-  }
-  void write(std::ostream & os, int16_t v) {
-    write(os, (uint16_t)v);
-  }
-  bool read(std::istream & is, int16_t & v) {
-    return read(is, (uint16_t &)v);
-  }
-}
 
 namespace game {
   void LevelState::write(std::ostream & os, const LevelState & state) {
@@ -113,182 +78,23 @@ namespace game {
     return true;
   }
 
-  Map<Tile> tiles(40, 40);
 
-  // We are all africans
-  std::vector<Agent> all_agents;
-  std::vector<Object *> objects;
-
-  unsigned int current_agent_idx = 0;
-
-  Id create_object(const Object::Builder & builder) {
-    for(std::size_t idx = 0 ; idx < objects.size() ; idx ++) {
-      auto o = objects[idx];
-      if(o == nullptr) {
-        o = new Object(builder.build());
-        return idx + 1;
-      }
-    }
-    objects.push_back(new Object(builder.build()));
-    return objects.size();
-  }
-  void destroy_object(Id id) {
-    if(id == 0) {
-      return;
-    }
-    if(id > objects.size()) {
-      return;
-    }
-
-    delete objects[id - 1];
-    objects[id - 1] = nullptr;
-  }
-  void clear_objects() {
-    for(auto & o : objects) {
-      delete o;
-    }
-    objects.clear();
-  }
-
-  bool any_agents_playable() {
+  // state
+  void Level::clear() {
     for(auto & agent : all_agents) {
-      if(agent.player_controlled) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Agent * find_agent(Vec2i pos) {
-    for(auto & agent : all_agents) {
-      if(agent.pos == pos) {
-        return &agent;
-      }
-    }
-    return nullptr;
-  }
-  bool can_move(Vec2i desired_pos) {
-    if(find_agent(desired_pos)) {
-      return false;
+      delete agent;
     }
 
-    return tiles.get(desired_pos).passable;
-  }
-
-  // Generic move attack
-  void move_attack(Agent & agent, Vec2i dst) {
-    Agent * other = find_agent(dst);
-    if(other && other->team != agent.team) {
-      other->hp -= 10;
-
-      if(other->is_dead()) {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p Is solidly dead.", other);
-        view().on_message(message);
-
-        log.logf("Ouch! %p Is solidly dead.", other);
-
-        view().on_agent_death(other->id);
-      } else {
-        char message[100];
-        snprintf(message, sizeof(message), "Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-        view().on_message(message);
-
-        log.logf("Ouch! %p lost 10 hp. (now at %d)", other, other->hp);
-      }
-    } else if(can_move(dst)) {
-      view().on_agent_move(agent.id, agent.pos, dst);
-      agent.pos = dst;
-    }
-
-    agent.time = (rand() % 5) + 4;
-  }
-
-  void ai_turn(Agent & agent) {
-    Map<unsigned int> tile_costs(tiles.w(), tiles.h());
-    for(int y = 0 ; y < tile_costs.h() ; y ++) {
-      for(int x = 0 ; x < tile_costs.w() ; x ++) {
-        unsigned int cost = tiles.get(Vec2i(x, y)).passable ? 1 : 1000;
-        for(auto & agent : all_agents) {
-          if(agent.pos == Vec2i(x, y)) {
-            cost += 4;
-          }
-        }
-
-        tile_costs.set(Vec2i(x, y), cost);
-      }
-    }
-
-    // TODO: Actual target-based following
-    auto & player_agent = all_agents[0];
-    DoAStar4(agent.path, tile_costs, player_agent.pos, agent.pos);
-
-    if(agent.path.size() > 1) {
-      Vec2i next_pos = agent.path[1];
-      move_attack(agent, next_pos);
-    } else {
-      agent.time = 1;
-    }
-  }
-
-  void step_level() {
-    if(!any_agents_playable()) {
-      log.log<Log::ERROR>("Cannot step the game without any player controlled agents.");
-      return;
-    }
-
-    log.logf<Log::DEBUG1>("player turn complete!");
-
-    while(true) {
-      auto & agent = all_agents[current_agent_idx];
-
-      agent.time --;
-      if(agent.time <= 0) {
-        if(agent.player_controlled) {
-          log.logf<Log::DEBUG1>("time for player turn!");
-          view().on_control(agent.id);
-          return;
-        } else {
-          if(!agent.is_dead()) {
-            log.logf<Log::DEBUG1>("time for ai turn! %p", &agent);
-            ai_turn(agent);
-            log.logf<Log::DEBUG1>("ai turn complete! %p", &agent);
-          }
-        }
-      } 
-
-      current_agent_idx ++;
-      if(current_agent_idx >= all_agents.size()) {
-        current_agent_idx = 0;
-
-        for(auto it = all_agents.begin() ;
-            it != all_agents.end() ; ) {
-          if(it->is_dead()) {
-            it = all_agents.erase(it);
-          } else {
-            it ++;
-          }
-        }
-
-        if(!any_agents_playable()) {
-          view().on_message("No more playable agents! Game over!");
-          return;
-        }
-      }
-    }
-  }
-
-  void clear_level() {
     tiles.clear();
     all_agents.clear();
     current_agent_idx = 0;
   }
-  void load_level(const LevelState & state) {
+  void Level::load(const LevelState & state) {
     Object o = Object::Builder(property_factory)
                 .add_property(PROPERTY_TYPE_OBSTRUCTION)
                 .build();
 
-    clear_level();
+    clear();
 
     unsigned int tiles_w = state.tiles.w();
     unsigned int tiles_h = state.tiles.h();
@@ -318,35 +124,34 @@ namespace game {
 
     for(auto & agent : state.agents) {
       if(agent.is_evil) {
-        all_agents.emplace_back();
+        auto impostor = new Agent;
+        all_agents.push_back(impostor);
 
-        auto & impostor = all_agents.back();
-        impostor.id = all_agents.size();
-        impostor.pos = Vec2i(agent.x, agent.y);
-        impostor.color = Color(50, 50, 50) + Color((float) 205 * rand() / RAND_MAX,
-                                                   (float) 205 * rand() / RAND_MAX,
-                                                   (float) 205 * rand() / RAND_MAX);
-        impostor.team = 1;
+        impostor->id = all_agents.size();
+        impostor->pos = Vec2i(agent.x, agent.y);
+        impostor->color = Color(50, 50, 50) + Color((float) 205 * rand() / RAND_MAX,
+                                                    (float) 205 * rand() / RAND_MAX,
+                                                    (float) 205 * rand() / RAND_MAX);
+        impostor->team = 1;
 
-        view().on_agent_load(impostor.id, 1, impostor.pos, impostor.color);
+        view().on_agent_load(impostor->id, 1, impostor->pos, impostor->color);
       } else {
-        all_agents.emplace_back();
+        auto player_agent = new Agent;
+        all_agents.push_back(player_agent);
 
-        auto & player_agent = all_agents.back();
-        player_agent.id = all_agents.size();
-        player_agent.pos = Vec2i(agent.x, agent.y);
-        player_agent.color = Color(255, 127, 0);
-        player_agent.team = 0;
-        player_agent.player_controlled = true;
+        player_agent->id = all_agents.size();
+        player_agent->pos = Vec2i(agent.x, agent.y);
+        player_agent->color = Color(255, 127, 0);
+        player_agent->team = 0;
+        player_agent->player_controlled = true;
 
-        view().on_agent_load(player_agent.id, 0, player_agent.pos, player_agent.color);
+        view().on_agent_load(player_agent->id, 0, player_agent->pos, player_agent->color);
       }
     }
 
     current_agent_idx = state.current_agent_idx;
   }
-
-  LevelState level_state() {
+  LevelState Level::state() {
     LevelState state;
 
     state.tiles.resize(tiles.w(), tiles.h());
@@ -372,18 +177,20 @@ namespace game {
     }
 
     for(auto & agent : all_agents) {
-      AgentState agent_state;
+      if(agent) {
+        AgentState agent_state;
 
-      agent_state.x = agent.pos.x;
-      agent_state.y = agent.pos.y;
+        agent_state.x = agent->pos.x;
+        agent_state.y = agent->pos.y;
 
-      if(agent.player_controlled) {
-        agent_state.is_evil = false;
-      } else {
-        agent_state.is_evil = true;
+        if(agent->player_controlled) {
+          agent_state.is_evil = false;
+        } else {
+          agent_state.is_evil = true;
+        }
+
+        state.agents.push_back(agent_state);
       }
-
-      state.agents.push_back(agent_state);
     }
 
     state.current_agent_idx = current_agent_idx;
@@ -391,15 +198,73 @@ namespace game {
     return state;
   }
 
-  namespace debug {
-    const Agent * get_agent(Id id) {
-      for(auto & agent : all_agents) {
-        if(agent.id == id) {
-          return &agent;
-        }
+  // queries
+  Id Level::find(Vec2i pos) {
+    for(auto & agent : all_agents) {
+      if(agent && agent->pos == pos) {
+        return agent->id;
       }
+    }
+    return 0;
+  }
+  bool Level::can_move(Id agent_id, Vec2i desired_pos) {
+    if(find(desired_pos)) {
+      return false;
+    }
+
+    return tiles.get(desired_pos).passable;
+  }
+  Agent * Level::get_agent(Id agent_id) {
+    if(agent_id > 0 && agent_id <= all_agents.size()) {
+      return all_agents[agent_id - 1];
+    } else {
       return nullptr;
     }
   }
+
+  // actions
+  Id Level::create(const Object::Builder & builder, Vec2i pos) {
+    return 0;
+  }
+  bool Level::move(Id agent_id, Vec2i dst) {
+    return false;
+  }
+  void Level::destroy(Id agent_id) {
+  }
+
+  Id Level::move(Id src_id, const Level & src, const Level & dst) {
+    return 0;
+  }
+
+  /*
+  Id create_object(const Object::Builder & builder) {
+    for(std::size_t idx = 0 ; idx < objects.size() ; idx ++) {
+      auto o = objects[idx];
+      if(o == nullptr) {
+        o = new Object(builder.build());
+        return idx + 1;
+      }
+    }
+    objects.push_back(new Object(builder.build()));
+    return objects.size();
+  }
+  void destroy_object(Id id) {
+    if(id == 0) {
+      return;
+    }
+    if(id > objects.size()) {
+      return;
+    }
+
+    delete objects[id - 1];
+    objects[id - 1] = nullptr;
+  }
+  void clear_objects() {
+    for(auto & o : objects) {
+      delete o;
+    }
+    objects.clear();
+  }
+  */
 }
 

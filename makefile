@@ -9,7 +9,8 @@ OBJECTS := build/main.o \
 					 build/game/level.o \
 	         build/game/AStar.o \
 	         build/game/properties.o \
-					 build/util/Log.o
+					 build/util/Log.o \
+					 build/util/serial.o
 
 wfc: wfc2.cpp
 	clang++ -std=c++11 -Wall -g -o $@ $<

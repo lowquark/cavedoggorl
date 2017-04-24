@@ -2,12 +2,13 @@
 #define GAME_LEVEL_HPP
 
 #include <game/core.hpp>
+#include <game/state.hpp>
 #include <game/Color.hpp>
 #include <util/Vec2.hpp>
 #include <util/Map.hpp>
 
 #include <vector>
-#include <iostream>
+#include <map>
 
 namespace game {
   struct Agent {
@@ -42,57 +43,65 @@ namespace game {
     Id object = 0;
   };
 
-  extern Map<Tile> tiles;
-  extern std::vector<Agent> all_agents;
-  extern std::vector<Object *> objects;
-  extern unsigned int current_agent_idx;
 
-
-  struct TileState {
-    uint8_t type_id;
-  };
-  struct AgentState {
-    int16_t x;
-    int16_t y;
-    uint8_t is_evil;
+  struct ObjectPhysics : public Property {
+    Vec2i pos;
+    bool big = false;
   };
 
-  struct LevelState {
-    Map<TileState> tiles;
-    std::vector<AgentState> agents;
-    uint16_t current_agent_idx = 0;
+  struct PhysicsSystem {
+    std::map<Id, ObjectPhysics> object_physics;
 
-    void clear() {
-      tiles.clear();
-      agents.clear();
-      current_agent_idx = 0;
+    void add(const Object & object) {
+      if(find(dstpos) == 0) {
+        position_map[id] = dstpos;
+      }
+    }
+    void remove(Id id) {
+      position_map.erase(id);
     }
 
-    bool is_valid() {
-      return agents.size() == 0 || current_agent_idx < agents.size();
+    Id find(Vec2i pos) {
+      for(auto & kvpair : position_map) {
+        if(kvpair.second == pos) {
+          return kvpair.first;
+        }
+      }
+      return 0;
     }
-
-    static void write(std::ostream & os, const LevelState & state);
-    static bool read(std::istream & is, LevelState & state);
+    void move_to(Id id, Vec2i dstpos) {
+      if(find(dstpos) == 0) {
+        position_map[id] = dstpos;
+      }
+    }
   };
 
-  Id create_object(const Object::Builder & builder);
-  void destroy_object(Id id);
-  void clear_objects();
 
-  bool any_agents_playable();
-  Agent * find_agent(Vec2i pos);
-  bool can_move(Vec2i desired_pos);
-  void move_attack(Agent & agent, Vec2i dst);
+  struct Level {
+    Map<Tile> tiles;
+    std::vector<Agent *> all_agents;
+    std::vector<Object *> objects;
+    unsigned int current_agent_idx;
 
-  void step_level();
+    public:
+    // state
+    void clear();
+    void load(const LevelState & state);
+    LevelState state();
 
-  void load_level(const LevelState & state);
-  LevelState level_state();
+    // queries
+    Id find(Vec2i pos);
+    bool can_move(Id agent_id, Vec2i desired_pos);
 
-  namespace debug {
-    const Agent * get_agent(Id id);
-  }
+    Agent * get_agent(Id agent_id);
+
+    // actions
+    Id create(const Object::Builder & builder, Vec2i pos);
+    bool move(Id agent_id, Vec2i dst);
+    void destroy(Id agent_id);
+
+    static Id move(Id src_id, const Level & src, const Level & dst);
+  };
 }
 
 #endif
