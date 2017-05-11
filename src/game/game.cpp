@@ -4,23 +4,17 @@
 #include <util/Map.hpp>
 #include <util/serial.hpp>
 
-#include <game/events.hpp>
-#include <game/properties.hpp>
-
 #include <cstdio>
-#include <cstdlib>
-#include <ctime>
 
 #include <fstream>
-#include <algorithm>
-#include <sstream>
-#include <cassert>
 
+/*
 extern "C" {
 #include <lua5.1/lua.h>
 #include <lua5.1/lualib.h>
 #include <lua5.1/lauxlib.h>
 }
+*/
 
 namespace game {
   /*
@@ -191,49 +185,9 @@ namespace game {
   }
   */
 
-  class PartFactory : public BasePartFactory {
-    public:
-    BasePart * create(unsigned int type_id) override {
-      switch(type_id) {
-        case PART_TYPE_PHYSICS:
-          return new PhysicsPart;
-        case PART_TYPE_AGENT:
-          return new AgentPart;
-        case PART_TYPE_AI:
-          return new AIPart;
-        case PART_TYPE_PLAYER:
-          return new PlayerPart;
-        default:
-          return nullptr;
-      }
-    }
-    void destroy(BasePart * part) override {
-      delete part;
-    }
-  };
-
-  PartFactory part_factory; 
-
   Id player_id = 0;
 
   void create_new() {
-    Id obj_id = create_object(Object::Builder(part_factory).add_part(PART_TYPE_PHYSICS)
-                                                           .add_part(PART_TYPE_AGENT)
-                                                           .add_part(PART_TYPE_SPRITE)
-                                                           .add_part(PART_TYPE_PLAYER));
-
-    view().on_agent_load(obj_id, 0, Vec2i(0, 0), Color(0xFF, 0x80, 0x00));
-    move_to(obj_id, Vec2i(0, 0));
-
-    obj_id = create_object(Object::Builder(part_factory).add_part(PART_TYPE_PHYSICS)
-                                                        .add_part(PART_TYPE_AGENT)
-                                                        .add_part(PART_TYPE_SPRITE)
-                                                        .add_part(PART_TYPE_AI));
-
-    view().on_agent_load(obj_id, 0, Vec2i(0, 0), Color(0xEF, 0x10, 0x10));
-    move_to(obj_id, Vec2i(10, 10));
-
-
     player_id = run_until_player_turn();
   }
   void save(const std::string & name) {

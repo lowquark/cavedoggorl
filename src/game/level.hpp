@@ -5,11 +5,6 @@
 #include <game/core.hpp>
 
 namespace game {
-  Object * get_object(Id id);
-  Id create_object(const Object::Builder & builder);
-  void destroy_object(Id id);
-  void clear_all_objects();
-
   // returns the id of the player object
   Id run_until_player_turn();
 
