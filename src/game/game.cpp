@@ -23,6 +23,7 @@ extern "C" {
 }
 
 namespace game {
+  /*
   struct AgentTurnEntry {
     Id agent_id;
     unsigned int time;
@@ -100,6 +101,7 @@ namespace game {
     agent_turn_idx = soonest_turn_it - agent_turns.begin();
     return soonest_turn_it->agent_id;
   }
+  */
 
   /*
   LevelState * generated_level_state = nullptr;
@@ -212,14 +214,27 @@ namespace game {
 
   PartFactory part_factory; 
 
+  Id player_id = 0;
+
   void create_new() {
     Id obj_id = create_object(Object::Builder(part_factory).add_part(PART_TYPE_PHYSICS)
                                                            .add_part(PART_TYPE_AGENT)
+                                                           .add_part(PART_TYPE_SPRITE)
                                                            .add_part(PART_TYPE_PLAYER));
 
+    view().on_agent_load(obj_id, 0, Vec2i(0, 0), Color(0xFF, 0x80, 0x00));
     move_to(obj_id, Vec2i(0, 0));
 
-    printf("obj_id = %lu\n", obj_id);
+    obj_id = create_object(Object::Builder(part_factory).add_part(PART_TYPE_PHYSICS)
+                                                        .add_part(PART_TYPE_AGENT)
+                                                        .add_part(PART_TYPE_SPRITE)
+                                                        .add_part(PART_TYPE_AI));
+
+    view().on_agent_load(obj_id, 0, Vec2i(0, 0), Color(0xEF, 0x10, 0x10));
+    move_to(obj_id, Vec2i(10, 10));
+
+
+    player_id = run_until_player_turn();
   }
   void save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);
@@ -237,7 +252,10 @@ namespace game {
 
   // Player-centric commands
   void move_attack(Vec2i delta) {
-    move_rel(1, delta);
+    move_rel(player_id, delta);
+
+    player_id = run_until_player_turn();
+    printf("%lu\n", player_id);
   }
   void activate_tile() {
   }

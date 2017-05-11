@@ -93,6 +93,17 @@ namespace game {
       }
     }
 
+    BasePart * get_part(unsigned int type_id) {
+      for(auto & p : parts) {
+        if(p) {
+          if(p->type_id() == type_id) {
+            return p;
+          }
+        }
+      }
+      return nullptr;
+    }
+
     private:
     Object(BasePartFactory & factory)
       : factory(factory) {}

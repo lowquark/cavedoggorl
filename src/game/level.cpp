@@ -54,6 +54,51 @@ namespace game {
   }
 
 
+  unsigned int turn_idx = 0;
+
+  Id run_until_player_turn() {
+    if(all_objects.empty()) { return 0; }
+
+    bool any_playable = false;
+    for(auto & obj : all_objects) {
+      if(obj) {
+        if(obj->get_part(PART_TYPE_PLAYER)) {
+          any_playable = true;
+          break;
+        }
+      }
+    }
+
+    if(any_playable == false) { return 0; }
+
+    while(true) {
+      turn_idx ++;
+
+      if(turn_idx == all_objects.size()) {
+        turn_idx = 0;
+      }
+
+      auto & obj = all_objects[turn_idx];
+      if(obj) {
+        TickEvent tick_ev;
+        obj->fire_event(tick_ev);
+
+        IsTurnReadyEvent is_turn_ready_ev;
+        obj->fire_event(is_turn_ready_ev);
+
+        if(is_turn_ready_ev.is_ready) {
+          // since this is a player, we will not send it a TAKE_TURN event
+          if(obj->get_part(PART_TYPE_PLAYER)) {
+            printf("Player turn!\n");
+            return turn_idx + 1;
+          } else {
+            printf("AI turn!\n");
+          }
+        }
+      }
+    }
+  }
+
   bool move_to(Id obj_id, Vec2i dstpos) {
     auto obj = get_object(obj_id);
     if(obj) {
@@ -73,6 +118,9 @@ namespace game {
 
       SetPositionEvent set_pos(dstpos);
       obj->fire_event(set_pos);
+
+      OnWalkEvent on_walk_ev;
+      obj->fire_event(on_walk_ev);
 
       view().on_agent_move(obj_id, get_pos.pos, dstpos);
 
@@ -102,6 +150,9 @@ namespace game {
 
       SetPositionEvent set_pos(dstpos);
       obj->fire_event(set_pos);
+
+      OnWalkEvent on_walk_ev;
+      obj->fire_event(on_walk_ev);
 
       view().on_agent_move(obj_id, get_pos.pos, dstpos);
 
