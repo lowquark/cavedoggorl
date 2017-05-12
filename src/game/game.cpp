@@ -185,8 +185,9 @@ namespace game {
   }
   */
 
-  unsigned int take_turn(Universe & u, unsigned int oid) {
-    printf("[%u]'s turn\n", oid);
+  unsigned int take_turn(Universe & u, ObjectHandle obj) {
+    printf("[%u]'s turn\n", obj.id());
+
     return 10;
   }
 
@@ -211,9 +212,9 @@ namespace game {
   PartFactory factory;
   Universe u(factory);
 
-  std::vector<unsigned int> tick_turns;
+  std::vector<ObjectHandle> tick_turns;
   bool break_turns = false;
-  unsigned int break_id = 0;
+  ObjectHandle break_id = 0;
 
   unsigned int do_turn() {
     unsigned int elapsed_ticks = 0;
@@ -224,18 +225,20 @@ namespace game {
 
       unsigned int min_time = std::numeric_limits<decltype(min_time)>::max();
 
-      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, unsigned int oid) { 
-        auto part = get_part<TurnTakerPart>(u, oid);
+      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) { 
+        auto part = get_part<TurnTakerPart>(u, obj);
+
         if(part->wait_time < min_time) {
           min_time = part->wait_time;
         }
       });
 
-      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, unsigned int oid) {
-        get_part<TurnTakerPart>(u, oid)->wait_time -= min_time;
+      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
+        auto part = get_part<TurnTakerPart>(u, obj);
 
-        if(get_part<TurnTakerPart>(u, oid)->wait_time == 0) {
-          tick_turns.push_back(oid);
+        part->wait_time -= min_time;
+        if(part->wait_time == 0) {
+          tick_turns.push_back(obj);
         }
       });
 
@@ -248,7 +251,7 @@ namespace game {
     }
 
     if(!tick_turns.empty()) {
-      unsigned int object = tick_turns.back();
+      ObjectHandle object = tick_turns.back();
 
       // make sure this object still has a turn taker part
       TurnTakerPart * turn_taker_part = get_part<TurnTakerPart>(u, object);
@@ -274,7 +277,7 @@ namespace game {
     return elapsed_ticks;
   }
 
-  unsigned int run(unsigned int n_turns) {
+  ObjectHandle run(unsigned int n_turns) {
     break_turns = false;
     if(n_turns == 0) {
       while(!break_turns) {

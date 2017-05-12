@@ -6,6 +6,7 @@
 #include <limits>
 #include <vector>
 #include <string>
+#include <map>
 
 namespace game {
   typedef unsigned long Id;
@@ -134,80 +135,86 @@ namespace game {
     virtual void destroy(Part * p) {};
   };
 
-  struct ObjectHandle {
-    unsigned int id;
-    unsigned int key;
+  class ObjectHandle {
+    unsigned int _id;
+
+    public:
+    ObjectHandle()
+      : _id(0) {}
+    ObjectHandle(unsigned int _id)
+      : _id(_id) {}
+
+    bool operator==(ObjectHandle other) const {
+      return _id == other._id;
+    }
+    unsigned int id() const {
+      return _id;
+    }
   };
+  //typedef unsigned int ObjectHandle;
 
   class Universe {
     BasePartFactory & pf;
 
-    std::vector<Object> objects;
-    std::vector<unsigned int> keys;
-    std::vector<unsigned int> destroyed_object_ids;
+    std::map<unsigned int, Object> objects2;
+
+    unsigned int last_handle_id = 0;
 
     public:
     Universe(BasePartFactory & pf) : pf(pf) {}
     ~Universe() {
-      for(auto & o : objects) {
-        deinit_object(o);
+      for(auto & kvpair : objects2) {
+        deinit_object(kvpair.second);
       }
     }
 
-    inline bool is_id_valid(ObjectHandle obj) const {
-      assert(objects.size() == keys.size());
-      if(obj.id == 0) { return false; }
-      if(obj.id > objects.size()) { return false; }
-      return obj.key == keys[obj.id-1];
-    }
-    inline bool is_id_valid(unsigned int id) const {
-      return id != 0 && id <= objects.size();
-    }
-
-    unsigned int create_object() {
+    ObjectHandle create_object() {
       return create_object({});
     }
-    unsigned int create_object(const std::vector<std::string> & part_data) {
-      if(destroyed_object_ids.empty()) {
-        if(objects.size() < std::numeric_limits<unsigned int>::max()) {
-          objects.push_back(new_object(part_data));
-          return objects.size();
-        } else {
-          return 0;
-        }
+    ObjectHandle create_object(const std::vector<std::string> & part_data) {
+      if(last_handle_id < std::numeric_limits<decltype(last_handle_id)>::max()) {
+        last_handle_id ++;
+
+        objects2[last_handle_id] = new_object(part_data);
+
+        return ObjectHandle(last_handle_id);
       } else {
-        unsigned int new_id = destroyed_object_ids.back();
-        destroyed_object_ids.pop_back();
-
-        objects[new_id-1] = new_object(part_data);
-        return new_id;
+        return ObjectHandle();
       }
     }
-    void destroy_object(unsigned int id) {
-      if(is_id_valid(id)) {
-        deinit_object(objects[id-1]);
+    void destroy_object(ObjectHandle obj) {
+      auto it = objects2.find(obj.id());
 
-        destroyed_object_ids.push_back(id);
+      if(it != objects2.end()) {
+        auto & o = it->second;
+        deinit_object(o);
+        objects2.erase(it);
       }
     }
 
-    bool create_part(unsigned int id, const std::string & data) {
-      if(is_id_valid(id)) {
-        auto & o = objects[id-1];
+    bool create_part(ObjectHandle obj, const std::string & data) {
+      auto it = objects2.find(obj.id());
+
+      if(it != objects2.end()) {
+        auto & o = it->second;
         return try_add(o, data);
       }
       return false;
     }
-    bool destroy_part(unsigned int id, unsigned int part_class_id) {
-      if(is_id_valid(id)) {
-        auto & o = objects[id-1];
+    bool destroy_part(ObjectHandle obj, unsigned int part_class_id) {
+      auto it = objects2.find(obj.id());
+
+      if(it != objects2.end()) {
+        auto & o = it->second;
         return o.remove_part(part_class_id);
       }
       return false;
     }
-    Part * part(unsigned int oid, unsigned int part_class_id) const {
-      if(is_id_valid(oid)) {
-        auto & o = objects[oid-1];
+    Part * part(ObjectHandle obj, unsigned int part_class_id) const {
+      auto it = objects2.find(obj.id());
+
+      if(it != objects2.end()) {
+        auto & o = it->second;
         return o.part(part_class_id);
       }
       return nullptr;
@@ -215,29 +222,27 @@ namespace game {
 
     template <typename Fn>
     void for_all_with(const std::vector<unsigned int> & part_class_ids, Fn fn) {
-      unsigned int id = 1;
-      for(auto & o : objects) {
-        if(o.has_all(part_class_ids)) {
-          fn(*this, id);
+      for(auto & kvpair : objects2) {
+        if(kvpair.second.has_all(part_class_ids)) {
+          fn(*this, ObjectHandle(kvpair.first));
         }
-        id ++;
       }
     }
 
     bool has_any_with(const std::vector<unsigned int> & part_class_ids) {
-      unsigned int id = 1;
-      for(auto & o : objects) {
-        if(o.has_all(part_class_ids)) {
+      for(auto & kvpair : objects2) {
+        if(kvpair.second.has_all(part_class_ids)) {
           return true;
         }
-        id ++;
       }
       return false;
     }
 
-    std::vector<std::string> serialize(unsigned int oid) const {
-      if(is_id_valid(oid)) {
-        auto & o = objects[oid-1];
+    std::vector<std::string> serialize(ObjectHandle obj) const {
+      auto it = objects2.find(obj.id());
+
+      if(it != objects2.end()) {
+        auto & o = it->second;
         return o.serialize();
       }
       return std::vector<std::string>();
@@ -301,8 +306,8 @@ namespace game {
   const PartClass PartHelper<T>::part_class;
 
   template <typename T>
-  static T * get_part(const Universe & u, unsigned int oid) {
-    return static_cast<T *>(u.part(oid, T::part_class));
+  static T * get_part(const Universe & u, ObjectHandle obj) {
+    return static_cast<T *>(u.part(obj, T::part_class));
   }
   template <typename T>
   T * part_cast(Part * p) {
