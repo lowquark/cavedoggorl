@@ -1,11 +1,11 @@
 
 #include "game.hpp"
 
+#include <game/parts.hpp>
 #include <util/Map.hpp>
 #include <util/serial.hpp>
 
 #include <cstdio>
-
 #include <fstream>
 
 /*
@@ -185,10 +185,118 @@ namespace game {
   }
   */
 
+  unsigned int take_turn(Universe & u, unsigned int oid) {
+    printf("[%u]'s turn\n", oid);
+    return 10;
+  }
+
+  struct PartFactory : public BasePartFactory {
+    Part * create(const std::string & data) override {
+      if(data.substr(0, 5) == "Glyph") {
+        return new GlyphPart(data);
+      } else if(data.substr(0, 7) == "Spatial") {
+        return new SpatialPart(data);
+      } else if(data.substr(0, 9) == "TurnTaker") {
+        return new TurnTakerPart(data);
+      } else if(data.substr(0, 5) == "Agent") {
+        return new AgentPart(data);
+      }
+      return nullptr;
+    }
+    void destroy(Part * p) override {
+      delete p;
+    }
+  };
+
+  PartFactory factory;
+  Universe u(factory);
+
+  std::vector<unsigned int> tick_turns;
+  bool break_turns = false;
+  unsigned int break_id = 0;
+
+  unsigned int do_turn() {
+    unsigned int elapsed_ticks = 0;
+    if(tick_turns.empty()) {
+      if(!u.has_any_with({ TurnTakerPart::part_class })) {
+        return elapsed_ticks;
+      }
+
+      unsigned int min_time = std::numeric_limits<decltype(min_time)>::max();
+
+      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, unsigned int oid) { 
+        auto part = get_part<TurnTakerPart>(u, oid);
+        if(part->wait_time < min_time) {
+          min_time = part->wait_time;
+        }
+      });
+
+      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, unsigned int oid) {
+        get_part<TurnTakerPart>(u, oid)->wait_time -= min_time;
+
+        if(get_part<TurnTakerPart>(u, oid)->wait_time == 0) {
+          tick_turns.push_back(oid);
+        }
+      });
+
+      // we will pop from the end of this list, reverse it before then
+      std::reverse(tick_turns.begin(), tick_turns.end());
+
+      printf("%lu turns this tick\n", tick_turns.size());
+
+      elapsed_ticks = min_time;
+    }
+
+    if(!tick_turns.empty()) {
+      unsigned int object = tick_turns.back();
+
+      // make sure this object still has a turn taker part
+      TurnTakerPart * turn_taker_part = get_part<TurnTakerPart>(u, object);
+
+      if(turn_taker_part) {
+        if(turn_taker_part->break_turns) {
+          break_turns = true;
+          break_id = object;
+          return elapsed_ticks;
+        } else {
+          // the
+          tick_turns.pop_back();
+
+          // do the turn!
+          unsigned int turn_time = take_turn(u, object);
+
+          turn_taker_part = get_part<TurnTakerPart>(u, object);
+          turn_taker_part->wait_time = turn_time;
+        }
+      }
+    }
+
+    return elapsed_ticks;
+  }
+
+  unsigned int run(unsigned int n_turns) {
+    break_turns = false;
+    if(n_turns == 0) {
+      while(!break_turns) {
+        unsigned int elapsed_ticks = do_turn();
+        printf("%u\n", elapsed_ticks);
+      }
+    } else {
+      for(int i = 0 ; i < n_turns ; i ++) {
+        unsigned int elapsed_ticks = do_turn();
+        printf("%u\n", elapsed_ticks);
+        if(break_turns) { break; }
+      }
+    }
+    return break_id;
+  }
+
+
   Id player_id = 0;
 
   void create_new() {
-    player_id = run_until_player_turn();
+    u.create_object({ "Glyph", "Spatial 5 5", "TurnTaker 5", "Agent" });
+    u.create_object({ "Glyph", "Spatial 5 5", "TurnTaker 10", "Agent" });
   }
   void save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);
@@ -206,10 +314,9 @@ namespace game {
 
   // Player-centric commands
   void move_attack(Vec2i delta) {
-    move_rel(player_id, delta);
+    //move_rel(player_id, delta);
 
-    player_id = run_until_player_turn();
-    printf("%lu\n", player_id);
+    run(10);
   }
   void activate_tile() {
   }

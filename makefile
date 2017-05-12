@@ -5,8 +5,8 @@ OBJECTS := build/main.o \
 					 build/gfx/draw.o \
 					 build/gfx/gfx.o \
 					 build/game/game.o \
+					 build/game/core.o \
 					 build/game/view.o \
-					 build/game/level.o \
 	         build/game/AStar.o \
 					 build/util/Log.o \
 					 build/util/serial.o

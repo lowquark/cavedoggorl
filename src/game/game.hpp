@@ -3,7 +3,6 @@
 
 #include <string>
 #include <game/view.hpp>
-#include <game/level.hpp>
 #include <util/Vec2.hpp>
 
 namespace game {
