@@ -20,7 +20,8 @@ namespace game {
 
     virtual void on_message(const std::string & message) {}
 
-    virtual void on_control(Id agent_id) {}
+    virtual void look_at(Id agent_id) {}
+    virtual void look_at(Vec2i pos) {}
   };
 
   void set_view(View & view);

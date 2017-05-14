@@ -185,24 +185,65 @@ namespace game {
   }
   */
 
-  unsigned int take_turn(Universe & u, ObjectHandle obj) {
+  void move_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part, Vec2i delta) {
+    // find a means of locomotion (just modify spatial position for now)
+    auto spatial_part = get_part<SpatialPart>(u, obj);
+    if(spatial_part) {
+      Vec2i old_pos = spatial_part->pos;
+      spatial_part->pos += delta;
+
+      printf("%d, %d\n", spatial_part->pos.x, spatial_part->pos.y);
+
+      auto glyph_part = get_part<GlyphPart>(u, obj);
+      if(glyph_part) {
+        // update view
+        glyph_part->on_move(old_pos, spatial_part->pos);
+      }
+    }
+  }
+
+  void take_turn(Universe & u, ObjectHandle obj, TurnTakerPart * turn_taker_part) {
     printf("[%u]'s turn\n", obj.id());
 
-    return 10;
+    auto agent_part = get_part<AgentPart>(u, obj);
+    if(agent_part) {
+      // do something based on player's desired action
+      auto player_part = get_part<PlayerPart>(u, obj);
+      if(player_part) {
+        player_part->needs_input = true;
+        move_agent(u, obj, agent_part, Vec2i(1, 1));
+      } else {
+        move_agent(u, obj, agent_part, Vec2i(1, 0));
+      }
+    }
+
+    turn_taker_part->wait_time = 10;
   }
 
   struct PartFactory : public BasePartFactory {
+    std::map<std::string, Part * (*)(const std::string &)> ctors;
+    template <typename T>
+    static Part * ctor(const std::string & data) {
+      return new T(data);
+    }
+    PartFactory() {
+      ctors["Glyph"]     = ctor<GlyphPart>;
+      ctors["Spatial"]   = ctor<SpatialPart>;
+      ctors["TurnTaker"] = ctor<TurnTakerPart>;
+      ctors["Agent"]     = ctor<AgentPart>;
+      ctors["Player"]    = ctor<PlayerPart>;
+    }
     Part * create(const std::string & data) override {
-      if(data.substr(0, 5) == "Glyph") {
-        return new GlyphPart(data);
-      } else if(data.substr(0, 7) == "Spatial") {
-        return new SpatialPart(data);
-      } else if(data.substr(0, 9) == "TurnTaker") {
-        return new TurnTakerPart(data);
-      } else if(data.substr(0, 5) == "Agent") {
-        return new AgentPart(data);
+      std::stringstream ss(data);
+      std::string name;
+      ss >> name;
+
+      auto ctor_it = ctors.find(name);
+      if(ctor_it == ctors.end()) {
+        return nullptr;
+      } else {
+        return ctor_it->second(data);
       }
-      return nullptr;
     }
     void destroy(Part * p) override {
       delete p;
@@ -212,94 +253,109 @@ namespace game {
   PartFactory factory;
   Universe u(factory);
 
-  std::vector<ObjectHandle> tick_turns;
-  bool break_turns = false;
-  ObjectHandle break_id = 0;
-
-  unsigned int do_turn() {
-    unsigned int elapsed_ticks = 0;
-    if(tick_turns.empty()) {
-      if(!u.has_any_with({ TurnTakerPart::part_class })) {
-        return elapsed_ticks;
+  void look_at(ObjectHandle obj) {
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      glyph_part->look_at_me();
+    } else {
+      auto spatial_part = get_part<SpatialPart>(u, obj);
+      if(spatial_part) {
+        view().look_at(spatial_part->pos);
       }
+    }
+  }
 
-      unsigned int min_time = std::numeric_limits<decltype(min_time)>::max();
+  bool needs_player_input(ObjectHandle obj) {
+    auto player_part = get_part<PlayerPart>(u, obj);
+    if(player_part) {
+      return player_part->needs_input;
+    } else {
+      return false;
+    }
+  }
 
-      u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) { 
-        auto part = get_part<TurnTakerPart>(u, obj);
+  std::vector<ObjectHandle> objs_with_turn_this_tick() {
+    std::vector<ObjectHandle> objs_with_turn;
+    u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
+      auto part = get_part<TurnTakerPart>(u, obj);
 
-        if(part->wait_time < min_time) {
-          min_time = part->wait_time;
+      if(part->wait_time == 0) {
+        objs_with_turn.push_back(obj);
+      }
+    });
+    return objs_with_turn;
+  }
+
+  std::vector<ObjectHandle> objs_with_turn;
+
+  void world_tick() {
+  }
+  ObjectHandle run_until_player_turn(unsigned int max_ticks) {
+    unsigned int t = max_ticks;
+    while(true) {
+      while(!objs_with_turn.empty()) {
+        ObjectHandle player_obj = objs_with_turn.back();
+
+        // does the cached object still have a turn?
+        auto turn_taker_part = get_part<TurnTakerPart>(u, player_obj);
+        if(turn_taker_part) {
+          // does the object require player action?
+          if(needs_player_input(player_obj)) {
+            // have the view take a look
+            look_at(player_obj);
+            // we'll try to give this object a turn again on the next call
+            return player_obj;
+          } else {
+            // no longer pending
+            objs_with_turn.pop_back();
+            // do the turn!
+            take_turn(u, player_obj, turn_taker_part);
+          }
+        } else {
+          // no longer pending, and no turn
+          objs_with_turn.pop_back();
         }
-      });
+      }
+      if(t == 0) {
+        return ObjectHandle();
+      }
 
       u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
         auto part = get_part<TurnTakerPart>(u, obj);
-
-        part->wait_time -= min_time;
-        if(part->wait_time == 0) {
-          tick_turns.push_back(obj);
+        if(part->wait_time > 0) {
+          part->wait_time --;
         }
       });
+      t --;
 
-      // we will pop from the end of this list, reverse it before then
-      std::reverse(tick_turns.begin(), tick_turns.end());
+      world_tick();
 
-      printf("%lu turns this tick\n", tick_turns.size());
-
-      elapsed_ticks = min_time;
+      objs_with_turn = objs_with_turn_this_tick();
     }
-
-    if(!tick_turns.empty()) {
-      ObjectHandle object = tick_turns.back();
-
-      // make sure this object still has a turn taker part
-      TurnTakerPart * turn_taker_part = get_part<TurnTakerPart>(u, object);
-
-      if(turn_taker_part) {
-        if(turn_taker_part->break_turns) {
-          break_turns = true;
-          break_id = object;
-          return elapsed_ticks;
-        } else {
-          // the
-          tick_turns.pop_back();
-
-          // do the turn!
-          unsigned int turn_time = take_turn(u, object);
-
-          turn_taker_part = get_part<TurnTakerPart>(u, object);
-          turn_taker_part->wait_time = turn_time;
-        }
-      }
-    }
-
-    return elapsed_ticks;
   }
 
-  ObjectHandle run(unsigned int n_turns) {
-    break_turns = false;
-    if(n_turns == 0) {
-      while(!break_turns) {
-        unsigned int elapsed_ticks = do_turn();
-        printf("%u\n", elapsed_ticks);
-      }
-    } else {
-      for(int i = 0 ; i < n_turns ; i ++) {
-        unsigned int elapsed_ticks = do_turn();
-        printf("%u\n", elapsed_ticks);
-        if(break_turns) { break; }
-      }
-    }
-    return break_id;
-  }
-
-
-  Id player_id = 0;
 
   void create_new() {
-    u.create_object({ "Glyph", "Spatial 5 5", "TurnTaker 5", "Agent" });
-    u.create_object({ "Glyph", "Spatial 5 5", "TurnTaker 10", "Agent" });
+    view().on_world_load(10, 10);
+    for(int j = 0 ; j < 10 ; j ++) {
+      for(int i = 0 ; i < 10 ; i ++) {
+        view().on_tile_load(rand() % 2 == 0 ? 1 : 2, Vec2i(i, j));
+      }
+    }
+
+    u.create_object({
+      "Glyph 0 5 5 255 127 0",
+      "Spatial 5 5",
+      "TurnTaker 5",
+      "Agent",
+      "Player",
+    });
+    u.create_object({
+      "Glyph 1 0 0 255 0 0",
+      "Spatial 0 0",
+      "TurnTaker 10",
+      "Agent",
+    });
   }
   void save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);
@@ -315,11 +371,22 @@ namespace game {
   }
 
 
+  ObjectHandle player_obj;
+
   // Player-centric commands
   void move_attack(Vec2i delta) {
     //move_rel(player_id, delta);
 
-    run(10);
+    if(player_obj) {
+      auto player_part = get_part<PlayerPart>(u, player_obj);
+      if(player_part) {
+        player_part->needs_input = false;
+      }
+    }
+
+    player_obj = run_until_player_turn(200);
+
+    printf("player_obj: %s\n", player_obj.str().c_str());
   }
   void activate_tile() {
   }

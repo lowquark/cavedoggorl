@@ -6,6 +6,7 @@
 #include <limits>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <map>
 
 namespace game {
@@ -147,8 +148,21 @@ namespace game {
     bool operator==(ObjectHandle other) const {
       return _id == other._id;
     }
+    operator bool() const {
+      return _id != 0;
+    }
     unsigned int id() const {
       return _id;
+    }
+    std::string str() const {
+      if(_id) {
+        std::stringstream ss;
+        ss << "e.";
+        ss << _id;
+        return ss.str();
+      } else {
+        return "e.null";
+      }
     }
   };
   //typedef unsigned int ObjectHandle;
@@ -197,7 +211,8 @@ namespace game {
 
       if(it != objects2.end()) {
         auto & o = it->second;
-        return try_add(o, data);
+        try_add(o, data);
+        return true;
       }
       return false;
     }
@@ -249,16 +264,16 @@ namespace game {
     }
 
     private:
-    bool try_add(Object & o, const std::string & data) {
+    void try_add(Object & o, const std::string & data) {
       Part * p = pf.create(data);
       if(p) {
-        if(o.add_part(p)) {
-          return true;
-        } else {
-          pf.destroy(p);
+        Part * old = o.part(p->class_id());
+        if(old) {
+          o.remove_part(old->class_id());
+          pf.destroy(old);
         }
+        o.add_part(p);
       }
-      return false;
     }
     Object new_object(const std::vector<std::string> & part_data) {
       Object o;

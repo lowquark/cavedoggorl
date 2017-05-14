@@ -66,8 +66,10 @@ class MuhView : public game::View {
     message_log.push(message);
   }
 
-  void on_control(game::Id agent_id) override {
+  void look_at(game::Id agent_id) override {
     grid_world.follow_agent(agent_id);
+  }
+  void look_at(Vec2i pos) override {
   }
 };
 

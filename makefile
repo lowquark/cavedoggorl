@@ -6,6 +6,7 @@ OBJECTS := build/main.o \
 					 build/gfx/gfx.o \
 					 build/game/game.o \
 					 build/game/core.o \
+					 build/game/parts.o \
 					 build/game/view.o \
 	         build/game/AStar.o \
 					 build/util/Log.o \
