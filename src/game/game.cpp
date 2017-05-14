@@ -185,25 +185,81 @@ namespace game {
   }
   */
 
+  // todo: should set per-player id
+  static View * _view = nullptr;
+  void set_view(View & view) {
+    _view = &view;
+  }
+  // Always valid!
+  View & get_view(unsigned int phys_player_id) {
+    // todo: establish mapping from id -> view
+    static View default_view;
+    if(_view) {
+      return *_view;
+    }
+    return default_view;
+  }
+
+  void notify_spawn(Universe & u, ObjectHandle obj) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      auto spatial_part = get_part<SpatialPart>(u, obj);
+      if(spatial_part) {
+        //u.for_all_with({ AgentPart::part_class, PlayerPart::part_class },
+        u.for_all_with({ PlayerPart::part_class },
+          [=](Universe & u, ObjectHandle o) {
+            auto player_part = get_part<PlayerPart>(u, o);
+            auto & v = get_view(player_part->player_id);
+            v.on_agent_load(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+          }
+        );
+      }
+    }
+  }
+  void notify_despawn(Universe & u, ObjectHandle obj) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      //u.for_all_with({ AgentPart::part_class, PlayerPart::part_class },
+      u.for_all_with({ PlayerPart::part_class },
+        [=](Universe & u, ObjectHandle o) {
+          auto player_part = get_part<PlayerPart>(u, o);
+          auto & v = get_view(player_part->player_id);
+          v.on_agent_death(obj.id());
+        }
+      );
+    }
+  }
+  void notify_movement(Universe & u, ObjectHandle obj, Vec2i from, Vec2i to) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      //u.for_all_with({ AgentPart::part_class, PlayerPart::part_class },
+      u.for_all_with({ PlayerPart::part_class },
+        [=](Universe & u, ObjectHandle o) {
+          auto player_part = get_part<PlayerPart>(u, o);
+          auto & v = get_view(player_part->player_id);
+          v.on_agent_move(obj.id(), from, to);
+        }
+      );
+    }
+  }
+
   void move_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part, Vec2i delta) {
     // find a means of locomotion (just modify spatial position for now)
     auto spatial_part = get_part<SpatialPart>(u, obj);
     if(spatial_part) {
       Vec2i old_pos = spatial_part->pos;
-      spatial_part->pos += delta;
+      Vec2i new_pos = spatial_part->pos + delta;
+      spatial_part->pos = new_pos;
 
-      printf("%d, %d\n", spatial_part->pos.x, spatial_part->pos.y);
-
-      auto glyph_part = get_part<GlyphPart>(u, obj);
-      if(glyph_part) {
-        // update view
-        glyph_part->on_move(old_pos, spatial_part->pos);
-      }
+      notify_movement(u, obj, old_pos, new_pos);
     }
   }
 
   void take_turn(Universe & u, ObjectHandle obj, TurnTakerPart * turn_taker_part) {
-    printf("[%u]'s turn\n", obj.id());
+    printf("[%s]'s turn\n", obj.str().c_str());
 
     auto agent_part = get_part<AgentPart>(u, obj);
     if(agent_part) {
@@ -218,6 +274,22 @@ namespace game {
     }
 
     turn_taker_part->wait_time = 10;
+  }
+
+  void owner_look_at(Universe & u, ObjectHandle obj) {
+    auto player_part = get_part<PlayerPart>(u, obj);
+    if(player_part) {
+      get_view(player_part->player_id).look_at(obj.id());
+    }
+  }
+
+  bool needs_player_input(Universe & u, ObjectHandle obj) {
+    auto player_part = get_part<PlayerPart>(u, obj);
+    if(player_part) {
+      return player_part->needs_input;
+    } else {
+      return false;
+    }
   }
 
   struct PartFactory : public BasePartFactory {
@@ -253,27 +325,6 @@ namespace game {
   PartFactory factory;
   Universe u(factory);
 
-  void look_at(ObjectHandle obj) {
-    auto glyph_part = get_part<GlyphPart>(u, obj);
-    if(glyph_part) {
-      glyph_part->look_at_me();
-    } else {
-      auto spatial_part = get_part<SpatialPart>(u, obj);
-      if(spatial_part) {
-        view().look_at(spatial_part->pos);
-      }
-    }
-  }
-
-  bool needs_player_input(ObjectHandle obj) {
-    auto player_part = get_part<PlayerPart>(u, obj);
-    if(player_part) {
-      return player_part->needs_input;
-    } else {
-      return false;
-    }
-  }
-
   std::vector<ObjectHandle> objs_with_turn_this_tick() {
     std::vector<ObjectHandle> objs_with_turn;
     u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
@@ -294,22 +345,22 @@ namespace game {
     unsigned int t = max_ticks;
     while(true) {
       while(!objs_with_turn.empty()) {
-        ObjectHandle player_obj = objs_with_turn.back();
+        ObjectHandle obj = objs_with_turn.back();
 
         // does the cached object still have a turn?
-        auto turn_taker_part = get_part<TurnTakerPart>(u, player_obj);
+        auto turn_taker_part = get_part<TurnTakerPart>(u, obj);
         if(turn_taker_part) {
           // does the object require player action?
-          if(needs_player_input(player_obj)) {
-            // have the view take a look
-            look_at(player_obj);
+          if(needs_player_input(u, obj)) {
+            // have it's owner take a look
+            owner_look_at(u, obj);
             // we'll try to give this object a turn again on the next call
-            return player_obj;
+            return obj;
           } else {
             // no longer pending
             objs_with_turn.pop_back();
             // do the turn!
-            take_turn(u, player_obj, turn_taker_part);
+            take_turn(u, obj, turn_taker_part);
           }
         } else {
           // no longer pending, and no turn
@@ -331,31 +382,45 @@ namespace game {
       world_tick();
 
       objs_with_turn = objs_with_turn_this_tick();
+      std::reverse(objs_with_turn.begin(), objs_with_turn.end());
     }
   }
 
 
   void create_new() {
-    view().on_world_load(10, 10);
+    get_view(1).on_world_load(10, 10);
     for(int j = 0 ; j < 10 ; j ++) {
       for(int i = 0 ; i < 10 ; i ++) {
-        view().on_tile_load(rand() % 2 == 0 ? 1 : 2, Vec2i(i, j));
+        get_view(1).on_tile_load(rand() % 2 == 0 ? 1 : 2, Vec2i(i, j));
       }
     }
 
-    u.create_object({
-      "Glyph 0 5 5 255 127 0",
-      "Spatial 5 5",
+    // TODO: need to notify of previously spawned objects as well :/
+    notify_spawn(u, u.create_object({
+      "Glyph 0 255 127 0",
+      "Spatial 0 0",
       "TurnTaker 5",
       "Agent",
-      "Player",
-    });
-    u.create_object({
-      "Glyph 1 0 0 255 0 0",
-      "Spatial 0 0",
+      "Player 1",
+    }));
+    notify_spawn(u, u.create_object({
+      "Glyph 1 200 0 0",
+      "Spatial 1 1",
       "TurnTaker 10",
       "Agent",
-    });
+    }));
+    notify_spawn(u, u.create_object({
+      "Glyph 1 55 200 0",
+      "Spatial 2 2",
+      "TurnTaker 10",
+      "Agent",
+    }));
+    notify_spawn(u, u.create_object({
+      "Glyph 1 55 0 200",
+      "Spatial 3 3",
+      "TurnTaker 10",
+      "Agent",
+    }));
   }
   void save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);

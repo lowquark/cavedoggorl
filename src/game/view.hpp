@@ -22,10 +22,11 @@ namespace game {
 
     virtual void look_at(Id agent_id) {}
     virtual void look_at(Vec2i pos) {}
-  };
 
-  void set_view(View & view);
-  View & view();
+    //virtual void add_playable(Id agent_id) {}
+    //virtual void playable_turn(Id agent_id) {}
+    //virtual void remove_playable(Id agent_id) {}
+  };
 
   extern Log log;
 }

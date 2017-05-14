@@ -5,20 +5,22 @@
 #include <cassert>
 #include <deque>
 
-#include <game/view.hpp>
 #include <game/core.hpp>
 #include <game/Color.hpp>
 #include <util/Vec2.hpp>
 
 namespace game {
   struct GlyphPart : public PartHelper<GlyphPart> {
-    Vec2i pos;
+    Id type_id = 0;
     Color color = Color(0xFF, 0x00, 0xFF);
 
-    static Id last_id;
-    Id id = 0;
-    Id type_id = 0;
-
+    static int clamp(int x, int min, int max) {
+      if(x > max)
+        return max;
+      if(x < min)
+        return min;
+      return x;
+    }
     GlyphPart(const std::string & data) {
       std::stringstream ss(data);
 
@@ -26,35 +28,17 @@ namespace game {
       ss >> name;
       assert(name == "Glyph");
 
-      int type_id, x, y, r, g, b;
-      ss >> type_id >> x >> y >> r >> g >> b;
+      int type_id, r, g, b;
+      ss >> type_id >> r >> g >> b;
 
-      pos = Vec2i(x, y);
-      color = Color(r, g, b);
+      color = Color(clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255));
 
-      id = last_id ++;
       this->type_id = std::abs(type_id);
-
-      view().on_agent_load(id, type_id, pos, color);
-    }
-
-    ~GlyphPart() {
-      view().on_agent_death(0);
-    }
-
-    void on_move(Vec2i from, Vec2i to) {
-      view().on_agent_move(id, from, to);
-    }
-
-    void look_at_me() {
-      view().look_at(id);
     }
 
     std::string serialize() const override {
       std::stringstream ss;
       ss << "Glyph " << type_id
-         << " " << pos.x
-         << " " << pos.y
          << " " << color.r
          << " " << color.g
          << " " << color.b;
@@ -118,7 +102,19 @@ namespace game {
   };
   struct PlayerPart : public PartHelper<PlayerPart> {
     bool needs_input = true;
+    unsigned int player_id;
+
     PlayerPart(const std::string & data) {
+      std::stringstream ss(data);
+
+      std::string name;
+      ss >> name;
+      assert(name == "Player");
+
+      int player_id;
+      ss >> player_id;
+
+      this->player_id = player_id;
     }
   };
 }

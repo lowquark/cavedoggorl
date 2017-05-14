@@ -10,6 +10,9 @@ namespace game {
   void save(const std::string & name);
   void load_old(const std::string & name);
 
+  void set_view(View & view);
+  View & view();
+
   // Moves the player controlled agent, steps the game
   void move_attack(Vec2i delta);
   // Causes the player controlled agent to activate a nearby tile, steps the game
