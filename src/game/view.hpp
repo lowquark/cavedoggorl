@@ -4,6 +4,7 @@
 #include <string>
 
 #include <util/Log.hpp>
+#include <util/Map.hpp>
 #include <util/Vec2.hpp>
 #include <game/core.hpp>
 #include <game/Color.hpp>
@@ -22,10 +23,6 @@ namespace game {
 
     virtual void look_at(Id agent_id) {}
     virtual void look_at(Vec2i pos) {}
-
-    //virtual void add_playable(Id agent_id) {}
-    //virtual void playable_turn(Id agent_id) {}
-    //virtual void remove_playable(Id agent_id) {}
   };
 
   extern Log log;

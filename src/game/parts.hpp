@@ -100,21 +100,29 @@ namespace game {
     AgentPart(const std::string & data) {
     }
   };
-  struct PlayerPart : public PartHelper<PlayerPart> {
-    bool needs_input = true;
+  struct PlayerControlPart : public PartHelper<PlayerControlPart> {
     unsigned int player_id;
 
-    PlayerPart(const std::string & data) {
+    PlayerControlPart(const std::string & data) {
       std::stringstream ss(data);
 
       std::string name;
       ss >> name;
-      assert(name == "Player");
+      assert(name == "PlayerControl");
 
       int player_id;
       ss >> player_id;
 
       this->player_id = player_id;
+    }
+  };
+  struct AIControlPart : public PartHelper<AIControlPart> {
+    AIControlPart(const std::string & data) {
+      std::stringstream ss(data);
+
+      std::string name;
+      ss >> name;
+      assert(name == "AIControl");
     }
   };
 }

@@ -3,20 +3,19 @@
 
 #include <string>
 #include <game/view.hpp>
+#include <game/core.hpp>
 #include <util/Vec2.hpp>
 
 namespace game {
+  void add_player(unsigned int id, View * view);
+  void remove_player(unsigned int id);
+
   void create_new();
   void save(const std::string & name);
   void load_old(const std::string & name);
 
-  void set_view(View & view);
-  View & view();
-
-  // Moves the player controlled agent, steps the game
-  void move_attack(Vec2i delta);
-  // Causes the player controlled agent to activate a nearby tile, steps the game
-  void activate_tile();
+  void move_attack(ObjectHandle obj, Vec2i delta);
+  ObjectHandle step_until_player_turn(unsigned int max_ticks);
 }
 
 #endif
