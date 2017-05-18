@@ -5,51 +5,40 @@
 #include <memory>
 #include <game/view.hpp>
 #include <game/core.hpp>
-#include <game/parts.hpp>
 #include <util/Vec2.hpp>
 
 namespace game {
-  class Game {
+  struct AgentPart;
+
+  class World {
     public:
-    Game() : u(factory) {}
+    World() : uni(factory) {}
 
-    struct Player {
-      unsigned int _id = 0;
-      View * _view = nullptr;
+    // returns a valid object handle if a turn has been reached before
+    // `max_ticks` # of ticks have been exceeded
+    ObjectHandle tick_until_turn(unsigned int max_ticks);
 
-      std::string _name = "Unnamed Player";
+    // returns true, and the controller id if the entity is player controlled.
+    // returns false and an unspecified controller id otherwise
+    std::pair<bool, unsigned int> is_player_controlled(ObjectHandle obj) const;
+    // executes an automatic turn, defaults to wait in the case of no AI
+    void ai_turn(ObjectHandle obj);
 
-      public:
-      Player() = default;
-      Player(unsigned int id, View * view) : _id(id), _view(view) {}
+    void wait_turn(ObjectHandle obj);
+    // returns false if there is an obstacle in the way, and it is not
+    // destructible
+    bool move_attack_turn(ObjectHandle obj, Vec2i delta);
 
-      decltype(_id) id() const { return _id; }
+    // adds a global view, updates to current state
+    void add_view(View * view);
+    // adds a view with a particular perspective, updates to current state
+    void add_view(View * view, ObjectHandle obj);
 
-      decltype(_view) view() const { return _view; }
+    void set_size(unsigned int w, unsigned int h);
+    void set_tile(Vec2i pos, unsigned int id);
 
-      decltype(_name) name() const { return _name; }
-      void set_name(const decltype(_name) & name) { _name = name; }
-    };
-
-    enum StepResult {
-      TICK_LIMIT,
-      PLAYER_TURN,
-    };
-
-    Player * get_player(unsigned int id);
-    Player * add_player(unsigned int id, View * view);
-    void remove_player(unsigned int id);
-
-    void create_new();
-    void save(const std::string & name);
-    void load_old(const std::string & name);
-
-    StepResult step(unsigned int max_ticks);
-
-    ObjectHandle object_with_turn();
-    Player * object_owner(ObjectHandle obj);
-
-    void move_attack(ObjectHandle obj, Vec2i delta);
+    void create_hero(Vec2i pos);
+    void create_badguy(Vec2i pos);
 
     private:
     class PartFactory : public BasePartFactory {
@@ -60,27 +49,32 @@ namespace game {
       PartFactory();
     };
 
-    View * get_view(unsigned int player_id);
+    struct ObjectView {
+      View * view = nullptr;
+      ObjectHandle object;
 
-    bool visible(Universe & u, ObjectHandle obj, Vec2i pos);
-    bool visible(View & view, Vec2i pos);
+      bool visible(Vec2i pos) const { return true; }
+    };
 
-    void notify_spawn(Universe & u, ObjectHandle obj);
-    void notify_despawn(Universe & u, ObjectHandle obj);
-    void notify_movement(Universe & u, ObjectHandle obj, Vec2i from, Vec2i to);
+    void update_view(ObjectView view);
+    void update_view(View * view);
 
-    void move_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part, Vec2i delta);
-    void wait_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part);
-    void ai_turn(Universe & u, ObjectHandle obj);
-    void owner_look_at(Universe & u, ObjectHandle obj);
-    std::vector<ObjectHandle> objs_with_turn_this_tick();
-    void world_tick();
+    void notify_spawn(ObjectHandle obj);
+    void notify_despawn(ObjectHandle obj);
+    void notify_move(ObjectHandle obj, Vec2i from, Vec2i to);
 
-    std::map<unsigned int, std::unique_ptr<Player>> players;
-    ObjectHandle current_object;
+    // the world does all the things
+    std::vector<ObjectHandle> objs_with_turn_this_tick() const;
+    void tick();
 
     PartFactory factory;
-    Universe u;
+    Universe uni;
+    Map<unsigned int> tiles;
+
+    // see everything
+    std::vector<View *> global_views;
+    // only see what their associated object sees
+    std::vector<ObjectView> object_views;
   };
 }
 

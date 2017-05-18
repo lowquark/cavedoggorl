@@ -51,12 +51,12 @@ namespace game {
         return nullptr;
       }
     }
-    bool has_part(unsigned int class_id) {
+    bool has_part(unsigned int class_id) const {
       auto id_it = std::lower_bound(part_ids.begin(), part_ids.end(), class_id);
 
       return id_it != part_ids.end() && *id_it == class_id;
     }
-    bool has_all(const std::vector<unsigned int> & class_ids) {
+    bool has_all(const std::vector<unsigned int> & class_ids) const {
       // Can be made faster
       for(auto & id : class_ids) {
         if(!has_part(id)) {
@@ -65,7 +65,7 @@ namespace game {
       }
       return true;
     }
-    bool has_one(const std::vector<unsigned int> & class_ids) {
+    bool has_one(const std::vector<unsigned int> & class_ids) const {
       // Can be made faster
       for(auto & id : class_ids) {
         if(has_part(id)) {
@@ -243,8 +243,16 @@ namespace game {
         }
       }
     }
+    template <typename Fn>
+    void for_all_with(const std::vector<unsigned int> & part_class_ids, Fn fn) const {
+      for(auto & kvpair : objects2) {
+        if(kvpair.second.has_all(part_class_ids)) {
+          fn(*this, ObjectHandle(kvpair.first));
+        }
+      }
+    }
 
-    bool has_any_with(const std::vector<unsigned int> & part_class_ids) {
+    bool has_any_with(const std::vector<unsigned int> & part_class_ids) const {
       for(auto & kvpair : objects2) {
         if(kvpair.second.has_all(part_class_ids)) {
           return true;

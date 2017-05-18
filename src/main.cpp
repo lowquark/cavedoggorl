@@ -21,8 +21,6 @@
 #include <util/Log.hpp>
 
 
-static std::string original_message = "They're going to eat you!\nDon't just stand there! --RUN!!";
-
 static constexpr int TILES_X = 30;
 static constexpr int TILES_Y = 24;
 
@@ -34,7 +32,7 @@ SDL_Window * window = nullptr;
 bool quit_signal = false;
 
 
-game::Game muh_game;
+game::World muh_world;
 
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
@@ -103,29 +101,41 @@ void update() {
       if(player_obj) {
         // game::*() functions only return once it's the player's turn
         if(event.key.keysym.sym == SDLK_w) {
-          muh_game.move_attack(player_obj, Vec2i(0, -1));
+          muh_world.move_attack_turn(player_obj, Vec2i(0, -1));
         } else if(event.key.keysym.sym == SDLK_a) {
-          muh_game.move_attack(player_obj, Vec2i(-1, 0));
+          muh_world.move_attack_turn(player_obj, Vec2i(-1, 0));
         } else if(event.key.keysym.sym == SDLK_s) {
-          muh_game.move_attack(player_obj, Vec2i(0, 1));
+          muh_world.move_attack_turn(player_obj, Vec2i(0, 1));
         } else if(event.key.keysym.sym == SDLK_d) {
-          muh_game.move_attack(player_obj, Vec2i(1, 0));
+          muh_world.move_attack_turn(player_obj, Vec2i(1, 0));
           /*
         } else if(event.key.keysym.sym == SDLK_COMMA ||
                   event.key.keysym.sym == SDLK_PERIOD) {
           if(event.key.keysym.mod & KMOD_SHIFT) {
-            muh_game.activate_tile();
+            muh_world.activate_tile();
           }
           */
         }
       }
 
-      auto result = muh_game.step(200);
+      while(true) {
+        auto obj = muh_world.tick_until_turn(200);
 
-      if(result == muh_game.PLAYER_TURN) {
-        player_obj = muh_game.object_with_turn();
-        auto player = muh_game.object_owner(player_obj);
-        printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), player->id());
+        if(obj) {
+          auto result = muh_world.is_player_controlled(obj);
+          if(result.first) {
+            player_obj = obj;
+            printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), result.second);
+            break;
+          } else {
+            player_obj = game::ObjectHandle();
+            printf("AI turn\n");
+            muh_world.ai_turn(obj);
+          }
+        } else {
+          printf("No turn\n");
+          break;
+        }
       }
     }
   }
@@ -219,8 +229,18 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      muh_game.add_player(1, &muh_view);
-      muh_game.create_new();
+      muh_world.add_view(&muh_view);
+
+      muh_world.set_size(10, 10);
+      muh_world.set_tile(Vec2i(0, 0), 1);
+      muh_world.set_tile(Vec2i(1, 1), 2);
+      muh_world.set_tile(Vec2i(2, 2), 1);
+      muh_world.set_tile(Vec2i(3, 3), 2);
+
+      muh_world.create_hero(Vec2i(1, 1));
+      muh_world.create_badguy(Vec2i(2, 2));
+
+      //muh_game.create_new();
       //muh_game.save("asdf");
       //muh_game.load_old("asdf");
 

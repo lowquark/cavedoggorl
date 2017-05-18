@@ -62,6 +62,12 @@ namespace game {
       pos = Vec2i(x, y);
     }
 
+    static std::string state(Vec2i pos) {
+      std::stringstream ss;
+      ss << "Spatial " << pos.x
+         << " " << pos.y;
+      return ss.str();
+    }
     std::string serialize() const override {
       std::stringstream ss;
       ss << "Spatial " << pos.x
