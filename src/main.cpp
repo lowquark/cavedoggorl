@@ -34,6 +34,8 @@ SDL_Window * window = nullptr;
 bool quit_signal = false;
 
 
+game::Game muh_game;
+
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
@@ -101,26 +103,30 @@ void update() {
       if(player_obj) {
         // game::*() functions only return once it's the player's turn
         if(event.key.keysym.sym == SDLK_w) {
-          game::move_attack(player_obj, Vec2i(0, -1));
+          muh_game.move_attack(player_obj, Vec2i(0, -1));
         } else if(event.key.keysym.sym == SDLK_a) {
-          game::move_attack(player_obj, Vec2i(-1, 0));
+          muh_game.move_attack(player_obj, Vec2i(-1, 0));
         } else if(event.key.keysym.sym == SDLK_s) {
-          game::move_attack(player_obj, Vec2i(0, 1));
+          muh_game.move_attack(player_obj, Vec2i(0, 1));
         } else if(event.key.keysym.sym == SDLK_d) {
-          game::move_attack(player_obj, Vec2i(1, 0));
+          muh_game.move_attack(player_obj, Vec2i(1, 0));
           /*
         } else if(event.key.keysym.sym == SDLK_COMMA ||
                   event.key.keysym.sym == SDLK_PERIOD) {
           if(event.key.keysym.mod & KMOD_SHIFT) {
-            game::activate_tile();
+            muh_game.activate_tile();
           }
           */
         }
       }
 
-      player_obj = game::step_until_player_turn(200);
+      auto result = muh_game.step(200);
 
-      printf("[%s]'s turn\n", player_obj.str().c_str());
+      if(result == muh_game.PLAYER_TURN) {
+        player_obj = muh_game.object_with_turn();
+        auto player = muh_game.object_owner(player_obj);
+        printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), player->id());
+      }
     }
   }
 
@@ -133,7 +139,6 @@ void update() {
 
     std::string look_str;
     if(grid_world.look_str(look_str, mouse_tile)) {
-      look_str = std::string("You see: ") + look_str;
       hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
     } else {
       hud.look_finish();
@@ -214,14 +219,14 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      game::add_player(1, &muh_view);
-      game::create_new();
-      //game::save("asdf");
-      //game::load_old("asdf");
+      muh_game.add_player(1, &muh_view);
+      muh_game.create_new();
+      //muh_game.save("asdf");
+      //muh_game.load_old("asdf");
 
       run();
 
-      //game::save("asdf");
+      //muh_game.save("asdf");
 
       gfx::unload();
 

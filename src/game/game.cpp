@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <memory>
 
 /*
 extern "C" {
@@ -185,111 +186,25 @@ namespace game {
   }
   */
 
-
-  std::map<unsigned int, View *> player_views;
-
-  void add_player(unsigned int id, View * view) {
-    player_views[id] = view;
-  }
-  void remove_player(unsigned int id) {
-    player_views.erase(id);
-  }
-
-  // Always valid!
-  View * get_view(unsigned int player_id) {
-    auto it_kvpair = player_views.find(player_id);
-    if(it_kvpair != player_views.end()) {
-      return it_kvpair->second;
+  // public
+  Game::Player * Game::get_player(unsigned int player_id) {
+    auto kvpair_it = players.find(player_id);
+    if(kvpair_it != players.end()) {
+      return kvpair_it->second.get();
     } else {
       return nullptr;
     }
   }
-
-  bool visible(Universe & u, ObjectHandle obj, Vec2i pos) {
-    return true;
+  Game::Player * Game::add_player(unsigned int id, View * view) {
+    auto p = new Player(id, view);
+    players[id] = std::unique_ptr<Player>(p);
+    return p;
   }
-  bool visible(View & view, Vec2i pos) {
-    return true;
-  }
-
-  void notify_spawn(Universe & u, ObjectHandle obj) {
-    // notify player agents who can see this object
-    auto glyph_part = get_part<GlyphPart>(u, obj);
-    if(glyph_part) {
-      auto spatial_part = get_part<SpatialPart>(u, obj);
-      if(spatial_part) {
-        //u.for_all_with({ AgentPart::part_class, PlayerControlPart::part_class },
-        u.for_all_with({ PlayerControlPart::part_class },
-          [=](Universe & u, ObjectHandle o) {
-            auto player_part = get_part<PlayerControlPart>(u, o);
-            auto v = get_view(player_part->player_id);
-            if(v) {
-              v->on_agent_load(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-            }
-          }
-        );
-      }
-    }
-  }
-  void notify_despawn(Universe & u, ObjectHandle obj) {
-    // notify player agents who can see this object
-    auto glyph_part = get_part<GlyphPart>(u, obj);
-    if(glyph_part) {
-      //u.for_all_with({ AgentPart::part_class, PlayerControlPart::part_class },
-      u.for_all_with({ PlayerControlPart::part_class },
-        [=](Universe & u, ObjectHandle o) {
-          auto player_part = get_part<PlayerControlPart>(u, o);
-          auto v = get_view(player_part->player_id);
-          if(v) {
-            v->on_agent_death(obj.id());
-          }
-        }
-      );
-    }
-  }
-  void notify_movement(Universe & u, ObjectHandle obj, Vec2i from, Vec2i to) {
-    for(auto & kvpair : player_views) {
-      auto & view = kvpair.second;
-      view->on_agent_move(obj.id(), from, to);
-    }
+  void Game::remove_player(unsigned int id) {
+    players.erase(id);
   }
 
-
-  struct PartFactory : public BasePartFactory {
-    std::map<std::string, Part * (*)(const std::string &)> ctors;
-    template <typename T>
-    static Part * ctor(const std::string & data) {
-      return new T(data);
-    }
-    PartFactory() {
-      ctors["Glyph"]         = ctor<GlyphPart>;
-      ctors["Spatial"]       = ctor<SpatialPart>;
-      ctors["TurnTaker"]     = ctor<TurnTakerPart>;
-      ctors["Agent"]         = ctor<AgentPart>;
-      ctors["PlayerControl"] = ctor<PlayerControlPart>;
-      ctors["AIControl"]     = ctor<AIControlPart>;
-    }
-    Part * create(const std::string & data) override {
-      std::stringstream ss(data);
-      std::string name;
-      ss >> name;
-
-      auto ctor_it = ctors.find(name);
-      if(ctor_it == ctors.end()) {
-        return nullptr;
-      } else {
-        return ctor_it->second(data);
-      }
-    }
-    void destroy(Part * p) override {
-      delete p;
-    }
-  };
-
-  PartFactory factory;
-  Universe u(factory);
-
-  void create_new() {
+  void Game::create_new() {
     auto v = get_view(1);
     v->on_world_load(10, 10);
     for(int j = 0 ; j < 10 ; j ++) {
@@ -327,84 +242,32 @@ namespace game {
       "Agent",
     }));
   }
-  void save(const std::string & name) {
+  void Game::save(const std::string & name) {
     std::ofstream os(name, std::ofstream::binary);
 
     if(os.is_open()) {
     }
   }
-  void load_old(const std::string & name) {
+  void Game::load_old(const std::string & name) {
     std::ifstream is(name, std::ifstream::binary);
 
     if(is.is_open()) {
     }
   }
-
-  void move_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part, Vec2i delta) {
-    // find a means of locomotion (just modify spatial position for now)
-    auto spatial_part = get_part<SpatialPart>(u, obj);
-    if(spatial_part) {
-      Vec2i old_pos = spatial_part->pos;
-      Vec2i new_pos = spatial_part->pos + delta;
-      spatial_part->pos = new_pos;
-
-      notify_movement(u, obj, old_pos, new_pos);
-    }
-  }
-
-  void ai_turn(Universe & u, ObjectHandle obj, TurnTakerPart * turn_taker_part) {
-    printf("[%s]'s turn\n", obj.str().c_str());
-
-    auto agent_part = get_part<AgentPart>(u, obj);
-    if(agent_part) {
-      auto ai_control_part = get_part<AIControlPart>(u, obj);
-      if(ai_control_part) {
-        // do something based on agent's desired action
-        move_agent(u, obj, agent_part, Vec2i(1, 0));
-        turn_taker_part->wait_time = 10;
-      } else {
-        turn_taker_part->wait_time = 5;
-      }
-    }
-  }
-
-  void owner_look_at(Universe & u, ObjectHandle obj) {
-    auto player_part = get_part<PlayerControlPart>(u, obj);
-    if(player_part) {
-      auto v = get_view(player_part->player_id);
-      if(v) {
-        v->look_at(obj.id());
-      }
-    }
-  }
-
-  std::vector<ObjectHandle> objs_with_turn_this_tick() {
-    std::vector<ObjectHandle> objs_with_turn;
-
-    u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
-      auto part = get_part<TurnTakerPart>(u, obj);
-      if(part->wait_time == 0) {
-        objs_with_turn.push_back(obj);
-      }
-    });
-
-    return objs_with_turn;
-  }
-
-  void world_tick() {
-  }
-  ObjectHandle step_until_player_turn(unsigned int max_ticks) {
+  Game::StepResult Game::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto objs_with_turn = objs_with_turn_this_tick();
 
       for(auto & obj : objs_with_turn) {
-        if(get_part<PlayerControlPart>(u, obj)) {
+        auto player_control_part = get_part<PlayerControlPart>(u, obj);
+        if(player_control_part) {
           // this object requires a manual turn be taken -- have it's owner take a look
           owner_look_at(u, obj);
-          return obj;
+          current_object = obj;
+          return PLAYER_TURN;
         } else {
           // ai turn!
-          ai_turn(u, obj, get_part<TurnTakerPart>(u, obj));
+          ai_turn(u, obj);
         }
       }
 
@@ -418,20 +281,185 @@ namespace game {
       world_tick();
     }
 
-    return ObjectHandle();
+    current_object = ObjectHandle();
+
+    return TICK_LIMIT;
   }
 
-  void move_attack(ObjectHandle obj, Vec2i delta) {
+  ObjectHandle Game::object_with_turn() {
+    return current_object;
+  }
+  Game::Player * Game::object_owner(ObjectHandle obj) {
+    auto player_part = get_part<PlayerControlPart>(u, obj);
+    if(player_part) {
+      auto kvpair_it = players.find(player_part->player_id);
+
+      if(kvpair_it != players.end()) {
+        return kvpair_it->second.get();
+      }
+    }
+    return nullptr;
+  }
+
+  void Game::move_attack(ObjectHandle obj, Vec2i delta) {
     auto agent_part = get_part<AgentPart>(u, obj);
     if(agent_part) {
       // do something based on agent's desired action
       move_agent(u, obj, agent_part, delta);
     }
+  }
+
+  template <typename T>
+  static Part * ctor(const std::string & data) {
+    return new T(data);
+  }
+  Part * Game::PartFactory::create(const std::string & data) {
+    std::stringstream ss(data);
+    std::string name;
+    ss >> name;
+
+    auto ctor_it = ctors.find(name);
+    if(ctor_it == ctors.end()) {
+      return nullptr;
+    } else {
+      return ctor_it->second(data);
+    }
+  }
+  void Game::PartFactory::destroy(Part * p) {
+    delete p;
+  }
+  Game::PartFactory::PartFactory() {
+    ctors["Glyph"]         = ctor<GlyphPart>;
+    ctors["Spatial"]       = ctor<SpatialPart>;
+    ctors["TurnTaker"]     = ctor<TurnTakerPart>;
+    ctors["Agent"]         = ctor<AgentPart>;
+    ctors["PlayerControl"] = ctor<PlayerControlPart>;
+    ctors["AIControl"]     = ctor<AIControlPart>;
+  }
+
+  // private
+  View * Game::get_view(unsigned int player_id) {
+    auto kvpair_it = players.find(player_id);
+    if(kvpair_it != players.end()) {
+      return kvpair_it->second->view();
+    } else {
+      return nullptr;
+    }
+  }
+
+  bool Game::visible(Universe & u, ObjectHandle obj, Vec2i pos) {
+    return true;
+  }
+  bool Game::visible(View & view, Vec2i pos) {
+    return true;
+  }
+
+  void Game::notify_spawn(Universe & u, ObjectHandle obj) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      auto spatial_part = get_part<SpatialPart>(u, obj);
+      if(spatial_part) {
+        //u.for_all_with({ AgentPart::part_class, PlayerControlPart::part_class },
+        u.for_all_with({ PlayerControlPart::part_class },
+          [=](Universe & u, ObjectHandle o) {
+            auto player_part = get_part<PlayerControlPart>(u, o);
+            auto v = get_view(player_part->player_id);
+            if(v) {
+              v->on_agent_load(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+            }
+          }
+        );
+      }
+    }
+  }
+  void Game::notify_despawn(Universe & u, ObjectHandle obj) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(u, obj);
+    if(glyph_part) {
+      //u.for_all_with({ AgentPart::part_class, PlayerControlPart::part_class },
+      u.for_all_with({ PlayerControlPart::part_class },
+        [=](Universe & u, ObjectHandle o) {
+          auto player_part = get_part<PlayerControlPart>(u, o);
+          auto v = get_view(player_part->player_id);
+          if(v) {
+            v->on_agent_death(obj.id());
+          }
+        }
+      );
+    }
+  }
+  void Game::notify_movement(Universe & u, ObjectHandle obj, Vec2i from, Vec2i to) {
+    for(auto & kvpair : players) {
+      auto view = kvpair.second->view();
+      if(view) {
+        view->on_agent_move(obj.id(), from, to);
+      }
+    }
+  }
+
+  void Game::move_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part, Vec2i delta) {
+    // find a means of locomotion (just modify spatial position for now)
+    auto spatial_part = get_part<SpatialPart>(u, obj);
+    if(spatial_part) {
+      Vec2i old_pos = spatial_part->pos;
+      Vec2i new_pos = spatial_part->pos + delta;
+      spatial_part->pos = new_pos;
+
+      notify_movement(u, obj, old_pos, new_pos);
+    }
 
     auto turn_taker_part = get_part<TurnTakerPart>(u, obj);
     if(turn_taker_part) {
-      turn_taker_part->wait_time = 10;
+      turn_taker_part->wait_time += 10;
     }
+  }
+  void Game::wait_agent(Universe & u, ObjectHandle obj, AgentPart * agent_part) {
+    auto turn_taker_part = get_part<TurnTakerPart>(u, obj);
+    if(turn_taker_part) {
+      turn_taker_part->wait_time += 5;
+    }
+  }
+
+  void Game::ai_turn(Universe & u, ObjectHandle obj) {
+    printf("[%s]'s turn\n", obj.str().c_str());
+
+    auto agent_part = get_part<AgentPart>(u, obj);
+    if(agent_part) {
+      auto ai_control_part = get_part<AIControlPart>(u, obj);
+      if(ai_control_part) {
+        // do something based on ai's desired action
+        move_agent(u, obj, agent_part, Vec2i(1, 0));
+      } else {
+        wait_agent(u, obj, agent_part);
+      }
+    }
+  }
+
+  void Game::owner_look_at(Universe & u, ObjectHandle obj) {
+    auto player_part = get_part<PlayerControlPart>(u, obj);
+    if(player_part) {
+      auto v = get_view(player_part->player_id);
+      if(v) {
+        v->look_at(obj.id());
+      }
+    }
+  }
+
+  std::vector<ObjectHandle> Game::objs_with_turn_this_tick() {
+    std::vector<ObjectHandle> objs_with_turn;
+
+    u.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
+      auto part = get_part<TurnTakerPart>(u, obj);
+      if(part->wait_time == 0) {
+        objs_with_turn.push_back(obj);
+      }
+    });
+
+    return objs_with_turn;
+  }
+
+  void Game::world_tick() {
   }
 }
 
