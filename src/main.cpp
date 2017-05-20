@@ -37,39 +37,45 @@ game::World muh_world;
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
-int skip_countdown = 0;
 
 
 class MuhView : public game::View {
-  void on_world_load(unsigned int tiles_x, unsigned int tiles_y) override {
+  void set_world_size(unsigned int tiles_x, unsigned int tiles_y) override {
     grid_world.set_size(Vec2u(tiles_x, tiles_y));
   }
-  void on_tile_load(game::Id type_id, const Vec2i & pos) override {
+  void set_tile(const Vec2i & pos, unsigned int type_id) override {
     grid_world.set_tile(pos, type_id);
   }
-  void on_agent_load(game::Id agent_id, game::Id type_id, const Vec2i & pos, const game::Color & color) override {
+
+  void set_glyph(game::ObjectHandle obj,
+                 unsigned int type_id,
+                 const Vec2i & pos,
+                 const game::Color & color) override {
     gfx::Color gfx_color;
     gfx_color.r = (float) color.r / 255;
     gfx_color.g = (float) color.g / 255;
     gfx_color.b = (float) color.b / 255;
-    grid_world.add_agent(agent_id, type_id, pos, gfx_color);
+    grid_world.add_agent(obj.id(), type_id, pos, gfx_color);
+  }
+  void move_glyph(game::ObjectHandle obj,
+                  const Vec2i & from,
+                  const Vec2i & to) override {
+    grid_world.move_agent(obj.id(), from, to);
+  }
+  void remove_glyph(game::ObjectHandle obj) override {
+    grid_world.remove_agent(obj.id());
   }
 
-  void on_agent_move(game::Id agent_id, const Vec2i & from, const Vec2i & to) override {
-    grid_world.move_agent(agent_id, from, to);
-  }
-  void on_agent_death(game::Id agent_id) override {
-    grid_world.remove_agent(agent_id);
-  }
-
-  void on_message(const std::string & message) override {
+  void message(const std::string & message) override {
     message_log.push(message);
   }
 
-  void look_at(game::Id agent_id) override {
-    grid_world.follow_agent(agent_id);
+  void follow(game::ObjectHandle obj) override {
+    grid_world.follow_agent(obj.id());
   }
-  void look_at(Vec2i pos) override {
+
+  void clear() override {
+    grid_world.clear_sprites();
   }
 };
 
@@ -80,34 +86,59 @@ Vec2i mouse_tile;
 
 game::ObjectHandle player_obj;
 
-void update() {
-  if(skip_countdown > 0) {
-    skip_countdown --;
+void step_game() {
+  printf("step_game()\n");
+  while(true) {
+    auto obj = muh_world.tick_until_turn(200);
+    if(obj) {
+      auto result = muh_world.is_player_controlled(obj);
+      if(result.first) {
+        player_obj = obj;
+        printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), result.second);
+        break;
+      } else {
+        player_obj = game::ObjectHandle();
+        printf("AI turn\n");
+        muh_world.ai_turn(obj);
+      }
+    } else {
+      printf("No turn\n");
+      break;
+    }
   }
+}
 
+void update() {
   SDL_Event event;
   while(SDL_PollEvent(&event)) {
     if(event.type == SDL_QUIT) {
       quit_signal = true;
       return;
-    } else if(event.type == SDL_KEYDOWN) {
+    }
+
+    if(event.type == SDL_KEYDOWN) {
       if(event.key.keysym.sym == SDLK_0) {
         quit_signal = true;
         return;
       }
-
-      grid_world.skip_animations();
-
       if(player_obj) {
+        grid_world.skip_animations();
+
+        printf("Move\n");
+
         // game::*() functions only return once it's the player's turn
         if(event.key.keysym.sym == SDLK_w) {
-          muh_world.move_attack_turn(player_obj, Vec2i(0, -1));
+          muh_world.move_attack_turn(player_obj, Vec2i( 0, -1));
+          step_game();
         } else if(event.key.keysym.sym == SDLK_a) {
-          muh_world.move_attack_turn(player_obj, Vec2i(-1, 0));
+          muh_world.move_attack_turn(player_obj, Vec2i(-1,  0));
+          step_game();
         } else if(event.key.keysym.sym == SDLK_s) {
-          muh_world.move_attack_turn(player_obj, Vec2i(0, 1));
+          muh_world.move_attack_turn(player_obj, Vec2i( 0,  1));
+          step_game();
         } else if(event.key.keysym.sym == SDLK_d) {
-          muh_world.move_attack_turn(player_obj, Vec2i(1, 0));
+          muh_world.move_attack_turn(player_obj, Vec2i( 1,  0));
+          step_game();
           /*
         } else if(event.key.keysym.sym == SDLK_COMMA ||
                   event.key.keysym.sym == SDLK_PERIOD) {
@@ -117,27 +148,10 @@ void update() {
           */
         }
       }
-
-      while(true) {
-        auto obj = muh_world.tick_until_turn(200);
-
-        if(obj) {
-          auto result = muh_world.is_player_controlled(obj);
-          if(result.first) {
-            player_obj = obj;
-            printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), result.second);
-            break;
-          } else {
-            player_obj = game::ObjectHandle();
-            printf("AI turn\n");
-            muh_world.ai_turn(obj);
-          }
-        } else {
-          printf("No turn\n");
-          break;
-        }
-      }
     }
+  }
+  if(!player_obj && grid_world.are_animations_finished()) {
+    step_game();
   }
 
   Vec2i mouse_pos;
@@ -229,7 +243,9 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      muh_world.add_view(&muh_view);
+      //muh_world.add_view(&muh_view);
+
+      auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
 
       muh_world.set_size(10, 10);
       muh_world.set_tile(Vec2i(0, 0), 1);
@@ -237,8 +253,9 @@ int main(int argc, char ** argv) {
       muh_world.set_tile(Vec2i(2, 2), 1);
       muh_world.set_tile(Vec2i(3, 3), 2);
 
-      muh_world.create_hero(Vec2i(1, 1));
       muh_world.create_badguy(Vec2i(2, 2));
+
+      muh_world.add_view(&muh_view, hero_obj);
 
       //muh_game.create_new();
       //muh_game.save("asdf");

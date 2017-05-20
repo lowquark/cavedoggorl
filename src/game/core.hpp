@@ -10,8 +10,6 @@
 #include <map>
 
 namespace game {
-  typedef unsigned long Id;
-
   class Part {
     // I don't like doing it but it works
     // also fuck dynamic_cast

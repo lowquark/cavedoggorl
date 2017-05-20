@@ -4,9 +4,6 @@
 #include <gfx/draw.hpp>
 #include <util/Map.hpp>
 
-// TODO: Get rid of this
-#include <game/game.hpp>
-
 #include <queue>
 
 namespace gfx {
@@ -23,12 +20,12 @@ namespace gfx {
 
 
   struct AgentSprite {
-    game::Id type_id = 0;
+    unsigned int type_id = 0;
     Vec2f pos;
     Color color;
   };
   struct TileSprite {
-    game::Id type_id = 0;
+    unsigned int type_id = 0;
   };
 
   // An animated version of the game world
@@ -40,13 +37,15 @@ namespace gfx {
     std::deque<Animation *> queued_animations;
     std::vector<Animation *> active_animations;
 
-    game::Id followed_agent_id = 0;
+    unsigned int followed_agent_id = 0;
 
     Map<TileSprite> tile_sprites;
-    std::map<game::Id, AgentSprite> agent_sprites;
+    std::map<unsigned int, AgentSprite> agent_sprites;
 
 
     public:
+    void clear_sprites();
+
     // sets the tile size in pixels
     const Vec2u & tile_size() const {
       return _tile_size;
@@ -58,15 +57,15 @@ namespace gfx {
     // sets the grid size in tiles
     void set_size(Vec2u size);
     // sets a given tile
-    void set_tile(const Vec2i & pos, game::Id type_id);
+    void set_tile(const Vec2i & pos, unsigned int type_id);
 
     // creates an agent sprite
-    void add_agent(game::Id agent_id, game::Id type_id, const Vec2i & pos, const Color & color);
+    void add_agent(unsigned int agent_id, unsigned int type_id, const Vec2i & pos, const Color & color);
     // removes an agent sprite
-    void remove_agent(game::Id agent_id);
+    void remove_agent(unsigned int agent_id);
 
     // moves / animates a previously added agent
-    void move_agent(game::Id agent_id, const Vec2i & from, const Vec2i & to);
+    void move_agent(unsigned int agent_id, const Vec2i & from, const Vec2i & to);
 
 
     // rounds the given screen position to the nearest grid location
@@ -76,7 +75,7 @@ namespace gfx {
 
 
     // Centers the camera on and follows the given agent
-    void follow_agent(game::Id agent_id);
+    void follow_agent(unsigned int agent_id);
 
 
     // returns a look_str for the object at the given location

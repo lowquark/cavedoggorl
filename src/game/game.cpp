@@ -19,86 +19,6 @@ extern "C" {
 
 namespace game {
   /*
-  struct AgentTurnEntry {
-    Id agent_id;
-    unsigned int time;
-  };
-
-  std::vector<AgentTurnEntry> agent_turns;
-  unsigned int agent_turn_idx;
-
-  void turn_time(Id agent_id, int time) {
-    for(auto & turn : agent_turns) {
-      if(turn.agent_id == agent_id) {
-        turn.time = time;
-      }
-    }
-  }
-
-  void give_turn(Id agent_id, int initial_time) {
-    for(auto & turn : agent_turns) {
-      if(turn.agent_id == agent_id) {
-        return;
-      }
-    }
-
-    AgentTurnEntry turn;
-    turn.agent_id = agent_id;
-    turn.time = initial_time;
-    agent_turns.push_back(turn);
-  }
-  void remove_turn(Id agent_id) {
-    for(unsigned int idx = 0 ;
-        idx < agent_turns.size() ; ) {
-      auto & turn = agent_turns[idx];
-      if(turn.agent_id == agent_id) {
-        agent_turns.erase(agent_turns.begin() + idx);
-        if(agent_turn_idx > idx) {
-          agent_turn_idx --;
-        }
-        return;
-      } else {
-        idx ++;
-      }
-    }
-  }
-
-  // Returns the id of the agent whose turn is next
-  Id next_turn() {
-    if(agent_turns.empty()) {
-      return 0;
-    }
-
-    while(agent_turn_idx < agent_turns.size()) {
-      auto & turn = agent_turns[agent_turn_idx];
-      if(turn.time == 0) {
-        return turn.agent_id;
-      }
-      agent_turn_idx ++;
-    }
-
-    // we've reached the end of the list, time to start over
-
-    // find the soonest turn
-    auto soonest_turn_it = std::min_element(agent_turns.begin(), agent_turns.end(),
-      [](const AgentTurnEntry & a, const AgentTurnEntry & b) {
-        return a.time < b.time;
-      }
-    );
-
-    // zero out common time
-    if(soonest_turn_it->time != 0) {
-      for(auto & turn : agent_turns) {
-        turn.time -= soonest_turn_it->time;
-      }
-    }
-
-    agent_turn_idx = soonest_turn_it - agent_turns.begin();
-    return soonest_turn_it->agent_id;
-  }
-  */
-
-  /*
   LevelState * generated_level_state = nullptr;
 
   static int lapi_map_size(lua_State * L) {
@@ -260,6 +180,7 @@ namespace game {
     for(auto & v : object_views) { if(v.view == view) { return; } }
 
     global_views.push_back(view);
+    update_view(view);
   }
 
   // adds a view with a particular perspective
@@ -281,41 +202,45 @@ namespace game {
   void World::set_size(unsigned int w, unsigned int h) {
     tiles.resize(w, h);
     for(auto & v : object_views) {
-      v.view->on_world_load(w, h);
+      v.view->set_world_size(w, h);
     }
     for(auto & v : global_views) {
-      v->on_world_load(w, h);
+      v->set_world_size(w, h);
     }
   }
   void World::set_tile(Vec2i pos, unsigned int id) {
     tiles.set(pos, id);
     for(auto & v : object_views) {
       if(v.visible(pos)) {
-        v.view->on_tile_load(id, pos);
+        v.view->set_tile(pos, id);
       }
     }
     for(auto & v : global_views) {
-      v->on_tile_load(id, pos);
+      v->set_tile(pos, id);
     }
   }
 
-  void World::create_hero(Vec2i pos) {
-    notify_spawn(uni.create_object({
+  ObjectHandle World::create_hero(Vec2i pos) {
+    auto obj = uni.create_object({
       "Glyph 0 255 127 0",
       SpatialPart::state(pos),
       "TurnTaker 5",
       "Agent",
       "PlayerControl 1",
-    }));
+    });
+    notify_spawn(obj);
+    return obj;
   }
-  void World::create_badguy(Vec2i pos) {
-    notify_spawn(uni.create_object({
+  ObjectHandle World::create_badguy(Vec2i pos) {
+    auto obj = uni.create_object({
       "Glyph 1 200 0 0",
       SpatialPart::state(pos),
       "TurnTaker 10",
       "Agent",
       "AIControl",
-    }));
+    });
+    notify_spawn(obj);
+    return obj;
   }
 
   // World private
@@ -348,8 +273,45 @@ namespace game {
   }
 
   void World::update_view(ObjectView view) {
+    view.view->clear();
+    view.view->follow(view.object);
+
+    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto glyph_part = get_part<GlyphPart>(u, obj);
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        if(view.visible(spatial_part->pos)) {
+          view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+        }
+      }
+    );
+
+    view.view->set_world_size(tiles.w(), tiles.h());
+    for(unsigned int j = 0 ; j < tiles.h() ; j ++) {
+      for(unsigned int i = 0 ; i < tiles.w() ; i ++) {
+        Vec2i pos(i, j);
+        view.view->set_tile(pos, tiles.get(pos));
+      }
+    }
   }
   void World::update_view(View * view) {
+    view->clear();
+
+    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto glyph_part = get_part<GlyphPart>(u, obj);
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+      }
+    );
+
+    view->set_world_size(tiles.w(), tiles.h());
+    for(unsigned int j = 0 ; j < tiles.h() ; j ++) {
+      for(unsigned int i = 0 ; i < tiles.w() ; i ++) {
+        Vec2i pos(i, j);
+        view->set_tile(pos, tiles.get(pos));
+      }
+    }
   }
 
   void World::notify_spawn(ObjectHandle obj) {
@@ -360,11 +322,11 @@ namespace game {
       if(spatial_part) {
         for(auto & v : object_views) {
           if(v.visible(spatial_part->pos)) {
-            v.view->on_agent_load(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+            v.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
           }
         }
         for(auto & v : global_views) {
-          v->on_agent_load(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+          v->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
         }
       }
     }
@@ -372,11 +334,11 @@ namespace game {
   void World::notify_move(ObjectHandle obj, Vec2i from, Vec2i to) {
     for(auto & v : object_views) {
       if(v.visible(from) || v.visible(to)) {
-        v.view->on_agent_move(obj.id(), from, to);
+        v.view->move_glyph(obj.id(), from, to);
       }
     }
     for(auto & v : global_views) {
-      v->on_agent_move(obj.id(), from, to);
+      v->move_glyph(obj.id(), from, to);
     }
   }
 

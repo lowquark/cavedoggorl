@@ -11,7 +11,7 @@
 
 namespace game {
   struct GlyphPart : public PartHelper<GlyphPart> {
-    Id type_id = 0;
+    unsigned int type_id = 0;
     Color color = Color(0xFF, 0x00, 0xFF);
 
     static int clamp(int x, int min, int max) {

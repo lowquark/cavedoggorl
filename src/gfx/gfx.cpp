@@ -63,6 +63,23 @@ namespace gfx {
   };
 
 
+  void GridWorld::clear_sprites() {
+    for(auto & a : queued_animations) {
+      delete a;
+    }
+    queued_animations.clear();
+
+    for(auto & a : active_animations) {
+      delete a;
+    }
+    active_animations.clear();
+
+    followed_agent_id = 0;
+
+    tile_sprites.clear();
+    agent_sprites.clear();
+  }
+
   void GridWorld::tick() {
     if(active_animations.empty()) {
       if(!queued_animations.empty()) {
@@ -143,23 +160,23 @@ namespace gfx {
   void GridWorld::set_size(Vec2u size) {
     tile_sprites.resize(size.x, size.y);
   }
-  void GridWorld::set_tile(const Vec2i & pos, game::Id type_id) {
+  void GridWorld::set_tile(const Vec2i & pos, unsigned int type_id) {
     TileSprite sprite;
     sprite.type_id = type_id;
     tile_sprites.set(pos, sprite);
   }
-  void GridWorld::add_agent(game::Id agent_id, game::Id type_id, const Vec2i & pos, const Color & color) {
+  void GridWorld::add_agent(unsigned int agent_id, unsigned int type_id, const Vec2i & pos, const Color & color) {
     AgentSprite sprite;
     sprite.type_id = type_id;
     sprite.pos = pos;
     sprite.color = color;
     agent_sprites[agent_id] = sprite;
   }
-  void GridWorld::remove_agent(game::Id agent_id) {
+  void GridWorld::remove_agent(unsigned int agent_id) {
     agent_sprites.erase(agent_id);
   }
 
-  void GridWorld::move_agent(game::Id agent_id, const Vec2i & from, const Vec2i & to) {
+  void GridWorld::move_agent(unsigned int agent_id, const Vec2i & from, const Vec2i & to) {
     auto agent_kvpair_it = agent_sprites.find(agent_id);
 
     if(agent_kvpair_it != agent_sprites.end()) {
@@ -177,7 +194,7 @@ namespace gfx {
                  (grid_pos.y - _camera_pos.y) * _tile_size.y);
   }
 
-  void GridWorld::follow_agent(game::Id agent_id) {
+  void GridWorld::follow_agent(unsigned int agent_id) {
     followed_agent_id = agent_id;
   }
 

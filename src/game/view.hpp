@@ -11,18 +11,23 @@
 
 namespace game {
   struct View {
-    virtual void on_world_load(unsigned int tiles_x, unsigned int tiles_y) {}
+    virtual void set_world_size(unsigned int tiles_x, unsigned int tiles_y) {}
+    virtual void set_tile(const Vec2i & pos, unsigned int type_id) {}
 
-    virtual void on_tile_load(Id type_id, const Vec2i & pos) {}
-    virtual void on_agent_load(Id agent_id, Id type_id, const Vec2i & pos, const Color & color) {}
+    virtual void set_glyph(ObjectHandle obj,
+                           unsigned int type_id,
+                           const Vec2i & pos,
+                           const Color & color) {}
+    virtual void move_glyph(ObjectHandle obj,
+                            const Vec2i & from,
+                            const Vec2i & to) {}
+    virtual void remove_glyph(ObjectHandle obj) {}
 
-    virtual void on_agent_move(Id agent_id, const Vec2i & from, const Vec2i & to) {}
-    virtual void on_agent_death(Id agent_id) {}
+    virtual void message(const std::string & message) {}
 
-    virtual void on_message(const std::string & message) {}
+    virtual void follow(ObjectHandle obj) {}
 
-    virtual void look_at(Id agent_id) {}
-    virtual void look_at(Vec2i pos) {}
+    virtual void clear() {}
   };
 
   extern Log log;

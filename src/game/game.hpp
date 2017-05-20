@@ -37,8 +37,8 @@ namespace game {
     void set_size(unsigned int w, unsigned int h);
     void set_tile(Vec2i pos, unsigned int id);
 
-    void create_hero(Vec2i pos);
-    void create_badguy(Vec2i pos);
+    ObjectHandle create_hero(Vec2i pos);
+    ObjectHandle create_badguy(Vec2i pos);
 
     private:
     class PartFactory : public BasePartFactory {
@@ -75,6 +75,10 @@ namespace game {
     std::vector<View *> global_views;
     // only see what their associated object sees
     std::vector<ObjectView> object_views;
+
+    // Its big, it's heavy, it's wood
+    Log log;
+    // Better than bad, it's good!
   };
 }
 
