@@ -84,28 +84,10 @@ MuhView muh_view;
 
 Vec2i mouse_tile;
 
-game::ObjectHandle player_obj;
-
+bool is_player_turn = false;
 void step_game() {
   printf("step_game()\n");
-  while(true) {
-    auto obj = muh_world.tick_until_turn(200);
-    if(obj) {
-      auto result = muh_world.is_player_controlled(obj);
-      if(result.first) {
-        player_obj = obj;
-        printf("[%s]'s turn (player %u)\n", player_obj.str().c_str(), result.second);
-        break;
-      } else {
-        player_obj = game::ObjectHandle();
-        printf("AI turn\n");
-        muh_world.ai_turn(obj);
-      }
-    } else {
-      printf("No turn\n");
-      break;
-    }
-  }
+  is_player_turn = muh_world.tick_until_player_turn(200).first;
 }
 
 void update() {
@@ -121,23 +103,21 @@ void update() {
         quit_signal = true;
         return;
       }
-      if(player_obj) {
+      if(is_player_turn) {
         grid_world.skip_animations();
-
-        printf("Move\n");
 
         // game::*() functions only return once it's the player's turn
         if(event.key.keysym.sym == SDLK_w) {
-          muh_world.move_attack_turn(player_obj, Vec2i( 0, -1));
+          muh_world.player_move_attack(Vec2i( 0, -1));
           step_game();
         } else if(event.key.keysym.sym == SDLK_a) {
-          muh_world.move_attack_turn(player_obj, Vec2i(-1,  0));
+          muh_world.player_move_attack(Vec2i(-1,  0));
           step_game();
         } else if(event.key.keysym.sym == SDLK_s) {
-          muh_world.move_attack_turn(player_obj, Vec2i( 0,  1));
+          muh_world.player_move_attack(Vec2i( 0,  1));
           step_game();
         } else if(event.key.keysym.sym == SDLK_d) {
-          muh_world.move_attack_turn(player_obj, Vec2i( 1,  0));
+          muh_world.player_move_attack(Vec2i( 1,  0));
           step_game();
           /*
         } else if(event.key.keysym.sym == SDLK_COMMA ||
@@ -150,7 +130,8 @@ void update() {
       }
     }
   }
-  if(!player_obj && grid_world.are_animations_finished()) {
+
+  if(is_player_turn == false && grid_world.are_animations_finished()) {
     step_game();
   }
 
@@ -247,13 +228,18 @@ int main(int argc, char ** argv) {
 
       auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
 
-      muh_world.set_size(10, 10);
-      muh_world.set_tile(Vec2i(0, 0), 1);
-      muh_world.set_tile(Vec2i(1, 1), 2);
-      muh_world.set_tile(Vec2i(2, 2), 1);
-      muh_world.set_tile(Vec2i(3, 3), 2);
+      muh_world.set_size(30, 30);
+      for(unsigned int j = 0 ; j < 30 ; j ++) {
+        for(unsigned int i = 0 ; i < 30 ; i ++) {
+          if(rand() % 5 == 0) {
+            muh_world.set_tile(Vec2i(i, j), 1);
+          } else {
+            muh_world.set_tile(Vec2i(i, j), 2);
+          }
+        }
+      }
 
-      muh_world.create_badguy(Vec2i(2, 2));
+      muh_world.create_badguy(Vec2i(2, 2), hero_obj);
 
       muh_world.add_view(&muh_view, hero_obj);
 

@@ -259,6 +259,16 @@ namespace game {
       return false;
     }
 
+    template <typename Fn>
+    bool has_any_with(const std::vector<unsigned int> & part_class_ids, Fn fn) const {
+      for(auto & kvpair : objects2) {
+        if(kvpair.second.has_all(part_class_ids) && fn(*this, ObjectHandle(kvpair.first))) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     std::vector<std::string> serialize(ObjectHandle obj) const {
       auto it = objects2.find(obj.id());
 

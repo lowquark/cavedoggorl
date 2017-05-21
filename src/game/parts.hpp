@@ -123,12 +123,26 @@ namespace game {
     }
   };
   struct AIControlPart : public PartHelper<AIControlPart> {
+    std::vector<Vec2i> path;
+    ObjectHandle kill_obj;
+
     AIControlPart(const std::string & data) {
       std::stringstream ss(data);
 
       std::string name;
       ss >> name;
       assert(name == "AIControl");
+
+      unsigned int kill_obj;
+      ss >> kill_obj;
+
+      this->kill_obj = ObjectHandle(kill_obj);
+    }
+
+    static std::string state(ObjectHandle kill_obj) {
+      std::stringstream ss;
+      ss << "AIControl " << kill_obj.id();
+      return ss.str();
     }
   };
 }

@@ -2,6 +2,7 @@
 #include "game.hpp"
 
 #include <game/parts.hpp>
+#include <game/AStar.hpp>
 #include <util/Map.hpp>
 #include <util/serial.hpp>
 
@@ -107,67 +108,39 @@ namespace game {
   */
 
   // World public
-  ObjectHandle World::tick_until_turn(unsigned int max_ticks) {
+  std::pair<bool, unsigned int> World::tick_until_player_turn(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto objs_with_turn = objs_with_turn_this_tick();
 
       if(!objs_with_turn.empty()) {
-        return objs_with_turn.front();
+        auto obj = objs_with_turn.front();
+
+        auto player_control_part = get_part<PlayerControlPart>(uni, obj);
+        if(player_control_part) {
+          return std::pair<bool, unsigned int>(true, player_control_part->player_id);
+        } else {
+          ai_turn(obj);
+        }
       }
 
       tick();
     }
 
-    return ObjectHandle();
-  }
-
-  // returns true, and the controller id if the entity is player controlled.
-  // returns false and an unspecified controller id otherwise
-  std::pair<bool, unsigned int> World::is_player_controlled(ObjectHandle obj) const {
-    auto player_control_part = get_part<PlayerControlPart>(uni, obj);
-    if(player_control_part) {
-      return std::pair<bool, unsigned int>(true, player_control_part->player_id);
-    }
     return std::pair<bool, unsigned int>(false, 0);
   }
-  // executes an automatic turn, defaults to wait in the case of no AI
-  void World::ai_turn(ObjectHandle obj) {
-    printf("[%s]'s turn\n", obj.str().c_str());
 
-    auto agent_part = get_part<AgentPart>(uni, obj);
-    if(agent_part) {
-      auto ai_control_part = get_part<AIControlPart>(uni, obj);
-      if(ai_control_part) {
-        // do something based on ai's desired action
-        move_attack_turn(obj, Vec2i(1, 0));
-      } else {
-        wait_turn(obj);
-      }
+  void World::player_move_attack(Vec2i delta) {
+    auto player_obj = get_player();
+
+    if(player_obj) {
+      move_attack_turn(player_obj, delta);
     }
   }
+  void World::player_wait() {
+    auto player_obj = get_player();
 
-  void World::wait_turn(ObjectHandle obj) {
-  }
-  // returns false if there is an obstacle in the way, and it is not
-  // destructible
-  bool World::move_attack_turn(ObjectHandle obj, Vec2i delta) {
-    // find a means of locomotion (just modify spatial position for now)
-    auto spatial_part = get_part<SpatialPart>(uni, obj);
-    if(spatial_part) {
-      Vec2i old_pos = spatial_part->pos;
-      Vec2i new_pos = spatial_part->pos + delta;
-      spatial_part->pos = new_pos;
-
-      notify_move(obj, old_pos, new_pos);
-
-      auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
-      if(turn_taker_part) {
-        turn_taker_part->wait_time += 10;
-      }
-
-      return true;
-    } else {
-      return false;
+    if(player_obj) {
+      wait_turn(player_obj);
     }
   }
 
@@ -231,13 +204,13 @@ namespace game {
     notify_spawn(obj);
     return obj;
   }
-  ObjectHandle World::create_badguy(Vec2i pos) {
+  ObjectHandle World::create_badguy(Vec2i pos, ObjectHandle kill_obj) {
     auto obj = uni.create_object({
       "Glyph 1 200 0 0",
       SpatialPart::state(pos),
       "TurnTaker 10",
       "Agent",
-      "AIControl",
+      AIControlPart::state(kill_obj),
     });
     notify_spawn(obj);
     return obj;
@@ -247,6 +220,14 @@ namespace game {
   template <typename T>
   static Part * ctor(const std::string & data) {
     return new T(data);
+  }
+  World::PartFactory::PartFactory() {
+    ctors["Glyph"]         = ctor<GlyphPart>;
+    ctors["Spatial"]       = ctor<SpatialPart>;
+    ctors["TurnTaker"]     = ctor<TurnTakerPart>;
+    ctors["Agent"]         = ctor<AgentPart>;
+    ctors["PlayerControl"] = ctor<PlayerControlPart>;
+    ctors["AIControl"]     = ctor<AIControlPart>;
   }
   Part * World::PartFactory::create(const std::string & data) {
     std::stringstream ss(data);
@@ -263,13 +244,99 @@ namespace game {
   void World::PartFactory::destroy(Part * p) {
     delete p;
   }
-  World::PartFactory::PartFactory() {
-    ctors["Glyph"]         = ctor<GlyphPart>;
-    ctors["Spatial"]       = ctor<SpatialPart>;
-    ctors["TurnTaker"]     = ctor<TurnTakerPart>;
-    ctors["Agent"]         = ctor<AgentPart>;
-    ctors["PlayerControl"] = ctor<PlayerControlPart>;
-    ctors["AIControl"]     = ctor<AIControlPart>;
+
+  bool World::is_passable(Vec2i pos) {
+    bool obstructed = uni.has_any_with({ SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        return spatial_part->pos == pos;
+      }
+    );
+    return !obstructed && tiles.get(pos) == 2;
+  }
+  void World::wait_turn(ObjectHandle obj) {
+    auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
+    if(turn_taker_part) {
+      turn_taker_part->wait_time += 10;
+    }
+  }
+  // returns false if there is an obstacle in the way, and it is not
+  // destructible
+  void World::move_attack_turn(ObjectHandle obj, Vec2i delta) {
+    // find a means of locomotion (just modify spatial position for now)
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+    if(spatial_part) {
+      Vec2i old_pos = spatial_part->pos;
+      Vec2i new_pos = spatial_part->pos + delta;
+
+      if(is_passable(new_pos)) {
+        spatial_part->pos = new_pos;
+        notify_move(obj, old_pos, new_pos);
+      }
+
+      auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
+      if(turn_taker_part) {
+        turn_taker_part->wait_time += 10;
+      }
+    }
+  }
+
+  ObjectHandle World::get_player() {
+    auto objs_with_turn = objs_with_turn_this_tick();
+
+    if(!objs_with_turn.empty()) {
+      auto obj = objs_with_turn.front();
+
+      auto player_control_part = get_part<PlayerControlPart>(uni, obj);
+      if(player_control_part) {
+        return obj;
+      }
+    }
+
+    return ObjectHandle();
+  }
+
+  // executes an automatic turn, defaults to wait in the case of no AI
+  void World::ai_turn(ObjectHandle obj) {
+    printf("%s: %s\n", __PRETTY_FUNCTION__, obj.str().c_str());
+
+    auto agent_part = get_part<AgentPart>(uni, obj);
+    if(agent_part) {
+      auto ai_control_part = get_part<AIControlPart>(uni, obj);
+      auto spatial_part = get_part<SpatialPart>(uni, obj);
+      if(ai_control_part && spatial_part) {
+        // do something based on ai's desired action
+        auto spatial_part_kill = get_part<SpatialPart>(uni, ai_control_part->kill_obj);
+
+        if(spatial_part_kill) {
+          // search and destroy
+          Map<unsigned int> cost_map(tiles.w(), tiles.h());
+          for(unsigned int y = 0 ; y < tiles.h() ; y ++) {
+            for(unsigned int x = 0 ; x < tiles.w() ; x ++) {
+              Vec2i pos(x, y);
+              if(is_passable(pos)) {
+                cost_map.set(pos, 0);
+              } else {
+                cost_map.set(pos, 100);
+              }
+            }
+          }
+          DoAStar4(ai_control_part->path,
+                   cost_map,
+                   spatial_part->pos,
+                   spatial_part_kill->pos);
+
+          if(ai_control_part->path.size() > 1) {
+            move_attack_turn(obj, ai_control_part->path[1] - spatial_part->pos);
+          }
+        } else {
+          // "wander"
+          wait_turn(obj);
+        }
+      } else {
+        wait_turn(obj);
+      }
+    }
   }
 
   void World::update_view(ObjectView view) {
