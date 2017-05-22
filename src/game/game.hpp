@@ -8,11 +8,169 @@
 #include <util/Vec2.hpp>
 
 namespace game {
-  struct AgentPart;
+  struct Space {
+    Map<unsigned int> tiles;
+    Map<ObjectHandle> agents;
+    Map<ObjectHandle> items;
+  };
+
+  class WorldResizeHandler {
+    public:
+    virtual void on_world_resize(unsigned int w, unsigned int h) = 0;
+  };
+  class TileUpdateHandler {
+    public:
+    virtual void on_tile_update(Vec2i pos, unsigned int new_val) = 0;
+  };
+  class SpawnHandler {
+    public:
+    virtual void on_spawn(ObjectHandle obj) = 0;
+  };
+  class DespawnHandler {
+    public:
+    virtual void on_despawn(ObjectHandle obj) = 0;
+  };
+  class MoveHandler {
+    public:
+    virtual void on_move(ObjectHandle obj, Vec2i from, Vec2i to) = 0;
+  };
+  class FOVUpdateHandler {
+    public:
+    virtual void on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) = 0;
+  };
+
+  // Systems exist to split up the code in World
+  class ViewSys : public WorldResizeHandler,
+                  public TileUpdateHandler,
+                  public SpawnHandler,
+                  public DespawnHandler,
+                  public MoveHandler,
+                  public FOVUpdateHandler {
+    public:
+    ViewSys(Universe & uni, Space & space) : uni(uni), space(space) {}
+
+    void on_spawn(ObjectHandle obj) override;
+    void on_despawn(ObjectHandle obj) override;
+    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override;
+    void on_world_resize(unsigned int w, unsigned int h) override;
+    void on_tile_update(Vec2i pos, unsigned int new_val) override;
+    void on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) override;
+
+    // adds and initializes a global view
+    void add_view(View * view);
+    void remove_view(View * view);
+    // adds and initializes a view with a particular perspective
+    void add_view(ObjectHandle obj, View * view);
+    void remove_view(ObjectHandle obj, View * view);
+
+    private:
+    struct ObjectView {
+      ObjectHandle object;
+      View * view = nullptr;
+
+      bool visible(Vec2i pos) const { return true; }
+    };
+
+    Universe & uni;
+    Space & space;
+
+    // see everything
+    std::vector<View *> global_views;
+    // only see what their associated object sees
+    std::vector<ObjectView> object_views;
+
+    void update_view(ObjectView view);
+    void update_view(View * view);
+  };
+
+  class FOVSys : public MoveHandler {
+    public:
+    typedef std::vector<FOVUpdateHandler *> FOVUpdateHandlerList;
+
+    FOVSys(Universe & uni, const FOVUpdateHandlerList & fov_update_handlers)
+      : uni(uni)
+      , fov_update_handlers(fov_update_handlers)
+    {}
+
+    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override {
+      printf("%s\n", __PRETTY_FUNCTION__);
+    }
+
+    private:
+    Universe & uni;
+    FOVUpdateHandlerList fov_update_handlers;
+  };
+  class DijkstraSys : public MoveHandler {
+    public:
+    DijkstraSys(Universe & uni)
+      : uni(uni)
+    {}
+
+    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override {
+      printf("%s\n", __PRETTY_FUNCTION__);
+    }
+
+    private:
+    Universe & uni;
+  };
+
+  class PhysicsSys {
+    public:
+    typedef std::vector<MoveHandler *> MoveHandlerList;
+
+    PhysicsSys(Universe & uni, Space & space, const MoveHandlerList & move_handlers)
+      : uni(uni)
+      , space(space)
+      , move_handlers(move_handlers)
+    {}
+
+    bool can_move(ObjectHandle obj, Vec2i delta) {
+      printf("%s\n", __PRETTY_FUNCTION__);
+      return true;
+    }
+    unsigned int move(ObjectHandle obj, Vec2i delta);
+    unsigned int hit(ObjectHandle obj, Vec2i delta) {
+      printf("%s\n", __PRETTY_FUNCTION__);
+      return 10;
+    }
+
+    bool is_passable(Vec2i pos);
+
+    std::vector<Vec2i> find_path(Vec2i from, Vec2i to);
+
+    private:
+    Universe & uni;
+    Space & space;
+
+    MoveHandlerList move_handlers;
+
+    void notify_move(ObjectHandle obj, Vec2i from, Vec2i to);
+  };
+  class AISys {
+    public:
+    AISys(Universe & uni, PhysicsSys & phys_sys, DijkstraSys & dijkstra_sys)
+      : uni(uni)
+      , phys_sys(phys_sys)
+      , dijkstra_sys(dijkstra_sys) {}
+
+    unsigned int on_turn(ObjectHandle obj);
+
+    private:
+    Universe & uni;
+    PhysicsSys & phys_sys;
+    DijkstraSys & dijkstra_sys;
+  };
 
   class World {
     public:
-    World() : uni(factory) {}
+    World()
+      : uni(factory)
+      , ai_sys(uni, phys_sys, dijkstra_sys)
+      , phys_sys(uni, space, { &fov_sys, &dijkstra_sys, &view_sys })
+      , fov_sys(uni, { &view_sys })
+      , dijkstra_sys(uni)
+      , view_sys(uni, space)
+    {}
 
     // returns true, and the player's id if a player's turn
     // has been reached before `max_ticks` # of ticks have been exceeded
@@ -21,9 +179,7 @@ namespace game {
     void player_move_attack(Vec2i delta);
     void player_wait();
 
-    // adds a global view, updates to current state
     void add_view(View * view);
-    // adds a view with a particular perspective, updates to current state
     void add_view(View * view, ObjectHandle obj);
 
     void set_size(unsigned int w, unsigned int h);
@@ -41,41 +197,21 @@ namespace game {
       virtual void destroy(Part * p) override;
     };
 
-    struct ObjectView {
-      View * view = nullptr;
-      ObjectHandle object;
+    PartFactory factory;
+    Universe uni;
+    Space space;
 
-      bool visible(Vec2i pos) const { return true; }
-    };
-
-    bool is_passable(Vec2i pos);
-    void wait_turn(ObjectHandle obj);
-    void move_attack_turn(ObjectHandle obj, Vec2i delta);
-
-    // executes an automatic turn, defaults to wait in the case of no AI
-    void ai_turn(ObjectHandle obj);
+    AISys ai_sys;
+    PhysicsSys phys_sys;
+    FOVSys fov_sys;
+    DijkstraSys dijkstra_sys;
+    ViewSys view_sys;
 
     ObjectHandle get_player();
 
-    void update_view(ObjectView view);
-    void update_view(View * view);
-
-    void notify_spawn(ObjectHandle obj);
-    void notify_despawn(ObjectHandle obj);
-    void notify_move(ObjectHandle obj, Vec2i from, Vec2i to);
-
-    // the world does all the things
     std::vector<ObjectHandle> objs_with_turn_this_tick() const;
+
     void tick();
-
-    PartFactory factory;
-    Universe uni;
-    Map<unsigned int> tiles;
-
-    // see everything
-    std::vector<View *> global_views;
-    // only see what their associated object sees
-    std::vector<ObjectView> object_views;
 
     // Its big, it's heavy, it's wood
     Log log;

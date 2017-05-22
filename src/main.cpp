@@ -189,6 +189,9 @@ void run() {
 Log main_log;
 
 int main(int argc, char ** argv) {
+  int a;
+  std::vector<int *> my_vec{&a};
+
   // I hate these
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
@@ -228,6 +231,8 @@ int main(int argc, char ** argv) {
 
       auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
 
+      muh_world.add_view(&muh_view, hero_obj);
+
       muh_world.set_size(30, 30);
       for(unsigned int j = 0 ; j < 30 ; j ++) {
         for(unsigned int i = 0 ; i < 30 ; i ++) {
@@ -240,8 +245,6 @@ int main(int argc, char ** argv) {
       }
 
       muh_world.create_badguy(Vec2i(2, 2), hero_obj);
-
-      muh_world.add_view(&muh_view, hero_obj);
 
       //muh_game.create_new();
       //muh_game.save("asdf");

@@ -19,6 +19,214 @@ extern "C" {
 */
 
 namespace game {
+  void ViewSys::on_spawn(ObjectHandle obj) {
+    // notify player agents who can see this object
+    auto glyph_part = get_part<GlyphPart>(uni, obj);
+    if(glyph_part) {
+      auto spatial_part = get_part<SpatialPart>(uni, obj);
+      if(spatial_part) {
+        for(auto & v : object_views) {
+          if(v.visible(spatial_part->pos)) {
+            v.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+          }
+        }
+        for(auto & v : global_views) {
+          v->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+        }
+      }
+    }
+  }
+  void ViewSys::on_despawn(ObjectHandle obj) {
+  }
+  void ViewSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    for(auto & v : object_views) {
+      if(v.visible(from) || v.visible(to)) {
+        v.view->move_glyph(obj.id(), from, to);
+      }
+    }
+    for(auto & v : global_views) {
+      v->move_glyph(obj.id(), from, to);
+    }
+  }
+  void ViewSys::on_world_resize(unsigned int w, unsigned int h) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    for(auto & v : object_views) {
+      v.view->set_world_size(w, h);
+    }
+    for(auto & v : global_views) {
+      v->set_world_size(w, h);
+    }
+  }
+  void ViewSys::on_tile_update(Vec2i pos, unsigned int new_val) {
+    //printf("%s\n", __PRETTY_FUNCTION__);
+    for(auto & v : object_views) {
+      if(v.visible(pos)) {
+        v.view->set_tile(pos, new_val);
+      }
+    }
+    for(auto & v : global_views) {
+      v->set_tile(pos, new_val);
+    }
+  }
+  void ViewSys::on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    // Find owner and update their fov
+  }
+
+  // adds and initializes a global view
+  void ViewSys::add_view(View * view) {
+    // no nulls
+    assert(view);
+    // no dups
+    for(auto & v : global_views) { if(v == view) { return; } }
+    for(auto & v : object_views) { if(v.view == view) { return; } }
+
+    global_views.push_back(view);
+    update_view(view);
+  }
+  // adds and initializes a view with a particular perspective
+  void ViewSys::add_view(ObjectHandle obj, View * view) {
+    // no nulls
+    assert(view);
+    assert(obj);
+    // no dups
+    for(auto & v : global_views) { if(v == view) { return; } }
+    for(auto & v : object_views) { if(v.view == view) { return; } }
+
+    ObjectView v;
+    v.view = view;
+    v.object = obj;
+    object_views.push_back(v);
+    update_view(v);
+  }
+
+  void ViewSys::update_view(ObjectView view) {
+    view.view->clear();
+    view.view->follow(view.object);
+
+    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto glyph_part = get_part<GlyphPart>(u, obj);
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        if(view.visible(spatial_part->pos)) {
+          view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+        }
+      }
+    );
+
+    view.view->set_world_size(space.tiles.w(), space.tiles.h());
+    for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
+      for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
+        Vec2i pos(i, j);
+        view.view->set_tile(pos, space.tiles.get(pos));
+      }
+    }
+  }
+  void ViewSys::update_view(View * view) {
+    view->clear();
+
+    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto glyph_part = get_part<GlyphPart>(u, obj);
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+      }
+    );
+
+    view->set_world_size(space.tiles.w(), space.tiles.h());
+    for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
+      for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
+        Vec2i pos(i, j);
+        view->set_tile(pos, space.tiles.get(pos));
+      }
+    }
+  }
+
+
+  unsigned int PhysicsSys::move(ObjectHandle obj, Vec2i delta) {
+    printf("%s, %d, %d\n", __PRETTY_FUNCTION__, delta.x, delta.y);
+
+    // find a means of locomotion (just modify spatial position for now)
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+    if(spatial_part) {
+      Vec2i old_pos = spatial_part->pos;
+      Vec2i new_pos = spatial_part->pos + delta;
+
+      if(is_passable(new_pos)) {
+        spatial_part->pos = new_pos;
+
+        notify_move(obj, old_pos, new_pos);
+      }
+    }
+
+    return 10;
+  }
+  bool PhysicsSys::is_passable(Vec2i pos) {
+    bool obstructed = uni.has_any_with({ SpatialPart::part_class },
+      [=](const Universe & u, ObjectHandle obj) {
+        auto spatial_part = get_part<SpatialPart>(u, obj);
+        return spatial_part->pos == pos;
+      }
+    );
+    return !obstructed && space.tiles.get(pos) == 2;
+  }
+  std::vector<Vec2i> PhysicsSys::find_path(Vec2i from, Vec2i to) {
+    Map<unsigned int> cost_map(space.tiles.w(), space.tiles.h());
+
+    for(unsigned int y = 0 ; y < space.tiles.h() ; y ++) {
+      for(unsigned int x = 0 ; x < space.tiles.w() ; x ++) {
+        Vec2i pos(x, y);
+        if(is_passable(pos)) {
+          cost_map.set(pos, 0);
+        } else {
+          cost_map.set(pos, 100);
+        }
+      }
+    }
+
+    std::vector<Vec2i> path;
+
+    DoAStar4(path, cost_map, from, to);
+
+    return path;
+  }
+
+  void PhysicsSys::notify_move(ObjectHandle obj, Vec2i from, Vec2i to) {
+    for(auto & h : move_handlers) {
+      h->on_move(obj, from, to);
+    }
+  }
+
+  unsigned int AISys::on_turn(ObjectHandle obj) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+
+    unsigned int wait_time = 10;
+
+    auto agent_part = get_part<AgentPart>(uni, obj);
+    if(agent_part) {
+      auto ai_control_part = get_part<AIControlPart>(uni, obj);
+      auto spatial_part = get_part<SpatialPart>(uni, obj);
+      if(ai_control_part && spatial_part) {
+        // do something based on ai's desired action
+        auto spatial_part_kill = get_part<SpatialPart>(uni, ai_control_part->kill_obj);
+
+        if(spatial_part_kill) {
+          // search and destroy
+          ai_control_part->path = phys_sys.find_path(spatial_part->pos, spatial_part_kill->pos);
+
+          if(ai_control_part->path.size() > 1) {
+            return phys_sys.move(obj, ai_control_part->path[1] - spatial_part->pos);
+          }
+        } else {
+          // "wander"
+        }
+      }
+    }
+
+    return wait_time;
+  }
+
   /*
   LevelState * generated_level_state = nullptr;
 
@@ -119,7 +327,9 @@ namespace game {
         if(player_control_part) {
           return std::pair<bool, unsigned int>(true, player_control_part->player_id);
         } else {
-          ai_turn(obj);
+          auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
+          //ai_turn(obj);
+          turn_taker_part->wait_time = ai_sys.on_turn(obj);
         }
       }
 
@@ -133,64 +343,40 @@ namespace game {
     auto player_obj = get_player();
 
     if(player_obj) {
-      move_attack_turn(player_obj, delta);
+      auto turn_taker_part = get_part<TurnTakerPart>(uni, player_obj);
+      if(turn_taker_part) {
+        turn_taker_part->wait_time = phys_sys.move(player_obj, delta);
+      }
     }
   }
   void World::player_wait() {
     auto player_obj = get_player();
 
     if(player_obj) {
-      wait_turn(player_obj);
+      auto turn_taker_part = get_part<TurnTakerPart>(uni, player_obj);
+      if(turn_taker_part) {
+        turn_taker_part->wait_time = 10;
+      }
     }
   }
 
   // adds a global view
   void World::add_view(View * view) {
-    // no nulls
-    assert(view);
-    // no dups
-    for(auto & v : global_views) { if(v == view) { return; } }
-    for(auto & v : object_views) { if(v.view == view) { return; } }
-
-    global_views.push_back(view);
-    update_view(view);
+    view_sys.add_view(view);
   }
 
   // adds a view with a particular perspective
   void World::add_view(View * view, ObjectHandle obj) {
-    // no nulls
-    assert(view);
-    assert(obj);
-    // no dups
-    for(auto & v : global_views) { if(v == view) { return; } }
-    for(auto & v : object_views) { if(v.view == view) { return; } }
-
-    ObjectView v;
-    v.view = view;
-    v.object = obj;
-    object_views.push_back(v);
-    update_view(v);
+    view_sys.add_view(obj, view);
   }
 
   void World::set_size(unsigned int w, unsigned int h) {
-    tiles.resize(w, h);
-    for(auto & v : object_views) {
-      v.view->set_world_size(w, h);
-    }
-    for(auto & v : global_views) {
-      v->set_world_size(w, h);
-    }
+    space.tiles.resize(w, h);
+    view_sys.on_world_resize(w, h);
   }
   void World::set_tile(Vec2i pos, unsigned int id) {
-    tiles.set(pos, id);
-    for(auto & v : object_views) {
-      if(v.visible(pos)) {
-        v.view->set_tile(pos, id);
-      }
-    }
-    for(auto & v : global_views) {
-      v->set_tile(pos, id);
-    }
+    space.tiles.set(pos, id);
+    view_sys.on_tile_update(pos, id);
   }
 
   ObjectHandle World::create_hero(Vec2i pos) {
@@ -201,7 +387,7 @@ namespace game {
       "Agent",
       "PlayerControl 1",
     });
-    notify_spawn(obj);
+    view_sys.on_spawn(obj);
     return obj;
   }
   ObjectHandle World::create_badguy(Vec2i pos, ObjectHandle kill_obj) {
@@ -212,7 +398,7 @@ namespace game {
       "Agent",
       AIControlPart::state(kill_obj),
     });
-    notify_spawn(obj);
+    view_sys.on_spawn(obj);
     return obj;
   }
 
@@ -245,42 +431,6 @@ namespace game {
     delete p;
   }
 
-  bool World::is_passable(Vec2i pos) {
-    bool obstructed = uni.has_any_with({ SpatialPart::part_class },
-      [=](const Universe & u, ObjectHandle obj) {
-        auto spatial_part = get_part<SpatialPart>(u, obj);
-        return spatial_part->pos == pos;
-      }
-    );
-    return !obstructed && tiles.get(pos) == 2;
-  }
-  void World::wait_turn(ObjectHandle obj) {
-    auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
-    if(turn_taker_part) {
-      turn_taker_part->wait_time += 10;
-    }
-  }
-  // returns false if there is an obstacle in the way, and it is not
-  // destructible
-  void World::move_attack_turn(ObjectHandle obj, Vec2i delta) {
-    // find a means of locomotion (just modify spatial position for now)
-    auto spatial_part = get_part<SpatialPart>(uni, obj);
-    if(spatial_part) {
-      Vec2i old_pos = spatial_part->pos;
-      Vec2i new_pos = spatial_part->pos + delta;
-
-      if(is_passable(new_pos)) {
-        spatial_part->pos = new_pos;
-        notify_move(obj, old_pos, new_pos);
-      }
-
-      auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
-      if(turn_taker_part) {
-        turn_taker_part->wait_time += 10;
-      }
-    }
-  }
-
   ObjectHandle World::get_player() {
     auto objs_with_turn = objs_with_turn_this_tick();
 
@@ -294,119 +444,6 @@ namespace game {
     }
 
     return ObjectHandle();
-  }
-
-  // executes an automatic turn, defaults to wait in the case of no AI
-  void World::ai_turn(ObjectHandle obj) {
-    printf("%s: %s\n", __PRETTY_FUNCTION__, obj.str().c_str());
-
-    auto agent_part = get_part<AgentPart>(uni, obj);
-    if(agent_part) {
-      auto ai_control_part = get_part<AIControlPart>(uni, obj);
-      auto spatial_part = get_part<SpatialPart>(uni, obj);
-      if(ai_control_part && spatial_part) {
-        // do something based on ai's desired action
-        auto spatial_part_kill = get_part<SpatialPart>(uni, ai_control_part->kill_obj);
-
-        if(spatial_part_kill) {
-          // search and destroy
-          Map<unsigned int> cost_map(tiles.w(), tiles.h());
-          for(unsigned int y = 0 ; y < tiles.h() ; y ++) {
-            for(unsigned int x = 0 ; x < tiles.w() ; x ++) {
-              Vec2i pos(x, y);
-              if(is_passable(pos)) {
-                cost_map.set(pos, 0);
-              } else {
-                cost_map.set(pos, 100);
-              }
-            }
-          }
-          DoAStar4(ai_control_part->path,
-                   cost_map,
-                   spatial_part->pos,
-                   spatial_part_kill->pos);
-
-          if(ai_control_part->path.size() > 1) {
-            move_attack_turn(obj, ai_control_part->path[1] - spatial_part->pos);
-          }
-        } else {
-          // "wander"
-          wait_turn(obj);
-        }
-      } else {
-        wait_turn(obj);
-      }
-    }
-  }
-
-  void World::update_view(ObjectView view) {
-    view.view->clear();
-    view.view->follow(view.object);
-
-    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
-      [=](const Universe & u, ObjectHandle obj) {
-        auto glyph_part = get_part<GlyphPart>(u, obj);
-        auto spatial_part = get_part<SpatialPart>(u, obj);
-        if(view.visible(spatial_part->pos)) {
-          view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-        }
-      }
-    );
-
-    view.view->set_world_size(tiles.w(), tiles.h());
-    for(unsigned int j = 0 ; j < tiles.h() ; j ++) {
-      for(unsigned int i = 0 ; i < tiles.w() ; i ++) {
-        Vec2i pos(i, j);
-        view.view->set_tile(pos, tiles.get(pos));
-      }
-    }
-  }
-  void World::update_view(View * view) {
-    view->clear();
-
-    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
-      [=](const Universe & u, ObjectHandle obj) {
-        auto glyph_part = get_part<GlyphPart>(u, obj);
-        auto spatial_part = get_part<SpatialPart>(u, obj);
-        view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-      }
-    );
-
-    view->set_world_size(tiles.w(), tiles.h());
-    for(unsigned int j = 0 ; j < tiles.h() ; j ++) {
-      for(unsigned int i = 0 ; i < tiles.w() ; i ++) {
-        Vec2i pos(i, j);
-        view->set_tile(pos, tiles.get(pos));
-      }
-    }
-  }
-
-  void World::notify_spawn(ObjectHandle obj) {
-    // notify player agents who can see this object
-    auto glyph_part = get_part<GlyphPart>(uni, obj);
-    if(glyph_part) {
-      auto spatial_part = get_part<SpatialPart>(uni, obj);
-      if(spatial_part) {
-        for(auto & v : object_views) {
-          if(v.visible(spatial_part->pos)) {
-            v.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-          }
-        }
-        for(auto & v : global_views) {
-          v->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-        }
-      }
-    }
-  }
-  void World::notify_move(ObjectHandle obj, Vec2i from, Vec2i to) {
-    for(auto & v : object_views) {
-      if(v.visible(from) || v.visible(to)) {
-        v.view->move_glyph(obj.id(), from, to);
-      }
-    }
-    for(auto & v : global_views) {
-      v->move_glyph(obj.id(), from, to);
-    }
   }
 
   std::vector<ObjectHandle> World::objs_with_turn_this_tick() const {
