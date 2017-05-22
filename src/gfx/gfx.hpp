@@ -58,6 +58,8 @@ namespace gfx {
     void set_size(Vec2u size);
     // sets a given tile
     void set_tile(const Vec2i & pos, unsigned int type_id);
+    // clears a given tile
+    void clear_tile(const Vec2i & pos);
 
     // creates an agent sprite
     void add_agent(unsigned int agent_id, unsigned int type_id, const Vec2i & pos, const Color & color);

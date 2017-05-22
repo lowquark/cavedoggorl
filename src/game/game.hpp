@@ -10,6 +10,7 @@
 namespace game {
   struct Space {
     Map<unsigned int> tiles;
+    Map<unsigned int> opaque;
     Map<ObjectHandle> agents;
     Map<ObjectHandle> items;
   };
@@ -36,7 +37,7 @@ namespace game {
   };
   class FOVUpdateHandler {
     public:
-    virtual void on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) = 0;
+    virtual void on_fov_update(ObjectHandle obj) = 0;
   };
 
   // Systems exist to split up the code in World
@@ -54,7 +55,7 @@ namespace game {
     void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override;
     void on_world_resize(unsigned int w, unsigned int h) override;
     void on_tile_update(Vec2i pos, unsigned int new_val) override;
-    void on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) override;
+    void on_fov_update(ObjectHandle obj) override;
 
     // adds and initializes a global view
     void add_view(View * view);
@@ -79,25 +80,32 @@ namespace game {
     // only see what their associated object sees
     std::vector<ObjectView> object_views;
 
-    void update_view(ObjectView view);
-    void update_view(View * view);
+    FOV * get_fov(ObjectView view) const;
+    bool is_visible(ObjectView view, Vec2i pos) const;
+
+    void full_update(ObjectView view);
+    void full_update(View * view);
+
+    void fov_update(ObjectView view);
+    void fov_update(View * view);
   };
 
-  class FOVSys : public MoveHandler {
+  class FOVSys : public SpawnHandler, public MoveHandler {
     public:
     typedef std::vector<FOVUpdateHandler *> FOVUpdateHandlerList;
 
-    FOVSys(Universe & uni, const FOVUpdateHandlerList & fov_update_handlers)
+    FOVSys(Universe & uni, const Space & space, const FOVUpdateHandlerList & fov_update_handlers)
       : uni(uni)
+      , space(space)
       , fov_update_handlers(fov_update_handlers)
     {}
 
-    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override {
-      printf("%s\n", __PRETTY_FUNCTION__);
-    }
+    void on_spawn(ObjectHandle obj) override;
+    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override;
 
     private:
     Universe & uni;
+    const Space & space;
     FOVUpdateHandlerList fov_update_handlers;
   };
   class DijkstraSys : public MoveHandler {
@@ -167,7 +175,7 @@ namespace game {
       : uni(factory)
       , ai_sys(uni, phys_sys, dijkstra_sys)
       , phys_sys(uni, space, { &fov_sys, &dijkstra_sys, &view_sys })
-      , fov_sys(uni, { &view_sys })
+      , fov_sys(uni, space, { &view_sys })
       , dijkstra_sys(uni)
       , view_sys(uni, space)
     {}

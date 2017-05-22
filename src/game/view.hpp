@@ -8,20 +8,27 @@
 #include <util/Vec2.hpp>
 #include <game/core.hpp>
 #include <game/Color.hpp>
+#include <game/FOV.hpp>
 
 namespace game {
+  struct ViewState {
+  };
+
   struct View {
     virtual void set_world_size(unsigned int tiles_x, unsigned int tiles_y) {}
     virtual void set_tile(const Vec2i & pos, unsigned int type_id) {}
+    virtual void clear_tile(const Vec2i & pos) {}
+
+    virtual void set_fov(const FOV & fov) {}
 
     virtual void set_glyph(ObjectHandle obj,
                            unsigned int type_id,
                            const Vec2i & pos,
                            const Color & color) {}
+    virtual void clear_glyph(ObjectHandle obj) {}
     virtual void move_glyph(ObjectHandle obj,
                             const Vec2i & from,
                             const Vec2i & to) {}
-    virtual void remove_glyph(ObjectHandle obj) {}
 
     virtual void message(const std::string & message) {}
 
@@ -29,8 +36,6 @@ namespace game {
 
     virtual void clear() {}
   };
-
-  extern Log log;
 }
 
 #endif

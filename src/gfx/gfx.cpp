@@ -165,6 +165,9 @@ namespace gfx {
     sprite.type_id = type_id;
     tile_sprites.set(pos, sprite);
   }
+  void GridWorld::clear_tile(const Vec2i & pos) {
+    tile_sprites.set(pos, TileSprite());
+  }
   void GridWorld::add_agent(unsigned int agent_id, unsigned int type_id, const Vec2i & pos, const Color & color) {
     AgentSprite sprite;
     sprite.type_id = type_id;

@@ -26,7 +26,7 @@ namespace game {
       auto spatial_part = get_part<SpatialPart>(uni, obj);
       if(spatial_part) {
         for(auto & v : object_views) {
-          if(v.visible(spatial_part->pos)) {
+          if(is_visible(v, spatial_part->pos)) {
             v.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
           }
         }
@@ -41,7 +41,7 @@ namespace game {
   void ViewSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
     for(auto & v : object_views) {
-      if(v.visible(from) || v.visible(to)) {
+      if(is_visible(v, from) || is_visible(v, to)) {
         v.view->move_glyph(obj.id(), from, to);
       }
     }
@@ -61,7 +61,7 @@ namespace game {
   void ViewSys::on_tile_update(Vec2i pos, unsigned int new_val) {
     //printf("%s\n", __PRETTY_FUNCTION__);
     for(auto & v : object_views) {
-      if(v.visible(pos)) {
+      if(is_visible(v, pos)) {
         v.view->set_tile(pos, new_val);
       }
     }
@@ -69,9 +69,19 @@ namespace game {
       v->set_tile(pos, new_val);
     }
   }
-  void ViewSys::on_fov_update(ObjectHandle obj, Vec2i pos, const Map<bool> & visible) {
+  void ViewSys::on_fov_update(ObjectHandle obj) {
     printf("%s\n", __PRETTY_FUNCTION__);
-    // Find owner and update their fov
+
+    auto agent_part = get_part<AgentPart>(uni, obj);
+
+    if(agent_part) {
+      // Find owner and update their fov
+      for(auto & v : object_views) {
+        if(v.object == obj) {
+          v.view->set_fov(agent_part->fov);
+        }
+      }
+    }
   }
 
   // adds and initializes a global view
@@ -83,7 +93,8 @@ namespace game {
     for(auto & v : object_views) { if(v.view == view) { return; } }
 
     global_views.push_back(view);
-    update_view(view);
+
+    full_update(view);
   }
   // adds and initializes a view with a particular perspective
   void ViewSys::add_view(ObjectHandle obj, View * view) {
@@ -98,34 +109,57 @@ namespace game {
     v.view = view;
     v.object = obj;
     object_views.push_back(v);
-    update_view(v);
+
+    full_update(v);
   }
 
-  void ViewSys::update_view(ObjectView view) {
-    view.view->clear();
-    view.view->follow(view.object);
-
-    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
-      [=](const Universe & u, ObjectHandle obj) {
-        auto glyph_part = get_part<GlyphPart>(u, obj);
-        auto spatial_part = get_part<SpatialPart>(u, obj);
-        if(view.visible(spatial_part->pos)) {
-          view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-        }
-      }
-    );
-
-    view.view->set_world_size(space.tiles.w(), space.tiles.h());
-    for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
-      for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
-        Vec2i pos(i, j);
-        view.view->set_tile(pos, space.tiles.get(pos));
-      }
+  FOV * ViewSys::get_fov(ObjectView view) const {
+    auto agent_part = get_part<AgentPart>(uni, view.object);
+    if(agent_part) {
+      return &agent_part->fov;
+    } else {
+      return nullptr;
     }
   }
-  void ViewSys::update_view(View * view) {
-    view->clear();
+  bool ViewSys::is_visible(ObjectView view, Vec2i pos) const {
+    FOV * fov = get_fov(view);
+    if(fov) {
+      return fov->is_visible(pos);
+    } else {
+      return false;
+    }
+  }
 
+  void ViewSys::full_update(ObjectView view) {
+    view.view->clear();
+
+    auto fov = get_fov(view);
+    if(fov) {
+      uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+        [=](const Universe & u, ObjectHandle obj) {
+          auto glyph_part = get_part<GlyphPart>(u, obj);
+          auto spatial_part = get_part<SpatialPart>(u, obj);
+          if(fov->is_visible(spatial_part->pos)) {
+            view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+          }
+        }
+      );
+
+      view.view->set_world_size(space.tiles.w(), space.tiles.h());
+      for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
+        for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
+          Vec2i pos(i, j);
+          if(fov->is_visible(pos)) {
+            view.view->set_tile(pos, space.tiles.get(pos));
+          }
+        }
+      }
+    }
+
+    view.view->follow(view.object);
+  }
+  void ViewSys::full_update(View * view) {
+    view->clear();
     uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
       [=](const Universe & u, ObjectHandle obj) {
         auto glyph_part = get_part<GlyphPart>(u, obj);
@@ -140,6 +174,55 @@ namespace game {
         Vec2i pos(i, j);
         view->set_tile(pos, space.tiles.get(pos));
       }
+    }
+  }
+
+
+  void FOVSys::on_spawn(ObjectHandle obj) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto agent_part = get_part<AgentPart>(uni, obj);
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+
+    if(agent_part && spatial_part) {
+      agent_part->fov.update(space.opaque, spatial_part->pos, 10);
+
+      for(auto & h : fov_update_handlers) {
+        h->on_fov_update(obj);
+      }
+    }
+  }
+  void FOVSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto agent_part = get_part<AgentPart>(uni, obj);
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+
+    if(agent_part && spatial_part) {
+      agent_part->fov.update(space.opaque, spatial_part->pos, 10);
+
+      for(auto & h : fov_update_handlers) {
+        h->on_fov_update(obj);
+      }
+
+      /*
+      for(int j = 0 ; j < 21 ; j ++) {
+        for(int i = 0 ; i < 21 ; i ++) {
+          Vec2i p(i, j);
+          if(agent_part->fov.is_visible(p)) {
+            if(p == spatial_part->pos) {
+              printf("@");
+            } else if(space.opaque.get(p) == 1) {
+              printf("#");
+            } else {
+              printf(".");
+            }
+          } else {
+            printf(" ");
+          }
+        }
+        printf("\n");
+      }
+      printf("\n");
+      */
     }
   }
 
@@ -187,7 +270,7 @@ namespace game {
 
     std::vector<Vec2i> path;
 
-    DoAStar4(path, cost_map, from, to);
+    DoAStar8(path, cost_map, from, to);
 
     return path;
   }
@@ -216,7 +299,7 @@ namespace game {
           ai_control_part->path = phys_sys.find_path(spatial_part->pos, spatial_part_kill->pos);
 
           if(ai_control_part->path.size() > 1) {
-            return phys_sys.move(obj, ai_control_part->path[1] - spatial_part->pos);
+            return phys_sys.move(obj, *(ai_control_part->path.end() - 2) - spatial_part->pos);
           }
         } else {
           // "wander"
@@ -372,10 +455,16 @@ namespace game {
 
   void World::set_size(unsigned int w, unsigned int h) {
     space.tiles.resize(w, h);
+    space.opaque.resize(w, h);
     view_sys.on_world_resize(w, h);
   }
   void World::set_tile(Vec2i pos, unsigned int id) {
     space.tiles.set(pos, id);
+    if(id == 1) {
+      space.opaque.set(pos, 1);
+    } else {
+      space.opaque.set(pos, 0);
+    }
     view_sys.on_tile_update(pos, id);
   }
 
@@ -388,6 +477,7 @@ namespace game {
       "PlayerControl 1",
     });
     view_sys.on_spawn(obj);
+    fov_sys.on_spawn(obj);
     return obj;
   }
   ObjectHandle World::create_badguy(Vec2i pos, ObjectHandle kill_obj) {
@@ -399,6 +489,7 @@ namespace game {
       AIControlPart::state(kill_obj),
     });
     view_sys.on_spawn(obj);
+    fov_sys.on_spawn(obj);
     return obj;
   }
 

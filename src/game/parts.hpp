@@ -7,6 +7,7 @@
 
 #include <game/core.hpp>
 #include <game/Color.hpp>
+#include <game/FOV.hpp>
 #include <util/Vec2.hpp>
 
 namespace game {
@@ -102,6 +103,7 @@ namespace game {
   struct AgentPart : public PartHelper<AgentPart> {
     int hp = 0;
     int max_hp = 0;
+    BresenhamFOV fov;
 
     AgentPart(const std::string & data) {
     }

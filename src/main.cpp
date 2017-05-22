@@ -16,6 +16,7 @@
 
 
 #include <game/game.hpp>
+#include <game/FOV.hpp>
 #include <gfx/gfx.hpp>
 #include <util/Vec2.hpp>
 #include <util/Log.hpp>
@@ -46,6 +47,13 @@ class MuhView : public game::View {
   void set_tile(const Vec2i & pos, unsigned int type_id) override {
     grid_world.set_tile(pos, type_id);
   }
+  void clear_tile(const Vec2i & pos) override {
+    grid_world.clear_tile(pos);
+  }
+
+  void set_fov(const FOV & fov) override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+  }
 
   void set_glyph(game::ObjectHandle obj,
                  unsigned int type_id,
@@ -57,13 +65,13 @@ class MuhView : public game::View {
     gfx_color.b = (float) color.b / 255;
     grid_world.add_agent(obj.id(), type_id, pos, gfx_color);
   }
+  void clear_glyph(game::ObjectHandle obj) override {
+    grid_world.remove_agent(obj.id());
+  }
   void move_glyph(game::ObjectHandle obj,
                   const Vec2i & from,
                   const Vec2i & to) override {
     grid_world.move_agent(obj.id(), from, to);
-  }
-  void remove_glyph(game::ObjectHandle obj) override {
-    grid_world.remove_agent(obj.id());
   }
 
   void message(const std::string & message) override {
@@ -106,34 +114,50 @@ void update() {
       if(is_player_turn) {
         grid_world.skip_animations();
 
-        // game::*() functions only return once it's the player's turn
-        if(event.key.keysym.sym == SDLK_w) {
-          muh_world.player_move_attack(Vec2i( 0, -1));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_a) {
-          muh_world.player_move_attack(Vec2i(-1,  0));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_s) {
-          muh_world.player_move_attack(Vec2i( 0,  1));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_d) {
+        if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
           muh_world.player_move_attack(Vec2i( 1,  0));
           step_game();
-          /*
-        } else if(event.key.keysym.sym == SDLK_COMMA ||
-                  event.key.keysym.sym == SDLK_PERIOD) {
-          if(event.key.keysym.mod & KMOD_SHIFT) {
-            muh_world.activate_tile();
-          }
-          */
+        } else if(event.key.keysym.sym == SDLK_KP_9) {
+          muh_world.player_move_attack(Vec2i( 1, -1));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+          muh_world.player_move_attack(Vec2i( 0, -1));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_7) {
+          muh_world.player_move_attack(Vec2i(-1, -1));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+          muh_world.player_move_attack(Vec2i(-1,  0));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_1) {
+          muh_world.player_move_attack(Vec2i(-1,  1));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+          muh_world.player_move_attack(Vec2i( 0,  1));
+          step_game();
+        } else if(event.key.keysym.sym == SDLK_KP_3) {
+          muh_world.player_move_attack(Vec2i( 1,  1));
+          step_game();
         }
+
+        /*
+        if(event.key.keysym.sym == SDLK_COMMA) {
+          if(event.key.keysym.mod & KMOD_SHIFT) {
+            muh_world.player_activate_tile();
+            step_game();
+          }
+        }
+        */
       }
     }
   }
 
+  /*
   if(is_player_turn == false && grid_world.are_animations_finished()) {
+    // should prompt for continue in this case
     step_game();
   }
+  */
 
   Vec2i mouse_pos;
   SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
@@ -189,8 +213,58 @@ void run() {
 Log main_log;
 
 int main(int argc, char ** argv) {
-  int a;
-  std::vector<int *> my_vec{&a};
+  int x0 = 0;
+  int y0 = 0;
+  int x1 = 2;
+  int y1 = 1;
+
+  int dx = x1 - x0;
+  int dy = y1 - y0;
+  int y = y0, e = 0;
+
+  for(int x = x0 ; x <= x1 ; x ++) {
+    printf("x, y: %d, %d\n", x, y);
+    e += dy;
+    if(2*e >= dx) {
+      y ++;
+      e -= dx;
+    }
+  }
+
+  Vec2i origin(10, 10);
+  BresenhamFOV fov;
+  Map<unsigned int> solid(21, 21);
+
+  solid.set(Vec2i( 6,  5), 1);
+  solid.set(Vec2i( 5,  6), 1);
+  solid.set(Vec2i(11, 10), 1);
+  solid.set(Vec2i( 9, 10), 1);
+
+
+  for(int r = 5 ; r < 10 ; r ++) {
+    fov.update(solid, origin, r);
+
+    printf("r: %d\n", r);
+    for(int j = 0 ; j < 21 ; j ++) {
+      for(int i = 0 ; i < 21 ; i ++) {
+        Vec2i p(i, j);
+        if(fov.is_visible(p)) {
+          if(p == origin) {
+            printf("@");
+          } else if(solid.get(p) == 1) {
+            printf("#");
+          } else {
+            printf(".");
+          }
+        } else {
+          printf(" ");
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+
 
   // I hate these
   SDL_Init(SDL_INIT_VIDEO);
@@ -231,8 +305,6 @@ int main(int argc, char ** argv) {
 
       auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
 
-      muh_world.add_view(&muh_view, hero_obj);
-
       muh_world.set_size(30, 30);
       for(unsigned int j = 0 ; j < 30 ; j ++) {
         for(unsigned int i = 0 ; i < 30 ; i ++) {
@@ -245,6 +317,10 @@ int main(int argc, char ** argv) {
       }
 
       muh_world.create_badguy(Vec2i(2, 2), hero_obj);
+
+      step_game();
+
+      muh_world.add_view(&muh_view, hero_obj);
 
       //muh_game.create_new();
       //muh_game.save("asdf");
