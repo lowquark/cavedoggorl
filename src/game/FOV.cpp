@@ -4,6 +4,41 @@
 #include <cstdio>
 #include <algorithm>
 
+std::vector<Vec2i> FOV::sample_sparse(const Rect2i & rect) const {
+  int xstart = rect.pos.x;
+  int ystart = rect.pos.y;
+  int xend = rect.pos.x + rect.size.x;
+  int yend = rect.pos.y + rect.size.y;
+
+  std::vector<Vec2i> result;
+  for(int y = ystart ; y < yend ; y ++) {
+    for(int x = xstart ; x < xend ; x ++) {
+      Vec2i pos(x, y);
+      if(is_visible(pos)) {
+        result.push_back(pos);
+      }
+    }
+  }
+  return result;
+}
+std::vector<bool> FOV::sample(const Rect2i & rect) const {
+  int xstart = rect.pos.x;
+  int ystart = rect.pos.y;
+  int xend = rect.pos.x + rect.size.x;
+  int yend = rect.pos.y + rect.size.y;
+
+  std::vector<bool> result(rect.size.x * rect.size.y);
+
+  for(int y = ystart ; y < yend ; y ++) {
+    for(int x = xstart ; x < xend ; x ++) {
+      Vec2i pos(x, y);
+      result[x + y * rect.size.x] = is_visible(pos);
+    }
+  }
+
+  return result;
+}
+
 static float diagonal_len(Vec2i ray) {
   const float D = 1.0f;
   const float D2 = 1.414f;

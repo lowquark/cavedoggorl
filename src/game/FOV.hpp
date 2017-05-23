@@ -9,6 +9,9 @@
 class FOV {
   public:
   virtual bool is_visible(Vec2i pos) const { return false; }
+
+  std::vector<Vec2i> sample_sparse(const Rect2i & rect) const;
+  std::vector<bool> sample(const Rect2i & rect) const;
 };
 
 class GlobalFOV : public FOV {

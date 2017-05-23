@@ -41,18 +41,40 @@ gfx::WorldMessageLog message_log;
 
 
 class MuhView : public game::View {
+  Map<unsigned int> tile_type_ids;
+
+  unsigned int follow_obj_id = 0;
+
+  public:
   void set_world_size(unsigned int tiles_x, unsigned int tiles_y) override {
     grid_world.set_size(Vec2u(tiles_x, tiles_y));
+    tile_type_ids.resize(tiles_x, tiles_y);
   }
   void set_tile(const Vec2i & pos, unsigned int type_id) override {
-    grid_world.set_tile(pos, type_id);
+    tile_type_ids.set(pos, type_id);
   }
   void clear_tile(const Vec2i & pos) override {
     grid_world.clear_tile(pos);
   }
 
-  void set_fov(const FOV & fov) override {
+  void set_fov(unsigned int id, const FOV & fov) override {
     printf("%s\n", __PRETTY_FUNCTION__);
+
+    std::vector<bool> fov_sample = fov.sample(Rect2i(0, 0, tile_type_ids.w(), tile_type_ids.h()));
+
+    if(id == follow_obj_id) {
+      for(int j = 0 ; j < tile-type_ids.w() ; j ++) {
+        for(int i = 0 ; i < tile-type_ids.h() ; i ++) {
+          Vec2i pos(i, j);
+
+          if(fov.is_visible(pos)) {
+            grid_world.set_tile(pos, tile_type_ids.get(pos));
+          } else {
+            grid_world.clear_tile(pos);
+          }
+        }
+      }
+    }
   }
 
   void set_glyph(game::ObjectHandle obj,
@@ -79,6 +101,7 @@ class MuhView : public game::View {
   }
 
   void follow(game::ObjectHandle obj) override {
+    follow_obj_id = obj.id();
     grid_world.follow_agent(obj.id());
   }
 
@@ -303,8 +326,6 @@ int main(int argc, char ** argv) {
 
       //muh_world.add_view(&muh_view);
 
-      auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
-
       muh_world.set_size(30, 30);
       for(unsigned int j = 0 ; j < 30 ; j ++) {
         for(unsigned int i = 0 ; i < 30 ; i ++) {
@@ -316,11 +337,14 @@ int main(int argc, char ** argv) {
         }
       }
 
+      auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
+
       muh_world.create_badguy(Vec2i(2, 2), hero_obj);
 
       step_game();
 
-      muh_world.add_view(&muh_view, hero_obj);
+      muh_view.follow(hero_obj.id());
+      muh_world.set_view(&muh_view);
 
       //muh_game.create_new();
       //muh_game.save("asdf");

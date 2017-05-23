@@ -19,161 +19,74 @@ extern "C" {
 */
 
 namespace game {
-  void ViewSys::on_spawn(ObjectHandle obj) {
-    // notify player agents who can see this object
-    auto glyph_part = get_part<GlyphPart>(uni, obj);
-    if(glyph_part) {
-      auto spatial_part = get_part<SpatialPart>(uni, obj);
-      if(spatial_part) {
-        for(auto & v : object_views) {
-          if(is_visible(v, spatial_part->pos)) {
-            v.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-          }
+  // adds and initializes a global view
+  void ViewSys::set_view(View * view) {
+    this->view = view;
+    if(view) {
+      view->clear();
+      uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
+        [=](const Universe & u, ObjectHandle obj) {
+          auto glyph_part = get_part<GlyphPart>(u, obj);
+          auto spatial_part = get_part<SpatialPart>(u, obj);
+          view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
         }
-        for(auto & v : global_views) {
-          v->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+      );
+      uni.for_all_with({ AgentPart::part_class },
+        [=](const Universe & u, ObjectHandle obj) {
+          auto agent_part = get_part<AgentPart>(u, obj);
+          view->set_fov(obj.id(), agent_part->fov);
+        }
+      );
+      view->set_world_size(space.tiles.w(), space.tiles.h());
+      for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
+        for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
+          Vec2i pos(i, j);
+          view->set_tile(pos, space.tiles.get(pos));
         }
       }
     }
   }
-  void ViewSys::on_despawn(ObjectHandle obj) {
-  }
-  void ViewSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    for(auto & v : object_views) {
-      if(is_visible(v, from) || is_visible(v, to)) {
-        v.view->move_glyph(obj.id(), from, to);
-      }
-    }
-    for(auto & v : global_views) {
-      v->move_glyph(obj.id(), from, to);
-    }
-  }
+
   void ViewSys::on_world_resize(unsigned int w, unsigned int h) {
     printf("%s\n", __PRETTY_FUNCTION__);
-    for(auto & v : object_views) {
-      v.view->set_world_size(w, h);
-    }
-    for(auto & v : global_views) {
-      v->set_world_size(w, h);
+    if(view) {
+      view->set_world_size(w, h);
     }
   }
   void ViewSys::on_tile_update(Vec2i pos, unsigned int new_val) {
     //printf("%s\n", __PRETTY_FUNCTION__);
-    for(auto & v : object_views) {
-      if(is_visible(v, pos)) {
-        v.view->set_tile(pos, new_val);
-      }
-    }
-    for(auto & v : global_views) {
-      v->set_tile(pos, new_val);
+    if(view) {
+      view->set_tile(pos, new_val);
     }
   }
+
+  void ViewSys::on_spawn(ObjectHandle obj) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto glyph_part = get_part<GlyphPart>(uni, obj);
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+    if(glyph_part && spatial_part && view) {
+      view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
+    }
+  }
+  void ViewSys::on_despawn(ObjectHandle obj) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+  }
+  void ViewSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto glyph_part = get_part<GlyphPart>(uni, obj);
+    auto spatial_part = get_part<SpatialPart>(uni, obj);
+    if(glyph_part && spatial_part && view) {
+      view->move_glyph(obj.id(), from, to);
+    }
+  }
+
   void ViewSys::on_fov_update(ObjectHandle obj) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
     auto agent_part = get_part<AgentPart>(uni, obj);
 
-    if(agent_part) {
-      // Find owner and update their fov
-      for(auto & v : object_views) {
-        if(v.object == obj) {
-          v.view->set_fov(agent_part->fov);
-        }
-      }
-    }
-  }
-
-  // adds and initializes a global view
-  void ViewSys::add_view(View * view) {
-    // no nulls
-    assert(view);
-    // no dups
-    for(auto & v : global_views) { if(v == view) { return; } }
-    for(auto & v : object_views) { if(v.view == view) { return; } }
-
-    global_views.push_back(view);
-
-    full_update(view);
-  }
-  // adds and initializes a view with a particular perspective
-  void ViewSys::add_view(ObjectHandle obj, View * view) {
-    // no nulls
-    assert(view);
-    assert(obj);
-    // no dups
-    for(auto & v : global_views) { if(v == view) { return; } }
-    for(auto & v : object_views) { if(v.view == view) { return; } }
-
-    ObjectView v;
-    v.view = view;
-    v.object = obj;
-    object_views.push_back(v);
-
-    full_update(v);
-  }
-
-  FOV * ViewSys::get_fov(ObjectView view) const {
-    auto agent_part = get_part<AgentPart>(uni, view.object);
-    if(agent_part) {
-      return &agent_part->fov;
-    } else {
-      return nullptr;
-    }
-  }
-  bool ViewSys::is_visible(ObjectView view, Vec2i pos) const {
-    FOV * fov = get_fov(view);
-    if(fov) {
-      return fov->is_visible(pos);
-    } else {
-      return false;
-    }
-  }
-
-  void ViewSys::full_update(ObjectView view) {
-    view.view->clear();
-
-    auto fov = get_fov(view);
-    if(fov) {
-      uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
-        [=](const Universe & u, ObjectHandle obj) {
-          auto glyph_part = get_part<GlyphPart>(u, obj);
-          auto spatial_part = get_part<SpatialPart>(u, obj);
-          if(fov->is_visible(spatial_part->pos)) {
-            view.view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-          }
-        }
-      );
-
-      view.view->set_world_size(space.tiles.w(), space.tiles.h());
-      for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
-        for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
-          Vec2i pos(i, j);
-          if(fov->is_visible(pos)) {
-            view.view->set_tile(pos, space.tiles.get(pos));
-          }
-        }
-      }
-    }
-
-    view.view->follow(view.object);
-  }
-  void ViewSys::full_update(View * view) {
-    view->clear();
-    uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
-      [=](const Universe & u, ObjectHandle obj) {
-        auto glyph_part = get_part<GlyphPart>(u, obj);
-        auto spatial_part = get_part<SpatialPart>(u, obj);
-        view->set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
-      }
-    );
-
-    view->set_world_size(space.tiles.w(), space.tiles.h());
-    for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
-      for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
-        Vec2i pos(i, j);
-        view->set_tile(pos, space.tiles.get(pos));
-      }
+    if(agent_part && view) {
+      view->set_fov(obj.id(), agent_part->fov);
     }
   }
 
@@ -443,14 +356,8 @@ namespace game {
     }
   }
 
-  // adds a global view
-  void World::add_view(View * view) {
-    view_sys.add_view(view);
-  }
-
-  // adds a view with a particular perspective
-  void World::add_view(View * view, ObjectHandle obj) {
-    view_sys.add_view(obj, view);
+  void World::set_view(View * view) {
+    view_sys.set_view(view);
   }
 
   void World::set_size(unsigned int w, unsigned int h) {

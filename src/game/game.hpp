@@ -50,44 +50,23 @@ namespace game {
     public:
     ViewSys(Universe & uni, Space & space) : uni(uni), space(space) {}
 
+    // adds and initializes a global view
+    void set_view(View * view);
+
+    void on_world_resize(unsigned int w, unsigned int h) override;
+    void on_tile_update(Vec2i pos, unsigned int new_val) override;
+
     void on_spawn(ObjectHandle obj) override;
     void on_despawn(ObjectHandle obj) override;
     void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override;
-    void on_world_resize(unsigned int w, unsigned int h) override;
-    void on_tile_update(Vec2i pos, unsigned int new_val) override;
+
     void on_fov_update(ObjectHandle obj) override;
 
-    // adds and initializes a global view
-    void add_view(View * view);
-    void remove_view(View * view);
-    // adds and initializes a view with a particular perspective
-    void add_view(ObjectHandle obj, View * view);
-    void remove_view(ObjectHandle obj, View * view);
-
     private:
-    struct ObjectView {
-      ObjectHandle object;
-      View * view = nullptr;
-
-      bool visible(Vec2i pos) const { return true; }
-    };
-
     Universe & uni;
     Space & space;
 
-    // see everything
-    std::vector<View *> global_views;
-    // only see what their associated object sees
-    std::vector<ObjectView> object_views;
-
-    FOV * get_fov(ObjectView view) const;
-    bool is_visible(ObjectView view, Vec2i pos) const;
-
-    void full_update(ObjectView view);
-    void full_update(View * view);
-
-    void fov_update(ObjectView view);
-    void fov_update(View * view);
+    View * view;
   };
 
   class FOVSys : public SpawnHandler, public MoveHandler {
@@ -174,7 +153,7 @@ namespace game {
     World()
       : uni(factory)
       , ai_sys(uni, phys_sys, dijkstra_sys)
-      , phys_sys(uni, space, { &fov_sys, &dijkstra_sys, &view_sys })
+      , phys_sys(uni, space, { &view_sys, &fov_sys, &dijkstra_sys })
       , fov_sys(uni, space, { &view_sys })
       , dijkstra_sys(uni)
       , view_sys(uni, space)
@@ -187,8 +166,7 @@ namespace game {
     void player_move_attack(Vec2i delta);
     void player_wait();
 
-    void add_view(View * view);
-    void add_view(View * view, ObjectHandle obj);
+    void set_view(View * view);
 
     void set_size(unsigned int w, unsigned int h);
     void set_tile(Vec2i pos, unsigned int id);
