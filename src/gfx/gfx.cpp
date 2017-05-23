@@ -125,15 +125,24 @@ namespace gfx {
 
     draw::set_camera_pos(_camera_pos);
 
-    // TODO: Only iterate over visible tiles
+    // TODO: Only iterate over tiles on screen
     for(int j = 0 ; j < tile_sprites.h() ; j ++) {
       for(int i = 0 ; i < tile_sprites.w() ; i ++) {
         auto pos = Vec2i(i, j);
         auto tile = tile_sprites.get(pos);
-        if(tile.type_id == 1) {
-          draw::draw_wall(pos);
-        } else if(tile.type_id == 2) {
-          draw::draw_floor(pos);
+        if(tile.visible) {
+          if(tile.type_id == 1) {
+            draw::draw_wall(pos);
+          } else if(tile.type_id == 2) {
+            draw::draw_floor(pos);
+          }
+        } else if(tile.visited) {
+          Color filter(0.4f, 0.4f, 0.5f);
+          if(tile.type_id == 1) {
+            draw::draw_wall(pos, filter);
+          } else if(tile.type_id == 2) {
+            draw::draw_floor(pos, filter);
+          }
         }
       }
     }
@@ -141,16 +150,8 @@ namespace gfx {
     for(auto & kvpairs : agent_sprites) {
       auto & sprite = kvpairs.second;
 
-      // TODO: Draw the agent only if not hidden
+      // TODO: Draw the agent only if on screen
       draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
-
-      /*
-      // Draw the path for debugging purposes
-      auto agent = game::debug::get_agent(kvpairs.first);
-      if(agent) {
-        draw::draw_path(agent->path, agent->color);
-      }
-      */
     }
 
     glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
@@ -188,17 +189,35 @@ namespace gfx {
     }
   }
 
-  Vec2i GridWorld::grid_pos(Vec2i screen_pos) {
+  Vec2i GridWorld::grid_pos(Vec2i screen_pos) const {
     return Vec2i(std::round((float)screen_pos.x / _tile_size.x + _camera_pos.x),
                  std::round((float)screen_pos.y / _tile_size.y + _camera_pos.y));
   }
-  Vec2i GridWorld::screen_pos(Vec2i grid_pos) {
+  Vec2i GridWorld::screen_pos(Vec2i grid_pos) const {
     return Vec2i((grid_pos.x - _camera_pos.x) * _tile_size.x,
                  (grid_pos.y - _camera_pos.y) * _tile_size.y);
   }
 
   void GridWorld::follow_agent(unsigned int agent_id) {
     followed_agent_id = agent_id;
+  }
+
+  void GridWorld::set_fov(const FOV & fov) {
+    //std::vector<bool> fov_sample = fov.sample(Rect2i(0, 0, tile_type_ids.w(), tile_type_ids.h()));
+
+    for(int j = 0 ; j < tile_sprites.h() ; j ++) {
+      for(int i = 0 ; i < tile_sprites.w() ; i ++) {
+        Vec2i pos(i, j);
+        auto tile = tile_sprites.get(pos);
+        if(fov.is_visible(pos)) {
+          tile.visible = true;
+          tile.visited = true;
+        } else {
+          tile.visible = false;
+        }
+        tile_sprites.set(pos, tile);
+      }
+    }
   }
 
   bool GridWorld::look_str(std::string & dst, Vec2i location) const {

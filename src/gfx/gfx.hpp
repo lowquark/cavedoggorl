@@ -3,6 +3,7 @@
 
 #include <gfx/draw.hpp>
 #include <util/Map.hpp>
+#include <game/FOV.hpp>
 
 #include <queue>
 
@@ -26,6 +27,8 @@ namespace gfx {
   };
   struct TileSprite {
     unsigned int type_id = 0;
+    bool visible = false;
+    bool visited = false;
   };
 
   // An animated version of the game world
@@ -55,11 +58,19 @@ namespace gfx {
     }
 
     // sets the grid size in tiles
+    // TODO: clear pending tile events
     void set_size(Vec2u size);
-    // sets a given tile
-    void set_tile(const Vec2i & pos, unsigned int type_id);
-    // clears a given tile
-    void clear_tile(const Vec2i & pos);
+
+    // rounds the given screen position to the nearest grid location
+    Vec2i grid_pos(Vec2i screen_pos) const;
+    // returns the screen position of the center of the given grid location
+    Vec2i screen_pos(Vec2i grid_pos) const;
+
+    // returns a look_str for the object at the given location
+    bool look_str(std::string & dst, Vec2i location) const;
+
+
+    //// events ////
 
     // creates an agent sprite
     void add_agent(unsigned int agent_id, unsigned int type_id, const Vec2i & pos, const Color & color);
@@ -69,19 +80,17 @@ namespace gfx {
     // moves / animates a previously added agent
     void move_agent(unsigned int agent_id, const Vec2i & from, const Vec2i & to);
 
-
-    // rounds the given screen position to the nearest grid location
-    Vec2i grid_pos(Vec2i screen_pos);
-    // returns the screen position of the center of the given grid location
-    Vec2i screen_pos(Vec2i grid_pos);
+    // sets a given tile
+    void set_tile(const Vec2i & pos, unsigned int type_id);
+    // clears a given tile
+    void clear_tile(const Vec2i & pos);
 
 
     // Centers the camera on and follows the given agent
     void follow_agent(unsigned int agent_id);
 
+    void set_fov(const FOV & fov);
 
-    // returns a look_str for the object at the given location
-    bool look_str(std::string & dst, Vec2i location) const;
 
     // skips animations
     void skip_animations();
@@ -90,6 +99,8 @@ namespace gfx {
     // steps animations
     void tick();
 
+
+    //// drawing ////
 
     const Rect2i & draw_rect() const { return _draw_rect; }
     void set_draw_rect(const Rect2i & draw_rect) { _draw_rect = draw_rect; }

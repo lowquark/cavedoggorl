@@ -19,8 +19,6 @@ namespace game {
     virtual void set_tile(const Vec2i & pos, unsigned int type_id) {}
     virtual void clear_tile(const Vec2i & pos) {}
 
-    virtual void set_fov(unsigned int id, const FOV & fov) {}
-
     virtual void set_glyph(ObjectHandle obj,
                            unsigned int type_id,
                            const Vec2i & pos,
@@ -33,6 +31,8 @@ namespace game {
     virtual void message(const std::string & message) {}
 
     virtual void follow(ObjectHandle obj) {}
+
+    virtual void set_fov(unsigned int id, const FOV & fov) {}
 
     virtual void clear() {}
   };

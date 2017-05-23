@@ -20,7 +20,7 @@ namespace draw {
   static constexpr float AGENT_HEIGHT = 12;
 
   static const Color WALL_COLOR(0.7f, 0.7f, 0.75f);
-  static const Color FLOOR_COLOR(0.3f, 0.3f, 0.3f);
+  static const Color FLOOR_COLOR(0.5f, 0.5f, 0.5f);
 
   static Vec2u tile_size(32, 32);
   void set_tile_size(const Vec2u & _tile_size) {
@@ -36,14 +36,14 @@ namespace draw {
 
   const float PIXEL_FUDGE = 0.375f;
 
-  void draw_wall(Vec2i pos) {
+  void draw_wall(Vec2i pos, Color filter) {
     float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
     float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
 
     glTranslatef(x, y, 0.0f);
 
     glDisable(GL_TEXTURE_2D);
-    glColor3f(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b);
+    glColor3f(WALL_COLOR.r * filter.r, WALL_COLOR.g * filter.g, WALL_COLOR.b * filter.b);
     glBegin(GL_LINES);
       glVertex2f(-WALL_WIDTH/2, -WALL_HEIGHT/2);
       glVertex2f( WALL_WIDTH/2, -WALL_HEIGHT/2);
@@ -60,14 +60,14 @@ namespace draw {
 
     glTranslatef(-x, -y, 0.0f);
   }
-  void draw_floor(Vec2i pos) {
+  void draw_floor(Vec2i pos, Color filter) {
     float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
     float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
 
     glTranslatef(x, y, 0.0f);
 
     glDisable(GL_TEXTURE_2D);
-    glColor3f(FLOOR_COLOR.r, FLOOR_COLOR.g, FLOOR_COLOR.b);
+    glColor3f(FLOOR_COLOR.r * filter.r, FLOOR_COLOR.g * filter.g, FLOOR_COLOR.b * filter.b);
     glBegin(GL_QUADS);
       glVertex2f(-FLOOR_DOT_WIDTH/2, -FLOOR_DOT_HEIGHT/2);
       glVertex2f( FLOOR_DOT_WIDTH/2, -FLOOR_DOT_HEIGHT/2);

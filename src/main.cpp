@@ -41,40 +41,17 @@ gfx::WorldMessageLog message_log;
 
 
 class MuhView : public game::View {
-  Map<unsigned int> tile_type_ids;
-
   unsigned int follow_obj_id = 0;
 
   public:
   void set_world_size(unsigned int tiles_x, unsigned int tiles_y) override {
     grid_world.set_size(Vec2u(tiles_x, tiles_y));
-    tile_type_ids.resize(tiles_x, tiles_y);
   }
   void set_tile(const Vec2i & pos, unsigned int type_id) override {
-    tile_type_ids.set(pos, type_id);
+    grid_world.set_tile(pos, type_id);
   }
   void clear_tile(const Vec2i & pos) override {
     grid_world.clear_tile(pos);
-  }
-
-  void set_fov(unsigned int id, const FOV & fov) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
-
-    std::vector<bool> fov_sample = fov.sample(Rect2i(0, 0, tile_type_ids.w(), tile_type_ids.h()));
-
-    if(id == follow_obj_id) {
-      for(int j = 0 ; j < tile-type_ids.w() ; j ++) {
-        for(int i = 0 ; i < tile-type_ids.h() ; i ++) {
-          Vec2i pos(i, j);
-
-          if(fov.is_visible(pos)) {
-            grid_world.set_tile(pos, tile_type_ids.get(pos));
-          } else {
-            grid_world.clear_tile(pos);
-          }
-        }
-      }
-    }
   }
 
   void set_glyph(game::ObjectHandle obj,
@@ -103,6 +80,14 @@ class MuhView : public game::View {
   void follow(game::ObjectHandle obj) override {
     follow_obj_id = obj.id();
     grid_world.follow_agent(obj.id());
+  }
+
+  void set_fov(unsigned int id, const FOV & fov) override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+
+    if(id == follow_obj_id) {
+      grid_world.set_fov(fov);
+    }
   }
 
   void clear() override {
@@ -236,59 +221,6 @@ void run() {
 Log main_log;
 
 int main(int argc, char ** argv) {
-  int x0 = 0;
-  int y0 = 0;
-  int x1 = 2;
-  int y1 = 1;
-
-  int dx = x1 - x0;
-  int dy = y1 - y0;
-  int y = y0, e = 0;
-
-  for(int x = x0 ; x <= x1 ; x ++) {
-    printf("x, y: %d, %d\n", x, y);
-    e += dy;
-    if(2*e >= dx) {
-      y ++;
-      e -= dx;
-    }
-  }
-
-  Vec2i origin(10, 10);
-  BresenhamFOV fov;
-  Map<unsigned int> solid(21, 21);
-
-  solid.set(Vec2i( 6,  5), 1);
-  solid.set(Vec2i( 5,  6), 1);
-  solid.set(Vec2i(11, 10), 1);
-  solid.set(Vec2i( 9, 10), 1);
-
-
-  for(int r = 5 ; r < 10 ; r ++) {
-    fov.update(solid, origin, r);
-
-    printf("r: %d\n", r);
-    for(int j = 0 ; j < 21 ; j ++) {
-      for(int i = 0 ; i < 21 ; i ++) {
-        Vec2i p(i, j);
-        if(fov.is_visible(p)) {
-          if(p == origin) {
-            printf("@");
-          } else if(solid.get(p) == 1) {
-            printf("#");
-          } else {
-            printf(".");
-          }
-        } else {
-          printf(" ");
-        }
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
-
-
   // I hate these
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
@@ -324,7 +256,7 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      //muh_world.add_view(&muh_view);
+      muh_world.set_view(&muh_view);
 
       muh_world.set_size(30, 30);
       for(unsigned int j = 0 ; j < 30 ; j ++) {
@@ -344,7 +276,6 @@ int main(int argc, char ** argv) {
       step_game();
 
       muh_view.follow(hero_obj.id());
-      muh_world.set_view(&muh_view);
 
       //muh_game.create_new();
       //muh_game.save("asdf");
