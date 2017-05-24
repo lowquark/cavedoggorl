@@ -1,10 +1,13 @@
 
 #include "gfx.hpp"
 
+#include <util/load_png.hpp>
+
 #include <cmath>
 
 namespace gfx {
   static draw::FontAtlas font_atlas;
+  static gl::Texture tile_set;
 
   float exponential_ease_in(float p) {
       return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
@@ -15,14 +18,12 @@ namespace gfx {
   }
 
   // Modeled after the parabola y = x^2
-  float quadratic_ease_in(float p)
-  {
+  float quadratic_ease_in(float p) {
     return p * p;
   }
 
   // Modeled after the parabola y = -x^2 + 2x
-  float quadratic_ease_out(float p)
-  {
+  float quadratic_ease_out(float p) {
     return -(p * (p - 2));
   }
 
@@ -156,6 +157,12 @@ namespace gfx {
 
     glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
     draw::unclip();
+
+    tile_map.set_size(Vec2u(16, 16));
+    tile_map.set_screen_size(Vec2u(960, 768));
+    tile_map.set_draw_rect(Rect2i(0, 0, 512, 512));
+    tile_map.set_tile_set(tile_set);
+    tile_map.draw();
   }
 
   void GridWorld::set_size(Vec2u size) {
@@ -356,10 +363,25 @@ namespace gfx {
     }
   }
 
+  gl::Program shader_program;
+
   void load() {
     font_atlas.load_textures();
+
+    TileMap::load_shader();
+
+    Image tile_set_img;
+    if(load_png(tile_set_img, "tiles.png")) {
+      tile_set.load(tile_set_img);
+
+      printf("tile_set.id(): %d\n", tile_set.id());
+    }
   }
   void unload() {
+    tile_set.unload();
+
+    TileMap::unload_shader();
+
     font_atlas.unload_textures();
   }
 }

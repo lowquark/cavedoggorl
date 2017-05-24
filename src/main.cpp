@@ -250,6 +250,8 @@ int main(int argc, char ** argv) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
 
     if(gl_ctx != nullptr) {
+      glewInit(); 
+
       message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
       grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
       grid_world.set_tile_size(tile_size);

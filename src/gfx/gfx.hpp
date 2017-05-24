@@ -1,9 +1,12 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 
-#include <gfx/draw.hpp>
 #include <util/Map.hpp>
+
 #include <game/FOV.hpp>
+
+#include <gfx/draw.hpp>
+#include <gfx/TileMap.hpp>
 
 #include <queue>
 
@@ -45,6 +48,7 @@ namespace gfx {
     Map<TileSprite> tile_sprites;
     std::map<unsigned int, AgentSprite> agent_sprites;
 
+    TileMap tile_map;
 
     public:
     void clear_sprites();
