@@ -22,12 +22,7 @@
 #include <util/Log.hpp>
 
 
-static constexpr int TILES_X = 30;
-static constexpr int TILES_Y = 30;
-
-static const Vec2u tile_size(16, 16);
-static const Vec2u window_size(tile_size.x * TILES_X, tile_size.y * TILES_Y);
-
+Vec2u window_size;
 
 SDL_Window * window = nullptr;
 bool quit_signal = false;
@@ -225,13 +220,19 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
-  const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+  //const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+  const char * font = "Kingthings_Exeter.ttf";
   main_log.logf("Loading font from %s...", font);
   main_log.flush();
-
-  gfx::load_font("/usr/share/fonts/TTF/DejaVuSans.ttf");
-
+  gfx::load_font(font);
   main_log.logf("Finished", font);
+
+  const Vec2u tile_size(16, 16);
+  const Vec2u view_size(30, 30);
+  window_size = Vec2u(tile_size.x * view_size.x, tile_size.y * view_size.y);
+
+  gfx::load_tiles("./tiles.png", tile_size);
+  gfx::set_window_size(window_size);
 
 
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
@@ -239,7 +240,7 @@ int main(int argc, char ** argv) {
   }
 
   window = SDL_CreateWindow(
-      "santolkrad",
+      "cavedogrl",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
       window_size.x,
@@ -254,15 +255,16 @@ int main(int argc, char ** argv) {
 
       message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
       grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-      grid_world.set_tile_size(tile_size);
+      grid_world.set_camera_size(view_size);
+      grid_world.set_camera_margin(10);
 
       gfx::load();
 
       muh_world.set_view(&muh_view);
 
-      muh_world.set_size(30, 30);
-      for(unsigned int j = 0 ; j < 30 ; j ++) {
-        for(unsigned int i = 0 ; i < 30 ; i ++) {
+      muh_world.set_size(60, 60);
+      for(unsigned int j = 0 ; j < 60 ; j ++) {
+        for(unsigned int i = 0 ; i < 60 ; i ++) {
           if(rand() % 5 == 0) {
             muh_world.set_tile(Vec2i(i, j), 1);
           } else {
@@ -273,7 +275,14 @@ int main(int argc, char ** argv) {
 
       auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
 
+      /*
       muh_world.create_badguy(Vec2i(2, 2), hero_obj);
+      muh_world.create_badguy(Vec2i(10, 2), hero_obj);
+      muh_world.create_badguy(Vec2i(20, 2), hero_obj);
+      muh_world.create_badguy(Vec2i(4, 4), hero_obj);
+      muh_world.create_badguy(Vec2i(12, 4), hero_obj);
+      muh_world.create_badguy(Vec2i(22, 4), hero_obj);
+      */
 
       step_game();
 

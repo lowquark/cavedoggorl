@@ -36,7 +36,10 @@ namespace gfx {
 
   // An animated version of the game world
   class GridWorld {
-    Vec2f _camera_pos;
+    Rect2i _camera_rect;
+    int _camera_margin = 0;
+    Vec2u _screen_size;
+
     Vec2u _tile_size;
     Rect2i _draw_rect;
 
@@ -53,13 +56,12 @@ namespace gfx {
     public:
     void clear_sprites();
 
-    // sets the tile size in pixels
-    const Vec2u & tile_size() const {
-      return _tile_size;
-    }
-    void set_tile_size(const Vec2u & tile_size) {
-      _tile_size = tile_size;
-    }
+    Vec2i camera_pos() const { return _camera_rect.pos; }
+    void set_camera_pos(const Vec2i & pos) { _camera_rect.pos = pos; }
+    Vec2i camera_size() const { return _camera_rect.size; }
+    void set_camera_size(const Vec2i & size) { _camera_rect.size = size; }
+    int camera_margin() const { return _camera_margin; }
+    void set_camera_margin(int margin) { _camera_margin = margin; }
 
     // sets the grid size in tiles
     // TODO: clear pending tile events
@@ -111,6 +113,10 @@ namespace gfx {
 
     // draws clipped within rect
     void draw();
+
+    private:
+
+    void update_camera(Vec2i focus, int margin);
   };
 
   class HUDOverlay {
@@ -149,7 +155,10 @@ namespace gfx {
     void draw();
   };
 
+  void set_window_size(Vec2u pixels);
+  Vec2u window_size();
   void load_font(const char * ttf_path);
+  bool load_tiles(const char * png_path, Vec2u tile_size);
 
   void load();
   void unload();

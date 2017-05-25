@@ -14,18 +14,6 @@
 
 namespace gfx {
   namespace draw {
-    void set_tile_size(const Vec2u & tile_size);
-    void set_camera_pos(const Vec2f & camera_pos);
-
-    void draw_wall(Vec2i pos, Color filter = Color(1.0f, 1.0f, 1.0f));
-    void draw_floor(Vec2i pos, Color filter = Color(1.0f, 1.0f, 1.0f));
-
-    void draw_dark_wall(Vec2i pos);
-    void draw_dark_floor(Vec2i pos);
-
-    void draw_agent(Vec2f pos, unsigned int type_id, const Color & color);
-    void draw_path(const std::vector<Vec2i> & path, const Color & color);
-
     void draw_rect(const Rect2i & rect, const Color & color);
 
     // Recursive clipping

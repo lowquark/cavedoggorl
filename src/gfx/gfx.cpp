@@ -7,7 +7,12 @@
 
 namespace gfx {
   static draw::FontAtlas font_atlas;
+  static Vec2u _window_size;
+
+  Image tile_set_img;
   static gl::Texture tile_set;
+  static Vec2u tile_set_size;
+  static Vec2u tile_size;
 
   float exponential_ease_in(float p) {
     return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
@@ -110,26 +115,21 @@ namespace gfx {
 
   void GridWorld::draw() {
     draw::clip(_draw_rect);
-    draw::set_tile_size(_tile_size);
-
-    glTranslatef(_draw_rect.pos.x, _draw_rect.pos.y, 0.0f);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    /*
     auto sprite_kvpair_it = agent_sprites.find(followed_agent_id);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
-      _camera_pos = sprite.pos - Vec2f((float)_draw_rect.size.x / _tile_size.x / 2,
-                                       (float)_draw_rect.size.y / _tile_size.y / 2);
+      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
+      update_camera(pos, _camera_margin);
     }
-    */
 
-    for(int j = 0 ; j < tile_sprites.h() ; j ++) {
-      for(int i = 0 ; i < tile_sprites.w() ; i ++) {
+    for(int j = 0 ; j < _camera_rect.size.y ; j ++) {
+      for(int i = 0 ; i < _camera_rect.size.x ; i ++) {
         auto pos = Vec2i(i, j);
-        auto tile = tile_sprites.get(pos);
+        auto tile = tile_sprites.get(_camera_rect.pos + pos);
         if(tile.visible) {
           if(tile.type_id == 1) {
             tile_map.set_tile(pos, 86);
@@ -145,7 +145,6 @@ namespace gfx {
             tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
           }
         } else if(tile.visited) {
-          Color filter(0.4f, 0.4f, 0.5f);
           if(tile.type_id == 1) {
             tile_map.set_tile(pos, 86);
             tile_map.set_fg_color(pos, 0x44, 0x33, 0x33);
@@ -170,7 +169,7 @@ namespace gfx {
     for(auto & kvpairs : agent_sprites) {
       auto & sprite = kvpairs.second;
 
-      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
+      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y)) - _camera_rect.pos;
 
       //draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
       if(sprite.type_id == 0) {
@@ -182,14 +181,47 @@ namespace gfx {
       }
     }
 
-    glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
-    draw::unclip();
-
     tile_map.set_screen_size(Vec2u(480, 480));
     tile_map.set_draw_rect(Rect2i(0, 0, 16*tile_sprites.w(), 16*tile_sprites.h()));
 
     tile_map.set_tile_set(tile_set);
     tile_map.draw();
+
+    draw::unclip();
+  }
+
+  void GridWorld::update_camera(Vec2i focus, int margin) {
+    // TODO: Handle case where camera is larger than world
+    if(focus.x < _camera_rect.pos.x + margin) {
+      _camera_rect.pos.x = focus.x - margin;
+      //printf("_camera_rect.pos.x = focus.x - margin\n");
+    }
+    if(focus.y < _camera_rect.pos.y + margin) {
+      _camera_rect.pos.y = focus.y - margin;
+      //printf("_camera_rect.pos.y = focus.y - margin\n");
+    }
+
+    if(focus.x > _camera_rect.pos.x + _camera_rect.size.x - margin - 1) {
+      _camera_rect.pos.x = focus.x + margin - _camera_rect.size.x + 1;
+      //printf("_camera_rect.pos.x = focus.x + margin - _camera_rect.size.x\n");
+    }
+    if(focus.y + margin - _camera_rect.size.y > _camera_rect.pos.y - 1) {
+      _camera_rect.pos.y = focus.y + margin - _camera_rect.size.y + 1;
+      //printf("_camera_rect.pos.y = focus.y + margin - _camera_rect.size.y\n");
+    }
+
+    if(_camera_rect.pos.x < 0) {
+      _camera_rect.pos.x = 0;
+    }
+    if(_camera_rect.pos.y < 0) {
+      _camera_rect.pos.y = 0;
+    }
+    if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.w()) {
+      _camera_rect.pos.x = tile_sprites.w() - _camera_rect.size.x;
+    }
+    if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.h()) {
+      _camera_rect.pos.y = tile_sprites.h() - _camera_rect.size.y;
+    }
   }
 
   void GridWorld::set_size(Vec2u size) {
@@ -225,12 +257,12 @@ namespace gfx {
   }
 
   Vec2i GridWorld::grid_pos(Vec2i screen_pos) const {
-    return Vec2i(std::round((float)screen_pos.x / _tile_size.x - 0.5f),
-                 std::round((float)screen_pos.y / _tile_size.y - 0.5f));
+    return Vec2i(screen_pos.x / tile_size.x, screen_pos.y / tile_size.y) + _camera_rect.pos;
   }
   Vec2i GridWorld::screen_pos(Vec2i grid_pos) const {
-    return Vec2i((grid_pos.x + 0.5f) * _tile_size.x,
-                 (grid_pos.y + 0.5f) * _tile_size.y);
+    Vec2i local_grid_pos = grid_pos - _camera_rect.pos;
+    return Vec2i(local_grid_pos.x * tile_size.x + tile_size.x / 2,
+                 local_grid_pos.y * tile_size.y + tile_size.y / 2);
   }
 
   void GridWorld::follow_agent(unsigned int agent_id) {
@@ -263,7 +295,7 @@ namespace gfx {
       Vec2i pos(round(sprite.pos.x), round(sprite.pos.y));
       if(pos == location) {
         if(id == 1) {
-          dst = "Dog";
+          dst = "Hark! hark!";
           return true;
         } else {
           dst = "Orc";
@@ -382,12 +414,41 @@ namespace gfx {
   }
 
 
+  void set_window_size(Vec2u pixels) {
+    _window_size = pixels;
+  }
+  Vec2u window_size() {
+    return _window_size;
+  }
+
   void load_font(const char * ttf_path) {
     font_atlas.set_font(ttf_path);
 
     for(int i = 32 ; i < 128 ; i ++) {
       uint32_t code_point = i;
       font_atlas.load(code_point);
+    }
+  }
+  bool load_tiles(const char * png_path, Vec2u _tile_size) {
+    if(_tile_size.x == 0 || _tile_size.y == 0) {
+      return false;
+    }
+
+    if(load_png(tile_set_img, "tiles.png")) {
+      tile_size = _tile_size;
+
+      tile_set_size.x = tile_set_img.width() / tile_size.x;
+      tile_set_size.y = tile_set_img.height() / tile_size.y;
+
+      if(tile_set_size.x * tile_size.x != tile_set_img.width() ||
+         tile_set_size.y * tile_size.y != tile_set_img.height()) {
+        tile_set_img = Image();
+        return false;
+      }
+
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -399,19 +460,19 @@ namespace gfx {
   }
   */
   void load() {
-    font_atlas.load_textures();
-
     draw::TileMap::load_shader();
 
-    Image tile_set_img;
-    if(load_png(tile_set_img, "tiles.png")) {
-      tile_set.load(tile_set_img);
+    tile_set.load(tile_set_img);
+    printf("tile_set.id(): %d\n", tile_set.id());
 
-      printf("tile_set.id(): %d\n", tile_set.id());
-    }
+    font_atlas.load_textures();
   }
   void unload() {
+    _window_size = Vec2u();
+
     tile_set.unload();
+    tile_set_size = Vec2u(0, 0);
+    tile_size = Vec2u(0, 0);
 
     draw::TileMap::unload_shader();
 

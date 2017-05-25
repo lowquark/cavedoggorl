@@ -10,120 +10,9 @@
 
 namespace gfx {
 namespace draw {
-  static constexpr float WALL_WIDTH  = 28;
-  static constexpr float WALL_HEIGHT = 28;
-
-  static constexpr float FLOOR_DOT_WIDTH  = 4;
-  static constexpr float FLOOR_DOT_HEIGHT = 4;
-
-  static constexpr float AGENT_WIDTH  = 12;
-  static constexpr float AGENT_HEIGHT = 12;
-
-  static const Color WALL_COLOR(0.7f, 0.7f, 0.75f);
-  static const Color FLOOR_COLOR(0.5f, 0.5f, 0.5f);
-
-  static Vec2u tile_size(32, 32);
-  void set_tile_size(const Vec2u & _tile_size) {
-    tile_size = _tile_size;
-  }
-
-  static Vec2f camera_pos;
-  void set_camera_pos(const Vec2f & _camera_pos) {
-    camera_pos = _camera_pos;
-  }
-
   static Log log;
 
-  const float PIXEL_FUDGE = 0.375f;
-
-  void draw_wall(Vec2i pos, Color filter) {
-    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
-    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
-
-    glTranslatef(x, y, 0.0f);
-
-    glDisable(GL_TEXTURE_2D);
-    glColor3f(WALL_COLOR.r * filter.r, WALL_COLOR.g * filter.g, WALL_COLOR.b * filter.b);
-    glBegin(GL_LINES);
-      glVertex2f(-WALL_WIDTH/2, -WALL_HEIGHT/2);
-      glVertex2f( WALL_WIDTH/2, -WALL_HEIGHT/2);
-
-      glVertex2f( WALL_WIDTH/2, -WALL_HEIGHT/2);
-      glVertex2f( WALL_WIDTH/2,  WALL_HEIGHT/2);
-
-      glVertex2f( WALL_WIDTH/2,  WALL_HEIGHT/2);
-      glVertex2f(-WALL_WIDTH/2,  WALL_HEIGHT/2);
-
-      glVertex2f(-WALL_WIDTH/2,  WALL_HEIGHT/2);
-      glVertex2f(-WALL_WIDTH/2, -WALL_HEIGHT/2);
-    glEnd();
-
-    glTranslatef(-x, -y, 0.0f);
-  }
-  void draw_floor(Vec2i pos, Color filter) {
-    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
-    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
-
-    glTranslatef(x, y, 0.0f);
-
-    glDisable(GL_TEXTURE_2D);
-    glColor3f(FLOOR_COLOR.r * filter.r, FLOOR_COLOR.g * filter.g, FLOOR_COLOR.b * filter.b);
-    glBegin(GL_QUADS);
-      glVertex2f(-FLOOR_DOT_WIDTH/2, -FLOOR_DOT_HEIGHT/2);
-      glVertex2f( FLOOR_DOT_WIDTH/2, -FLOOR_DOT_HEIGHT/2);
-      glVertex2f( FLOOR_DOT_WIDTH/2,  FLOOR_DOT_HEIGHT/2);
-      glVertex2f(-FLOOR_DOT_WIDTH/2,  FLOOR_DOT_HEIGHT/2);
-    glEnd();
-
-    glTranslatef(-x, -y, 0.0f);
-  }
-
-  void draw_agent(Vec2f pos, unsigned int type, const Color & color) {
-    float x = (pos.x - camera_pos.x) * tile_size.x + PIXEL_FUDGE;
-    float y = (pos.y - camera_pos.y) * tile_size.y + PIXEL_FUDGE;
-
-    glTranslatef(x, y, 0.0f);
-
-    glDisable(GL_TEXTURE_2D);
-    glColor3f(color.r, color.g, color.b);
-    if(type == 0) {
-      glBegin(GL_QUADS);
-        glVertex2f(-AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-        glVertex2f( AGENT_WIDTH/2, -AGENT_HEIGHT/2);
-        glVertex2f( AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-        glVertex2f(-AGENT_WIDTH/2,  AGENT_HEIGHT/2);
-      glEnd();
-    } else if(type == 1) {
-      glBegin(GL_TRIANGLES);
-        glVertex2f( 0.0f,   0.0f);
-        glVertex2f( (float)AGENT_WIDTH/2, -(float)AGENT_HEIGHT/2);
-        glVertex2f( (float)AGENT_WIDTH/2,  (float)AGENT_HEIGHT/2);
-
-        glVertex2f( 0.0f,   0.0f);
-        glVertex2f(-(float)AGENT_WIDTH/2,  (float)AGENT_HEIGHT/2);
-        glVertex2f(-(float)AGENT_WIDTH/2, -(float)AGENT_HEIGHT/2);
-      glEnd();
-    }
-
-    glTranslatef(-x, -y, 0.0f);
-  }
-  void draw_path(const std::vector<Vec2i> & path, const Color & color) {
-    if(path.size() > 0) {
-      glDisable(GL_TEXTURE_2D);
-      glColor3f(color.r, color.g, color.b);
-      glBegin(GL_LINES);
-        for(unsigned int i = 0 ; i < path.size() - 1 ; i ++) {
-          float x0 = (path[i    ].x - camera_pos.x) * tile_size.x;
-          float y0 = (path[i    ].y - camera_pos.y) * tile_size.y;
-          float x1 = (path[i + 1].x - camera_pos.x) * tile_size.x;
-          float y1 = (path[i + 1].y - camera_pos.y) * tile_size.y;
-
-          glVertex2f(x0, y0);
-          glVertex2f(x1, y1);
-        }
-      glEnd();
-    }
-  }
+  //const float PIXEL_FUDGE = 0.375f;
 
   void draw_rect(const Rect2i & rect, const Color & color) {
     glDisable(GL_TEXTURE_2D);
@@ -210,7 +99,7 @@ namespace draw {
       }
       font = nullptr;
     }
-    font = TTF_OpenFont(ttf_path.c_str(), 16);
+    font = TTF_OpenFont(ttf_path.c_str(), 20);
   }
 
   bool FontAtlas::load(uint32_t unicode) {
