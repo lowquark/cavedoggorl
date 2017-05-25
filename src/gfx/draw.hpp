@@ -28,6 +28,10 @@ namespace gfx {
 
     void draw_rect(const Rect2i & rect, const Color & color);
 
+    // Recursive clipping
+    void clip(const Rect2i & rect);
+    void unclip();
+
     class FontAtlas {
       TTF_Font * font = nullptr;
 
@@ -68,10 +72,6 @@ namespace gfx {
 
       SDL_Surface * atlas_surface() const { return _atlas_surface; }
     };
-
-    // Recursive clipping
-    void clip(const Rect2i & rect);
-    void unclip();
 
     class TextBin {
       Vec2i _text_size;

@@ -23,9 +23,9 @@
 
 
 static constexpr int TILES_X = 30;
-static constexpr int TILES_Y = 24;
+static constexpr int TILES_Y = 30;
 
-static const Vec2u tile_size(32, 32);
+static const Vec2u tile_size(16, 16);
 static const Vec2u window_size(tile_size.x * TILES_X, tile_size.y * TILES_Y);
 
 
@@ -239,7 +239,7 @@ int main(int argc, char ** argv) {
   }
 
   window = SDL_CreateWindow(
-      "Scary Colors",
+      "santolkrad",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
       window_size.x,

@@ -136,6 +136,53 @@ namespace draw {
     glEnd();
   }
 
+  // TODO: clear() should clear this stack
+  static std::vector<Rect2i> clip_stack;
+
+  void clip(const Rect2i & rect) {
+    if(clip_stack.size() < 255) {
+      // Increment the stencil buffer in this region, but only if previous stencil tests pass
+      glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+      glBegin(GL_QUADS);
+        glVertex2f(rect.pos.x,               rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
+        glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
+      glEnd();
+
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+      clip_stack.push_back(rect);
+
+      glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
+    }
+  }
+  void unclip() {
+    if(clip_stack.size()) {
+      Rect2i & rect = clip_stack.back();
+      // Decrement the stencil buffer in this region, but only if previous stencil tests pass
+      glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+      glBegin(GL_QUADS);
+        glVertex2f(rect.pos.x,               rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
+        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
+        glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
+      glEnd();
+
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+      clip_stack.pop_back();
+    }
+
+    glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
+  }
+
   static const Vec2u text_texture_size(512, 512);
 
   FontAtlas::FontAtlas() {
@@ -267,53 +314,6 @@ namespace draw {
     if(atlas_tex_id) {
       glDeleteTextures(1, &atlas_tex_id);
     }
-  }
-
-  // TODO: clear() should clear this stack
-  static std::vector<Rect2i> clip_stack;
-
-  void clip(const Rect2i & rect) {
-    if(clip_stack.size() < 255) {
-      // Increment the stencil buffer in this region, but only if previous stencil tests pass
-      glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-      glBegin(GL_QUADS);
-        glVertex2f(rect.pos.x,               rect.pos.y);
-        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
-        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
-        glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
-      glEnd();
-
-      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-      clip_stack.push_back(rect);
-
-      glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
-    }
-  }
-  void unclip() {
-    if(clip_stack.size()) {
-      Rect2i & rect = clip_stack.back();
-      // Decrement the stencil buffer in this region, but only if previous stencil tests pass
-      glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
-      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-      glBegin(GL_QUADS);
-        glVertex2f(rect.pos.x,               rect.pos.y);
-        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y);
-        glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
-        glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
-      glEnd();
-
-      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-      clip_stack.pop_back();
-    }
-
-    glStencilFunc(GL_EQUAL, clip_stack.size(), 0xFF);
   }
 
   void TextBin::set(const FontAtlas & atlas, const std::string & utf8_text) {

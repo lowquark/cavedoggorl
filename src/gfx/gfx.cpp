@@ -10,7 +10,7 @@ namespace gfx {
   static gl::Texture tile_set;
 
   float exponential_ease_in(float p) {
-      return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
+    return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
   }
 
   float exponential_ease_out(float p) {
@@ -117,33 +117,52 @@ namespace gfx {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    /*
     auto sprite_kvpair_it = agent_sprites.find(followed_agent_id);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
       _camera_pos = sprite.pos - Vec2f((float)_draw_rect.size.x / _tile_size.x / 2,
                                        (float)_draw_rect.size.y / _tile_size.y / 2);
     }
+    */
 
-    draw::set_camera_pos(_camera_pos);
-
-    // TODO: Only iterate over tiles on screen
     for(int j = 0 ; j < tile_sprites.h() ; j ++) {
       for(int i = 0 ; i < tile_sprites.w() ; i ++) {
         auto pos = Vec2i(i, j);
         auto tile = tile_sprites.get(pos);
         if(tile.visible) {
           if(tile.type_id == 1) {
-            draw::draw_wall(pos);
+            tile_map.set_tile(pos, 86);
+            tile_map.set_fg_color(pos, 0x77, 0x66, 0x55);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
           } else if(tile.type_id == 2) {
-            draw::draw_floor(pos);
+            tile_map.set_tile(pos, 133);
+            tile_map.set_fg_color(pos, 0x77, 0x66, 0x55);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
+          } else {
+            tile_map.set_tile(pos, 4);
+            tile_map.set_fg_color(pos, 0x11, 0x11, 0x22);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
           }
         } else if(tile.visited) {
           Color filter(0.4f, 0.4f, 0.5f);
           if(tile.type_id == 1) {
-            draw::draw_wall(pos, filter);
+            tile_map.set_tile(pos, 86);
+            tile_map.set_fg_color(pos, 0x44, 0x33, 0x33);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
           } else if(tile.type_id == 2) {
-            draw::draw_floor(pos, filter);
+            tile_map.set_tile(pos, 133);
+            tile_map.set_fg_color(pos, 0x44, 0x33, 0x33);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
+          } else {
+            tile_map.set_tile(pos, 4);
+            tile_map.set_fg_color(pos, 0x11, 0x11, 0x22);
+            tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
           }
+        } else {
+          tile_map.set_tile(pos, 4);
+          tile_map.set_fg_color(pos, 0x11, 0x11, 0x22);
+          tile_map.set_bg_color(pos, 0x11, 0x11, 0x22);
         }
       }
     }
@@ -151,22 +170,31 @@ namespace gfx {
     for(auto & kvpairs : agent_sprites) {
       auto & sprite = kvpairs.second;
 
-      // TODO: Draw the agent only if on screen
-      draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
+      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
+
+      //draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
+      if(sprite.type_id == 0) {
+        tile_map.set_tile(pos, 3);
+        tile_map.set_fg_color(pos, 0xFF, 0xCC, 0x99);
+      } else if(sprite.type_id == 1) {
+        tile_map.set_tile(pos, 0);
+        tile_map.set_fg_color(pos, 0xFF, 0xCC, 0x99);
+      }
     }
 
     glTranslatef(-_draw_rect.pos.x, -_draw_rect.pos.y, 0.0f);
     draw::unclip();
 
-    tile_map.set_size(Vec2u(16, 16));
-    tile_map.set_screen_size(Vec2u(960, 768));
-    tile_map.set_draw_rect(Rect2i(0, 0, 512, 512));
+    tile_map.set_screen_size(Vec2u(480, 480));
+    tile_map.set_draw_rect(Rect2i(0, 0, 16*tile_sprites.w(), 16*tile_sprites.h()));
+
     tile_map.set_tile_set(tile_set);
     tile_map.draw();
   }
 
   void GridWorld::set_size(Vec2u size) {
     tile_sprites.resize(size.x, size.y);
+    tile_map.set_size(size);
   }
   void GridWorld::set_tile(const Vec2i & pos, unsigned int type_id) {
     TileSprite sprite;
@@ -197,12 +225,12 @@ namespace gfx {
   }
 
   Vec2i GridWorld::grid_pos(Vec2i screen_pos) const {
-    return Vec2i(std::round((float)screen_pos.x / _tile_size.x + _camera_pos.x),
-                 std::round((float)screen_pos.y / _tile_size.y + _camera_pos.y));
+    return Vec2i(std::round((float)screen_pos.x / _tile_size.x - 0.5f),
+                 std::round((float)screen_pos.y / _tile_size.y - 0.5f));
   }
   Vec2i GridWorld::screen_pos(Vec2i grid_pos) const {
-    return Vec2i((grid_pos.x - _camera_pos.x) * _tile_size.x,
-                 (grid_pos.y - _camera_pos.y) * _tile_size.y);
+    return Vec2i((grid_pos.x + 0.5f) * _tile_size.x,
+                 (grid_pos.y + 0.5f) * _tile_size.y);
   }
 
   void GridWorld::follow_agent(unsigned int agent_id) {
@@ -235,10 +263,10 @@ namespace gfx {
       Vec2i pos(round(sprite.pos.x), round(sprite.pos.y));
       if(pos == location) {
         if(id == 1) {
-          dst = "your nicely colored self";
+          dst = "Dog";
           return true;
         } else {
-          dst = "an evil looking color";
+          dst = "Orc";
           return true;
         }
       }
@@ -365,10 +393,15 @@ namespace gfx {
 
   gl::Program shader_program;
 
+  /*
+  void init(Vec2u screen_size) {
+    draw::init(screen_size);
+  }
+  */
   void load() {
     font_atlas.load_textures();
 
-    TileMap::load_shader();
+    draw::TileMap::load_shader();
 
     Image tile_set_img;
     if(load_png(tile_set_img, "tiles.png")) {
@@ -380,7 +413,7 @@ namespace gfx {
   void unload() {
     tile_set.unload();
 
-    TileMap::unload_shader();
+    draw::TileMap::unload_shader();
 
     font_atlas.unload_textures();
   }

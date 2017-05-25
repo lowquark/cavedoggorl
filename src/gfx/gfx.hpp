@@ -48,7 +48,7 @@ namespace gfx {
     Map<TileSprite> tile_sprites;
     std::map<unsigned int, AgentSprite> agent_sprites;
 
-    TileMap tile_map;
+    draw::TileMap tile_map;
 
     public:
     void clear_sprites();

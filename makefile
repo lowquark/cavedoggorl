@@ -2,8 +2,8 @@
 all: mvp wfc
 
 OBJECTS := build/main.o \
-					 build/gfx/draw.o \
 					 build/gfx/gfx.o \
+					 build/gfx/draw.o \
 					 build/gfx/TileMap.o \
 					 build/gfx/gl/Buffer.o \
 					 build/gfx/gl/Program.o \
