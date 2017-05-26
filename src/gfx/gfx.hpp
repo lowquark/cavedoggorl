@@ -36,22 +36,21 @@ namespace gfx {
 
   // An animated version of the game world
   class GridWorld {
+    Rect2i _draw_rect;
+
     Rect2i _camera_rect;
     int _camera_margin = 0;
-    Vec2u _screen_size;
+    unsigned int followed_agent_id = 0;
 
-    Vec2u _tile_size;
-    Rect2i _draw_rect;
+
+    draw::TileMap tile_map; // tilemap of sprites displayed on screen
+    Map<TileSprite> tile_sprites; // sprites of the world
+    std::map<unsigned int, AgentSprite> agent_sprites;
+
 
     std::deque<Animation *> queued_animations;
     std::vector<Animation *> active_animations;
 
-    unsigned int followed_agent_id = 0;
-
-    Map<TileSprite> tile_sprites;
-    std::map<unsigned int, AgentSprite> agent_sprites;
-
-    draw::TileMap tile_map;
 
     public:
     void clear_sprites();
@@ -155,8 +154,6 @@ namespace gfx {
     void draw();
   };
 
-  void set_window_size(Vec2u pixels);
-  Vec2u window_size();
   void load_font(const char * ttf_path);
   bool load_tiles(const char * png_path, Vec2u tile_size);
 

@@ -14,7 +14,11 @@
 
 namespace gfx {
   namespace draw {
-    void draw_rect(const Rect2i & rect, const Color & color);
+    Vec2u window_size();
+    void set_window_size(Vec2u window_size);
+
+    void draw_quad(const Rect2i & rect, const Color & color);
+    void calc_quad(float * vertex_data, const Rect2i rect);
 
     // Recursive clipping
     void clip(const Rect2i & rect);

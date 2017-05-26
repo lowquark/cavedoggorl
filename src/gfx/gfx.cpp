@@ -7,7 +7,8 @@
 
 namespace gfx {
   static draw::FontAtlas font_atlas;
-  static Vec2u _window_size;
+
+  draw::TileMapShader tile_map_shader;
 
   Image tile_set_img;
   static gl::Texture tile_set;
@@ -80,8 +81,6 @@ namespace gfx {
     }
     active_animations.clear();
 
-    followed_agent_id = 0;
-
     tile_sprites.clear();
     agent_sprites.clear();
   }
@@ -114,17 +113,14 @@ namespace gfx {
   }
 
   void GridWorld::draw() {
-    draw::clip(_draw_rect);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     auto sprite_kvpair_it = agent_sprites.find(followed_agent_id);
     if(sprite_kvpair_it != agent_sprites.end()) {
       auto & sprite = sprite_kvpair_it->second;
       auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
       update_camera(pos, _camera_margin);
     }
+
+    tile_map.set_tile_set(tile_set, tile_set_size, tile_size);
 
     for(int j = 0 ; j < _camera_rect.size.y ; j ++) {
       for(int i = 0 ; i < _camera_rect.size.x ; i ++) {
@@ -169,24 +165,24 @@ namespace gfx {
     for(auto & kvpairs : agent_sprites) {
       auto & sprite = kvpairs.second;
 
-      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y)) - _camera_rect.pos;
+      auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
+      auto screen_pos = pos - _camera_rect.pos;
 
-      //draw::draw_agent(sprite.pos, sprite.type_id, sprite.color);
-      if(sprite.type_id == 0) {
-        tile_map.set_tile(pos, 3);
-        tile_map.set_fg_color(pos, 0xFF, 0xCC, 0x99);
-      } else if(sprite.type_id == 1) {
-        tile_map.set_tile(pos, 0);
-        tile_map.set_fg_color(pos, 0xFF, 0xCC, 0x99);
+      auto tile = tile_sprites.get(pos);
+
+      if(tile.visible) {
+        if(sprite.type_id == 0) {
+          tile_map.set_tile(screen_pos, 3);
+          tile_map.set_fg_color(screen_pos, 0xFF, 0xCC, 0x99);
+        } else if(sprite.type_id == 1) {
+          tile_map.set_tile(screen_pos, 0);
+          tile_map.set_fg_color(screen_pos, 0xFF, 0xCC, 0x99);
+        }
       }
     }
 
-    tile_map.set_screen_size(Vec2u(480, 480));
-    tile_map.set_draw_rect(Rect2i(0, 0, 16*tile_sprites.w(), 16*tile_sprites.h()));
-
-    tile_map.set_tile_set(tile_set);
-    tile_map.draw();
-
+    draw::clip(_draw_rect);
+    tile_map_shader.draw(tile_map, _draw_rect.pos);
     draw::unclip();
   }
 
@@ -272,6 +268,8 @@ namespace gfx {
   void GridWorld::set_fov(const FOV & fov) {
     //std::vector<bool> fov_sample = fov.sample(Rect2i(0, 0, tile_type_ids.w(), tile_type_ids.h()));
 
+    printf("%s\n", __PRETTY_FUNCTION__);
+
     for(int j = 0 ; j < tile_sprites.h() ; j ++) {
       for(int i = 0 ; i < tile_sprites.w() ; i ++) {
         Vec2i pos(i, j);
@@ -295,7 +293,7 @@ namespace gfx {
       Vec2i pos(round(sprite.pos.x), round(sprite.pos.y));
       if(pos == location) {
         if(id == 1) {
-          dst = "Hark! hark!";
+          dst = "Hark! Hark!";
           return true;
         } else {
           dst = "Orc";
@@ -364,7 +362,7 @@ namespace gfx {
 
       text_bin.set_draw_rect(Rect2i(bin_pos, Vec2i(clip_ease*text_size.x, text_size.y)));
 
-      draw::draw_rect(Rect2i(bin_pos - padding, text_bin.draw_rect().size + padding*2), Color(0.05f, 0.05f, 0.05f));
+      draw::draw_quad(Rect2i(bin_pos - padding, text_bin.draw_rect().size + padding*2), Color(0.05f, 0.05f, 0.05f));
 
       text_bin.draw();
     }
@@ -404,7 +402,7 @@ namespace gfx {
 
       item.text_bin.set_draw_rect(Rect2i(bin_pos, text_size));
 
-      draw::draw_rect(Rect2i(bin_pos - padding, text_size + padding*2), Color(0.05f, 0.05f, 0.05f));
+      draw::draw_quad(Rect2i(bin_pos - padding, text_size + padding*2), Color(0.05f, 0.05f, 0.05f));
 
       item.text_bin.draw();
     }
@@ -413,13 +411,6 @@ namespace gfx {
     draw::unclip();
   }
 
-
-  void set_window_size(Vec2u pixels) {
-    _window_size = pixels;
-  }
-  Vec2u window_size() {
-    return _window_size;
-  }
 
   void load_font(const char * ttf_path) {
     font_atlas.set_font(ttf_path);
@@ -440,11 +431,13 @@ namespace gfx {
       tile_set_size.x = tile_set_img.width() / tile_size.x;
       tile_set_size.y = tile_set_img.height() / tile_size.y;
 
+      /*
       if(tile_set_size.x * tile_size.x != tile_set_img.width() ||
          tile_set_size.y * tile_size.y != tile_set_img.height()) {
         tile_set_img = Image();
         return false;
       }
+      */
 
       return true;
     } else {
@@ -454,13 +447,42 @@ namespace gfx {
 
   gl::Program shader_program;
 
-  /*
-  void init(Vec2u screen_size) {
-    draw::init(screen_size);
-  }
-  */
   void load() {
-    draw::TileMap::load_shader();
+    tile_map_shader.load("#version 130\n\n"
+                         "in vec2 vertex_pos;\n"
+                         "in vec2 vertex_texcoord;\n"
+                         "varying vec2 texcoord;\n"
+                         "void main() {\n"
+                         "gl_Position.xy = vertex_pos;\n"
+                         "gl_Position.z = 0.0;\n"
+                         "gl_Position.w = 1.0;\n"
+                         "texcoord = vertex_texcoord;\n"
+                         "}",
+                         "#version 130\n\n"
+                         "uniform sampler2D tile_set;\n"
+                         "uniform sampler2D fg_color;\n"
+                         "uniform sampler2D bg_color;\n"
+                         "uniform sampler2D index_data;\n"
+                         "uniform ivec2 tile_map_size;\n"
+                         "uniform ivec2 tile_set_size;\n"
+                         "\n"
+                         "varying vec2 texcoord;\n"
+                         "void main() { \n"
+                         "vec4 fg = texture(fg_color, texcoord);\n"
+                         "vec4 bg = texture(bg_color, texcoord);\n"
+                         "vec2 tile_set_coord = texture(index_data, texcoord).xy * 255/256;\n"
+                         "\n"
+                         "vec2 tile_local_texcoord = texcoord*tile_map_size - floor(texcoord*tile_map_size);\n"
+                         "vec2 tile_set_texcoord = tile_set_coord + tile_local_texcoord/tile_set_size;\n"
+                         "vec4 tile_color = texture(tile_set, tile_set_texcoord);\n"
+                         "\n"
+                         "if(abs(tile_color.r - tile_color.g) < 0.001 && \n"
+                         "   abs(tile_color.g - tile_color.b) < 0.001) {\n"
+                         "gl_FragColor = bg + tile_color.r*(fg - bg);\n"
+                         "} else {\n"
+                         "gl_FragColor = tile_color;\n"
+                         "}\n"
+                         "}\n"); // lol
 
     tile_set.load(tile_set_img);
     printf("tile_set.id(): %d\n", tile_set.id());
@@ -468,13 +490,11 @@ namespace gfx {
     font_atlas.load_textures();
   }
   void unload() {
-    _window_size = Vec2u();
+    tile_map_shader.unload();
 
     tile_set.unload();
     tile_set_size = Vec2u(0, 0);
     tile_size = Vec2u(0, 0);
-
-    draw::TileMap::unload_shader();
 
     font_atlas.unload_textures();
   }

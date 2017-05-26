@@ -23,9 +23,9 @@ wfc: wfc2.cpp
 	clang++ -std=c++11 -Wall -g -o $@ $<
 
 mvp: $(OBJECTS)
-	clang++ -g -Wall -std=c++11 -o $@ $^ -lSDL2 -lGL -lGLEW -lGLU -lSDL2_image -lSDL2_ttf -lluajit-5.1 -lpng -lz
+	clang++ -pg -g -O3 -Wall -std=c++11 -o $@ $^ -lSDL2 -lGL -lGLEW -lGLU -lSDL2_image -lSDL2_ttf -lluajit-5.1 -lpng -lz
 
 build/%.o: src/%.cpp
 	@mkdir --parents $(@D)
-	clang++ -g -Wall -std=c++11 -I src/ -DLOG_LEVEL=DEBUG3 -c -o $@ $<
+	clang++ -pg -g -O3 -Wall -std=c++11 -I src/ -DLOG_LEVEL=DEBUG3 -c -o $@ $<
 

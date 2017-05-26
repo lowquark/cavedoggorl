@@ -18,6 +18,7 @@
 #include <game/game.hpp>
 #include <game/FOV.hpp>
 #include <gfx/gfx.hpp>
+#include <gfx/draw.hpp>
 #include <util/Vec2.hpp>
 #include <util/Log.hpp>
 
@@ -78,7 +79,7 @@ class MuhView : public game::View {
   }
 
   void set_fov(unsigned int id, const FOV & fov) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
+    printf("%s: id = %u\n", __PRETTY_FUNCTION__, id);
 
     if(id == follow_obj_id) {
       grid_world.set_fov(fov);
@@ -232,7 +233,7 @@ int main(int argc, char ** argv) {
   window_size = Vec2u(tile_size.x * view_size.x, tile_size.y * view_size.y);
 
   gfx::load_tiles("./tiles.png", tile_size);
-  gfx::set_window_size(window_size);
+  gfx::draw::set_window_size(window_size);
 
 
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
@@ -260,11 +261,12 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      muh_world.set_view(&muh_view);
+      unsigned int world_w = 60;
+      unsigned int world_h = 60;
 
-      muh_world.set_size(60, 60);
-      for(unsigned int j = 0 ; j < 60 ; j ++) {
-        for(unsigned int i = 0 ; i < 60 ; i ++) {
+      muh_world.set_size(world_w, world_h);
+      for(unsigned int j = 0 ; j < world_h ; j ++) {
+        for(unsigned int i = 0 ; i < world_w ; i ++) {
           if(rand() % 5 == 0) {
             muh_world.set_tile(Vec2i(i, j), 1);
           } else {
@@ -273,20 +275,16 @@ int main(int argc, char ** argv) {
         }
       }
 
-      auto hero_obj = muh_world.create_hero(Vec2i(1, 1));
+      auto hero_obj = muh_world.create_hero(Vec2i(2, 1));
 
-      /*
-      muh_world.create_badguy(Vec2i(2, 2), hero_obj);
-      muh_world.create_badguy(Vec2i(10, 2), hero_obj);
-      muh_world.create_badguy(Vec2i(20, 2), hero_obj);
-      muh_world.create_badguy(Vec2i(4, 4), hero_obj);
-      muh_world.create_badguy(Vec2i(12, 4), hero_obj);
-      muh_world.create_badguy(Vec2i(22, 4), hero_obj);
-      */
+      for(int i = 0 ; i < 4 ; i ++) {
+        muh_world.create_badguy(Vec2i(rand() % world_w, rand() % world_h), hero_obj);
+      }
 
       step_game();
 
       muh_view.follow(hero_obj.id());
+      muh_world.set_view(&muh_view);
 
       //muh_game.create_new();
       //muh_game.save("asdf");

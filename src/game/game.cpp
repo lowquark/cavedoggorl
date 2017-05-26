@@ -24,6 +24,13 @@ namespace game {
     this->view = view;
     if(view) {
       view->clear();
+      view->set_world_size(space.tiles.w(), space.tiles.h());
+      for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
+        for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
+          Vec2i pos(i, j);
+          view->set_tile(pos, space.tiles.get(pos));
+        }
+      }
       uni.for_all_with({ GlyphPart::part_class, SpatialPart::part_class },
         [=](const Universe & u, ObjectHandle obj) {
           auto glyph_part = get_part<GlyphPart>(u, obj);
@@ -37,13 +44,6 @@ namespace game {
           view->set_fov(obj.id(), agent_part->fov);
         }
       );
-      view->set_world_size(space.tiles.w(), space.tiles.h());
-      for(unsigned int j = 0 ; j < space.tiles.h() ; j ++) {
-        for(unsigned int i = 0 ; i < space.tiles.w() ; i ++) {
-          Vec2i pos(i, j);
-          view->set_tile(pos, space.tiles.get(pos));
-        }
-      }
     }
   }
 

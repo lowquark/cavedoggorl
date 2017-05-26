@@ -3,3 +3,5 @@
 mvp
 wfc
 build/
+gmon.out
+prof_out

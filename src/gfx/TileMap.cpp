@@ -1,43 +1,29 @@
 
 #include "TileMap.hpp"
 
+#include <gfx/draw.hpp>
 #include <gfx/gl/Program.hpp>
+#include <util/Log.hpp>
 
 namespace gfx {
 namespace draw {
-  gl::Program TileMap::shader_program;
-  gl::Texture TileMap::fg_color_tex;
-  gl::Texture TileMap::bg_color_tex;
-  gl::Texture TileMap::index_data_tex;
-
-  GLint TileMap::tile_map_size_loc = 0;
-  GLint TileMap::tile_set_size_loc = 0;
-
-  GLint TileMap::tile_set_loc = 0;
-  GLint TileMap::fg_color_loc;
-  GLint TileMap::bg_color_loc;
-  GLint TileMap::index_data_loc;
-
-  void TileMap::set_screen_size(Vec2u pixels) {
-    screen_size = pixels;
-  }
-  void TileMap::set_draw_rect(Rect2i pixels) {
-    draw_rect = pixels;
-  }
-
   void TileMap::set_size(Vec2u size) {
     if(size != _size) {
       _size = size;
       if(_size.x == 0 || _size.y == 0) {
+        indices.release();
         fg_color_data.release();
         bg_color_data.release();
         index_data.release();
       } else {
+        indices = std::unique_ptr<unsigned int[]>(new unsigned int[_size.x * _size.y]);
         fg_color_data = std::unique_ptr<uint8_t[]>(new uint8_t[_size.x * _size.y * 4]);
         bg_color_data = std::unique_ptr<uint8_t[]>(new uint8_t[_size.x * _size.y * 4]);
         index_data = std::unique_ptr<uint8_t[]>(new uint8_t[_size.x * _size.y * 3]);
 
         for(unsigned int i = 0 ; i < _size.x * _size.y ; i ++) {
+          indices[i] = 0;
+
           fg_color_data[4*i + 0] = 0xFF;
           fg_color_data[4*i + 1] = 0xFF;
           fg_color_data[4*i + 2] = 0xFF;
@@ -58,9 +44,7 @@ namespace draw {
   void TileMap::set_tile(Vec2i tile, unsigned int idx) {
     if(tile.x >= 0 && tile.x < _size.x &&
        tile.y >= 0 && tile.y < _size.y) {
-      unsigned int i = tile.x + tile.y * _size.x;
-      index_data[3*i + 0] = (idx % 16) * 16;
-      index_data[3*i + 1] = (idx / 16) * 16;
+      indices[tile.x + tile.y * _size.x] = idx;
     }
   }
   void TileMap::set_fg_color(Vec2i tile, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -83,15 +67,33 @@ namespace draw {
       bg_color_data[4*i + 3] = a;
     }
   }
-  void TileMap::set_tile_set(const gl::Texture & texture) {
+  void TileMap::set_tile_set(const gl::Texture & texture, Vec2u tile_set_size, Vec2u tile_size) {
     tile_set_texid = texture.id();
+    _tile_set_size = tile_set_size;
+    _tile_size = tile_size;
+
+    extern Log log;
+    if((256 / tile_set_size.x) * tile_set_size.x != 256 ||
+       (256 / tile_set_size.y) * tile_set_size.y != 256) {
+      log.logf<Log::WARNING>("%s: dimensions of tile set (%ux%u) are not both powers of 2",
+                             __PRETTY_FUNCTION__,
+                             tile_set_size.x,
+                             tile_set_size.y);
+    }
+
+    // update indices now that tile set has been set
+
+    for(unsigned int i = 0 ; i < _size.x * _size.y ; i ++) {
+      index_data[3*i + 0] = (indices[i] % tile_set_size.x) * 256 / tile_set_size.x;
+      index_data[3*i + 1] = (indices[i] / tile_set_size.y) * 256 / tile_set_size.y;
+    }
   }
 
-  void TileMap::draw() {
-    if(shader_program.is_loaded() && size().x && size().y) {
+  void TileMapShader::draw(const TileMap & map, Vec2i pos) {
+    if(shader_program.is_loaded() && map._size.x && map._size.y) {
       shader_program.use();
 
-      glUniform2i(tile_map_size_loc, _size.x, _size.y);
+      glUniform2i(tile_map_size_loc, map._size.x, map._size.y);
       glUniform2i(tile_set_size_loc, 16, 16);
 
       glEnable(GL_VERTEX_ARRAY);
@@ -99,7 +101,7 @@ namespace draw {
       glEnableVertexAttribArray(1);
 
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, tile_set_texid);
+      glBindTexture(GL_TEXTURE_2D, map.tile_set_texid);
 
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -109,8 +111,8 @@ namespace draw {
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size().x, size().y, 0,
-                   GL_RGBA, GL_UNSIGNED_BYTE, fg_color_data.get());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, map._size.x, map._size.y, 0,
+                   GL_RGBA, GL_UNSIGNED_BYTE, map.fg_color_data.get());
 
       glActiveTexture(GL_TEXTURE2);
       glBindTexture(GL_TEXTURE_2D, bg_color_tex.id());
@@ -118,8 +120,8 @@ namespace draw {
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size().x, size().y, 0,
-                   GL_RGBA, GL_UNSIGNED_BYTE, bg_color_data.get());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, map._size.x, map._size.y, 0,
+                   GL_RGBA, GL_UNSIGNED_BYTE, map.bg_color_data.get());
 
       glActiveTexture(GL_TEXTURE3);
       glBindTexture(GL_TEXTURE_2D, index_data_tex.id());
@@ -127,8 +129,8 @@ namespace draw {
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size().x, size().y, 0,
-                   GL_RGB, GL_UNSIGNED_BYTE, index_data.get());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, map._size.x, map._size.y, 0,
+                   GL_RGB, GL_UNSIGNED_BYTE, map.index_data.get());
 
       glActiveTexture(GL_TEXTURE0);
 
@@ -150,16 +152,7 @@ namespace draw {
         0.0f, 1.0f,
       };
 
-      if(screen_size.x != 0 && screen_size.y != 0) {
-        vertex_data[0] =  2.0f * ((float) (draw_rect.pos.x                   ) + 0.375f) / screen_size.x - 1.0f;
-        vertex_data[1] = -2.0f * ((float) (draw_rect.pos.y                   ) + 0.375f) / screen_size.y + 1.0f;
-        vertex_data[2] =  2.0f * ((float) (draw_rect.pos.x + draw_rect.size.x) + 0.375f) / screen_size.x - 1.0f;
-        vertex_data[3] = -2.0f * ((float) (draw_rect.pos.y                   ) + 0.375f) / screen_size.y + 1.0f;
-        vertex_data[4] =  2.0f * ((float) (draw_rect.pos.x + draw_rect.size.x) + 0.375f) / screen_size.x - 1.0f;
-        vertex_data[5] = -2.0f * ((float) (draw_rect.pos.y + draw_rect.size.y) + 0.375f) / screen_size.y + 1.0f;
-        vertex_data[6] =  2.0f * ((float) (draw_rect.pos.x                   ) + 0.375f) / screen_size.x - 1.0f;
-        vertex_data[7] = -2.0f * ((float) (draw_rect.pos.y + draw_rect.size.y) + 0.375f) / screen_size.y + 1.0f;
-      }
+      draw::calc_quad(vertex_data, Rect2i(pos, map.draw_size()));
 
       glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertex_data + 0);
       glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, vertex_data + 8);
@@ -174,42 +167,14 @@ namespace draw {
     }
   }
 
-  bool TileMap::load_shader() {
+  bool TileMapShader::load(const std::string & vert_src, const std::string & frag_src) {
     bool succ = false;
 
     using namespace gl;
     VertexShader vert;
     FragmentShader frag;
-    if(vert.load("#version 130\n\n"
-                 "in vec2 vertex_pos;\n"
-                 "in vec2 vertex_texcoord;\n"
-                 "varying vec2 texcoord;\n"
-                 "void main() { gl_Position.xy = vertex_pos; gl_Position.z = 0.0; gl_Position.w = 1.0; texcoord = vertex_texcoord;}")) {
-      if(frag.load("#version 130\n\n"
-                   "uniform sampler2D tile_set;\n"
-                   "uniform sampler2D fg_color;\n"
-                   "uniform sampler2D bg_color;\n"
-                   "uniform sampler2D index_data;\n"
-                   "uniform ivec2 tile_map_size;\n"
-                   "uniform ivec2 tile_set_size;\n"
-                   "\n"
-                   "varying vec2 texcoord;\n"
-                   "void main() { \n"
-                   "vec4 fg = texture(fg_color, texcoord);\n"
-                   "vec4 bg = texture(bg_color, texcoord);\n"
-                   "vec2 tile_set_coord = texture(index_data, texcoord).xy * 255/256;\n"
-                   "\n"
-                   "vec2 tile_local_texcoord = texcoord*tile_map_size - floor(texcoord*tile_map_size);\n"
-                   "vec2 tile_set_texcoord = tile_set_coord + tile_local_texcoord/tile_set_size;\n"
-                   "vec4 tile_color = texture(tile_set, tile_set_texcoord);\n"
-                   "\n"
-                   "if(abs(tile_color.r - tile_color.g) < 0.001 && \n"
-                   "   abs(tile_color.g - tile_color.b) < 0.001) {\n"
-                   "gl_FragColor = bg + tile_color.r*(fg - bg);\n"
-                   "} else {\n"
-                   "gl_FragColor = tile_color;\n"
-                   "}\n"
-                   "}\n")) {
+    if(vert.load(vert_src)) {
+      if(frag.load(frag_src)) {
         shader_program.load();
         shader_program.attach(vert);
         shader_program.attach(frag);
@@ -267,7 +232,7 @@ namespace draw {
 
     return succ;
   }
-  void TileMap::unload_shader() {
+  void TileMapShader::unload() {
     fg_color_tex.unload();
     bg_color_tex.unload();
     index_data_tex.unload();

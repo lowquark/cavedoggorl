@@ -10,11 +10,19 @@
 
 namespace gfx {
 namespace draw {
-  static Log log;
+  static Vec2u _window_size;
+  Vec2u window_size() {
+    return _window_size;
+  }
+  void set_window_size(Vec2u window_size) {
+    _window_size = window_size;
+  }
+
+  Log log;
 
   //const float PIXEL_FUDGE = 0.375f;
 
-  void draw_rect(const Rect2i & rect, const Color & color) {
+  void draw_quad(const Rect2i & rect, const Color & color) {
     glDisable(GL_TEXTURE_2D);
     glColor4f(color.r, color.g, color.b, color.a);
     glBegin(GL_QUADS);
@@ -23,6 +31,27 @@ namespace draw {
       glVertex2f(rect.pos.x + rect.size.x, rect.pos.y + rect.size.y);
       glVertex2f(rect.pos.x,               rect.pos.y + rect.size.y);
     glEnd();
+  }
+  void calc_quad(float * vertex_data, const Rect2i rect) {
+    if(_window_size.x != 0 && _window_size.y != 0) {
+      vertex_data[0] =  2.0f * ((float) (rect.pos.x              ) + 0.375f) / _window_size.x - 1.0f;
+      vertex_data[1] = -2.0f * ((float) (rect.pos.y              ) + 0.375f) / _window_size.y + 1.0f;
+      vertex_data[2] =  2.0f * ((float) (rect.pos.x + rect.size.x) + 0.375f) / _window_size.x - 1.0f;
+      vertex_data[3] = -2.0f * ((float) (rect.pos.y              ) + 0.375f) / _window_size.y + 1.0f;
+      vertex_data[4] =  2.0f * ((float) (rect.pos.x + rect.size.x) + 0.375f) / _window_size.x - 1.0f;
+      vertex_data[5] = -2.0f * ((float) (rect.pos.y + rect.size.y) + 0.375f) / _window_size.y + 1.0f;
+      vertex_data[6] =  2.0f * ((float) (rect.pos.x              ) + 0.375f) / _window_size.x - 1.0f;
+      vertex_data[7] = -2.0f * ((float) (rect.pos.y + rect.size.y) + 0.375f) / _window_size.y + 1.0f;
+    } else {
+      vertex_data[0] = -1.0f;
+      vertex_data[1] =  1.0f;
+      vertex_data[2] =  1.0f;
+      vertex_data[3] =  1.0f;
+      vertex_data[4] =  1.0f;
+      vertex_data[5] = -1.0f;
+      vertex_data[6] = -1.0f;
+      vertex_data[7] = -1.0f;
+    }
   }
 
   // TODO: clear() should clear this stack

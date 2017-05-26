@@ -10,50 +10,55 @@
 namespace gfx {
 namespace draw {
   class TileMap {
-    struct Tile {
-      Color fg;
-      Color bg;
-      unsigned int idx;
-    };
+    public:
+    const Vec2u & size() const { return _size; }
+    void set_size(Vec2u size);
 
-    Vec2u screen_size;
-    Rect2i draw_rect;
+    Vec2u draw_size() const { return Vec2u(_size.x*_tile_size.x,
+                                           _size.y*_tile_size.y); }
 
-    GLuint tile_set_texid = 0;
-    Vec2u _size;
+    void set_tile_set(const gl::Texture & texture, Vec2u tile_set_size, Vec2u tile_size);
+    void set_tile(Vec2i tile, unsigned int idx);
+    void set_fg_color(Vec2i tile, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF);
+    void set_bg_color(Vec2i tile, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF);
+
+    private:
+    Vec2u _size; // size in tiles
+
+    GLuint tile_set_texid = 0; // tileset texture
+    Vec2u _tile_set_size;      // tileset size in tiles
+    Vec2u _tile_size;          // tileset tile size in pixels
+
+    // interim index data
+    std::unique_ptr<unsigned int[]> indices;
+
+    // uploaded to GPU as textures
     std::unique_ptr<uint8_t[]> fg_color_data;
     std::unique_ptr<uint8_t[]> bg_color_data;
     std::unique_ptr<uint8_t[]> index_data;
 
-
-    static gl::Program shader_program;
-    static gl::Texture fg_color_tex;
-    static gl::Texture bg_color_tex;
-    static gl::Texture index_data_tex;
-
-    static GLint tile_map_size_loc;
-    static GLint tile_set_size_loc;
-
-    static GLint tile_set_loc;
-    static GLint fg_color_loc;
-    static GLint bg_color_loc;
-    static GLint index_data_loc;
-
+    friend class TileMapShader;
+  };
+  class TileMapShader {
     public:
-    void set_screen_size(Vec2u pixels);
-    void set_draw_rect(Rect2i pixels);
+    void draw(const TileMap & map, Vec2i pos);
 
-    const Vec2u & size() const { return _size; }
-    void set_size(Vec2u size);
-    void set_tile(Vec2i tile, unsigned int idx);
-    void set_fg_color(Vec2i tile, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF);
-    void set_bg_color(Vec2i tile, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF);
-    void set_tile_set(const gl::Texture & texture);
+    bool load(const std::string & vert_src, const std::string & frag_src);
+    void unload();
 
-    void draw();
+    private:
+    gl::Program shader_program;
+    gl::Texture fg_color_tex;
+    gl::Texture bg_color_tex;
+    gl::Texture index_data_tex;
 
-    static bool load_shader();
-    static void unload_shader();
+    GLint tile_map_size_loc;
+    GLint tile_set_size_loc;
+
+    GLint tile_set_loc;
+    GLint fg_color_loc;
+    GLint bg_color_loc;
+    GLint index_data_loc;
   };
 }
 }
