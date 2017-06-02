@@ -349,4 +349,181 @@ namespace game {
   }
 }
 
+namespace newcore {
+  typedef unsigned int TypeId;
+
+  class Event {
+    public:
+    Event(unsigned int type_id) : _type_id(type_id) {}
+    virtual ~Event() = default;
+
+    unsigned int type_id() const { return _type_id; }
+
+    private:
+    unsigned int _type_id;
+  };
+
+  class Query {
+    public:
+    Query(unsigned int type_id) : _type_id(type_id) {}
+    virtual ~Query() = default;
+
+    unsigned int type_id() const { return _type_id; }
+    void abort() { _abort_flag = true; }
+    bool abort_flag() const { return _abort_flag; }
+
+    private:
+    unsigned int _type_id;
+    bool _abort_flag = false;
+  };
+
+  class Part {
+    public:
+    Part(unsigned int type_id) : _type_id(type_id) {}
+    virtual ~Part() = default;
+
+    unsigned int type_id() const { return _type_id; }
+
+    virtual void handle_event(const Event & event) { }
+    virtual void handle_query(Query & query) { }
+
+    private:
+    unsigned int _type_id;
+  };
+
+  typedef unsigned int EntityId;
+
+  class Entity {
+    public:
+    void notify(const Event & event) {
+      for(auto & p : parts) {
+        p->handle_event(event);
+      }
+    }
+    bool query(Query & query) {
+      for(auto & p : parts) {
+        if(query.abort_flag()) { return true; }
+        p->handle_query(query);
+      }
+      return false;
+    }
+
+    private:
+    std::vector<Part *> parts;
+
+    friend class EntityManager;
+  };
+
+  class EntityManager {
+    public:
+    virtual ~EntityManager() = default;
+
+    EntityId create() {
+      last_id ++;
+
+      entities.insert(std::make_pair(last_id, Entity()));
+
+      return last_id;
+    }
+    EntityId create(const std::vector<std::string> & part_data) {
+      last_id ++;
+
+      auto & e = entities[last_id];
+
+      for(auto & datum : part_data) {
+        Part * new_part = create_part(last_id, datum);
+        if(new_part) {
+          add_part(last_id, e, new_part);
+        }
+      }
+
+      return last_id;
+    }
+    void destroy(EntityId id) {
+      auto kvpair_it = entities.find(id);
+      if(kvpair_it != entities.end()) {
+        auto & e = kvpair_it->second;
+        for(auto & p : e.parts) {
+          destroy_part(id, p);
+        }
+        entities.erase(kvpair_it);
+      }
+    }
+
+    void add_part(EntityId id, const std::string & datum) {
+      Part * new_part = create_part(id, datum);
+      if(new_part) {
+        add_part(id, entities[id], new_part);
+      }
+    }
+    void remove_part(EntityId id, unsigned int type_id) {
+      auto kvpair_it = entities.find(id);
+      if(kvpair_it != entities.end()) {
+        auto & e = kvpair_it->second;
+        for(auto it = e.parts.begin() ;
+            it != e.parts.end() ; ) {
+          auto & p = *it;
+          if(p->type_id() == type_id) {
+            destroy_part(id, p);
+            e.parts.erase(it);
+            return;
+          } else {
+            it ++;
+          }
+        }
+      }
+    }
+    Part * find_part(EntityId id, unsigned int part_type_id) {
+      auto kvpair_it = entities.find(id);
+      if(kvpair_it != entities.end()) {
+        auto & e = kvpair_it->second;
+
+        // consider sorting by type id
+        for(auto & p : e.parts) {
+          if(p->type_id() == part_type_id) {
+            return p;
+          }
+        }
+      }
+      return nullptr;
+    }
+
+    void notify(EntityId id, const Event & event) {
+      auto kvpair_it = entities.find(id);
+      if(kvpair_it != entities.end()) {
+        kvpair_it->second.notify(event);
+      }
+    }
+    bool query(EntityId id, Query & query) {
+      auto kvpair_it = entities.find(id);
+      if(kvpair_it != entities.end()) {
+        return kvpair_it->second.query(query);
+      }
+      return false;
+    }
+
+    private:
+    std::map<EntityId, Entity> entities;
+
+    EntityId last_id = 0;
+
+    virtual Part * create_part(EntityId id, const std::string & data) = 0;
+    virtual void destroy_part(EntityId id, Part * p) = 0;
+
+    void add_part(EntityId id, Entity & e, Part * new_part) {
+      assert(new_part);
+      for(auto & p : e.parts) {
+        if(p->type_id() == new_part->type_id()) {
+          // conflicting types, remove existing
+          Part * old_part = p;
+          p = new_part;
+          destroy_part(id, old_part);
+          return;
+        }
+      }
+      e.parts.push_back(new_part);
+    }
+  };
+}
+
 #endif

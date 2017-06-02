@@ -29,8 +29,6 @@ SDL_Window * window = nullptr;
 bool quit_signal = false;
 
 
-game::World muh_world;
-
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
@@ -93,13 +91,15 @@ class MuhView : public game::View {
 
 MuhView muh_view;
 
+game::Engine muh_engine(muh_view);
+
 
 Vec2i mouse_tile;
 
 bool is_player_turn = false;
 void step_game() {
   printf("step_game()\n");
-  is_player_turn = muh_world.tick_until_player_turn(200).first;
+  is_player_turn = muh_engine.step(200).first;
 }
 
 void update() {
@@ -119,35 +119,35 @@ void update() {
         grid_world.skip_animations();
 
         if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          muh_world.player_move_attack(Vec2i( 1,  0));
+          muh_engine.complete_turn(game::MoveAction(Vec2i( 1,  0)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_9) {
-          muh_world.player_move_attack(Vec2i( 1, -1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i( 1, -1)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          muh_world.player_move_attack(Vec2i( 0, -1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i( 0, -1)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_7) {
-          muh_world.player_move_attack(Vec2i(-1, -1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i(-1, -1)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          muh_world.player_move_attack(Vec2i(-1,  0));
+          muh_engine.complete_turn(game::MoveAction(Vec2i(-1,  0)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_1) {
-          muh_world.player_move_attack(Vec2i(-1,  1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i(-1,  1)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          muh_world.player_move_attack(Vec2i( 0,  1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i( 0,  1)));
           step_game();
         } else if(event.key.keysym.sym == SDLK_KP_3) {
-          muh_world.player_move_attack(Vec2i( 1,  1));
+          muh_engine.complete_turn(game::MoveAction(Vec2i( 1,  1)));
           step_game();
         }
 
         /*
         if(event.key.keysym.sym == SDLK_COMMA) {
           if(event.key.keysym.mod & KMOD_SHIFT) {
-            muh_world.player_activate_tile();
+            muh_engine.player_activate_tile();
             step_game();
           }
         }
@@ -261,34 +261,17 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      unsigned int world_w = 60;
-      unsigned int world_h = 60;
+      unsigned int sid = muh_engine.create_space(Vec2u(60, 60));
 
-      muh_world.set_size(world_w, world_h);
-      for(unsigned int j = 0 ; j < world_h ; j ++) {
-        for(unsigned int i = 0 ; i < world_w ; i ++) {
-          if(rand() % 5 == 0) {
-            muh_world.set_tile(Vec2i(i, j), 1);
-          } else {
-            muh_world.set_tile(Vec2i(i, j), 2);
-          }
-        }
-      }
-
-      auto hero_obj = muh_world.create_hero(Vec2i(2, 1));
+      auto hero_obj = muh_engine.create_hero();
+      muh_view.follow(hero_obj.id());
+      muh_engine.spawn(hero_obj, sid, Vec2i(2, 1));
 
       for(int i = 0 ; i < 4 ; i ++) {
-        muh_world.create_badguy(Vec2i(rand() % world_w, rand() % world_h), hero_obj);
+        muh_engine.spawn(muh_engine.create_badguy(hero_obj), sid, Vec2i(rand() % 60, rand() % 60));
       }
 
       step_game();
-
-      muh_view.follow(hero_obj.id());
-      muh_world.set_view(&muh_view);
-
-      //muh_game.create_new();
-      //muh_game.save("asdf");
-      //muh_game.load_old("asdf");
 
       run();
 

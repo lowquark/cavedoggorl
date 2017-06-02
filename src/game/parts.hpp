@@ -10,8 +10,30 @@
 #include <game/FOV.hpp>
 #include <util/Vec2.hpp>
 
+#include <game/queries.hpp>
+
 namespace game {
-  struct GlyphPart : public PartHelper<GlyphPart> {
+  static constexpr newcore::TypeId PHYS_PART_ID = 1;
+  static constexpr newcore::TypeId GLYPH_PART_ID = 2;
+
+  struct PhysPart : public newcore::Part {
+    Vec2i pos;
+
+    PhysPart(const std::string & data) : newcore::Part(PHYS_PART_ID) {
+      std::stringstream ss(data);
+
+      std::string name;
+      ss >> name;
+      assert(name == "Phys");
+
+      int x, y;
+      ss >> x >> y;
+
+      pos = Vec2i(x, y);
+    }
+  };
+
+  struct GlyphPart : public PartHelper<GlyphPart>, public newcore::Part {
     unsigned int type_id = 0;
     Color color = Color(0xFF, 0x00, 0xFF);
 
@@ -22,7 +44,7 @@ namespace game {
         return min;
       return x;
     }
-    GlyphPart(const std::string & data) {
+    GlyphPart(const std::string & data) : newcore::Part(GLYPH_PART_ID) {
       std::stringstream ss(data);
 
       std::string name;
@@ -47,10 +69,10 @@ namespace game {
     }
   };
 
-  struct SpatialPart : public PartHelper<SpatialPart> {
+  struct SpatialPart : public PartHelper<SpatialPart>, public newcore::Part {
     Vec2i pos;
 
-    SpatialPart(const std::string & data) {
+    SpatialPart(const std::string & data) : newcore::Part(102) {
       std::stringstream ss(data);
 
       std::string name;
@@ -76,11 +98,11 @@ namespace game {
       return ss.str();
     }
   };
-  struct TurnTakerPart : public PartHelper<TurnTakerPart> {
+  struct TurnTakerPart : public PartHelper<TurnTakerPart>, public newcore::Part {
     unsigned int wait_time = 0;
     bool break_turns = false;
 
-    TurnTakerPart(const std::string & data) {
+    TurnTakerPart(const std::string & data) : newcore::Part(103) {
       std::stringstream ss(data);
 
       std::string name;
@@ -100,18 +122,18 @@ namespace game {
       return ss.str();
     }
   };
-  struct AgentPart : public PartHelper<AgentPart> {
+  struct AgentPart : public PartHelper<AgentPart>, public newcore::Part {
     int hp = 0;
     int max_hp = 0;
     BresenhamFOV fov;
 
-    AgentPart(const std::string & data) {
+    AgentPart(const std::string & data) : newcore::Part(104) {
     }
   };
-  struct PlayerControlPart : public PartHelper<PlayerControlPart> {
+  struct PlayerControlPart : public PartHelper<PlayerControlPart>, public newcore::Part {
     unsigned int player_id;
 
-    PlayerControlPart(const std::string & data) {
+    PlayerControlPart(const std::string & data) : newcore::Part(105) {
       std::stringstream ss(data);
 
       std::string name;
@@ -124,11 +146,11 @@ namespace game {
       this->player_id = player_id;
     }
   };
-  struct AIControlPart : public PartHelper<AIControlPart> {
+  struct AIControlPart : public PartHelper<AIControlPart>, public newcore::Part {
     std::vector<Vec2i> path;
     ObjectHandle kill_obj;
 
-    AIControlPart(const std::string & data) {
+    AIControlPart(const std::string & data) : newcore::Part(106) {
       std::stringstream ss(data);
 
       std::string name;

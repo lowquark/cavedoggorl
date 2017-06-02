@@ -126,7 +126,8 @@ namespace gfx {
       for(int i = 0 ; i < _camera_rect.size.x ; i ++) {
         auto pos = Vec2i(i, j);
         auto tile = tile_sprites.get(_camera_rect.pos + pos);
-        if(tile.visible) {
+        // HACK ALERT
+        if(tile.visible || true) {
           if(tile.type_id == 1) {
             tile_map.set_tile(pos, 86);
             tile_map.set_fg_color(pos, 0x77, 0x66, 0x55);
@@ -170,7 +171,8 @@ namespace gfx {
 
       auto tile = tile_sprites.get(pos);
 
-      if(tile.visible) {
+      // HACK ALERT
+      if(tile.visible || true) {
         if(sprite.type_id == 0) {
           tile_map.set_tile(screen_pos, 3);
           tile_map.set_fg_color(screen_pos, 0xFF, 0xCC, 0x99);
