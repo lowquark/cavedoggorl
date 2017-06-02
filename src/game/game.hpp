@@ -11,8 +11,7 @@ namespace game {
   struct Space {
     Map<unsigned int> tiles;
     Map<unsigned int> opaque;
-    std::vector<ObjectHandle> agents;
-    std::vector<ObjectHandle> items;
+    std::vector<unsigned int> entities;
   };
 
   class WorldResizeHandler {
@@ -25,19 +24,30 @@ namespace game {
   };
   class SpawnHandler {
     public:
-    virtual void on_spawn(ObjectHandle obj) = 0;
+    virtual void on_spawn(unsigned int eid) = 0;
   };
   class DespawnHandler {
     public:
-    virtual void on_despawn(ObjectHandle obj) = 0;
+    virtual void on_despawn(unsigned int eid) = 0;
   };
   class MoveHandler {
     public:
-    virtual void on_move(ObjectHandle obj, Vec2i from, Vec2i to) = 0;
+    virtual void on_move(unsigned int eid, Vec2i from, Vec2i to) = 0;
   };
   class FOVUpdateHandler {
     public:
-    virtual void on_fov_update(ObjectHandle obj) = 0;
+    virtual void on_fov_update(unsigned int eid) = 0;
+  };
+
+  class EntityManager : public newcore::EntityManager {
+    public:
+    EntityManager();
+
+    private:
+    std::map<std::string, newcore::Part * (*)(const std::string &)> part_ctors;
+
+    newcore::Part * create_part(newcore::EntityId id, const std::string & data) override;
+    void destroy_part(newcore::EntityId id, newcore::Part * p) override;
   };
 
   // Systems exist to split up the code in World
@@ -48,23 +58,23 @@ namespace game {
                   public MoveHandler,
                   public FOVUpdateHandler {
     public:
-    ViewSys(View & view, Universe & uni, Space & space) : view(view), uni(uni), space(space) {}
+    ViewSys(View & view, EntityManager & em) : view(view), em(em) {}
 
     void on_world_resize(unsigned int w, unsigned int h) override;
     void on_tile_update(Vec2i pos, unsigned int new_val) override;
 
-    void on_spawn(ObjectHandle obj) override;
-    void on_despawn(ObjectHandle obj) override;
-    void on_move(ObjectHandle obj, Vec2i from, Vec2i to) override;
+    void on_spawn(unsigned int eid) override;
+    void on_despawn(unsigned int eid) override;
+    void on_move(unsigned int eid, Vec2i from, Vec2i to) override;
 
-    void on_fov_update(ObjectHandle obj) override;
+    void on_fov_update(unsigned int eid) override;
 
     private:
     View & view;
-    Universe & uni;
-    Space & space;
+    EntityManager & em;
   };
 
+  /*
   class FOVSys : public SpawnHandler, public MoveHandler {
     public:
     typedef std::vector<FOVUpdateHandler *> FOVUpdateHandlerList;
@@ -142,74 +152,49 @@ namespace game {
     PhysicsSys & phys_sys;
     DijkstraSys & dijkstra_sys;
   };
-
-  class EntityManager : public newcore::EntityManager {
-    public:
-    EntityManager();
-
-    private:
-    std::map<std::string, newcore::Part * (*)(const std::string &)> part_ctors;
-
-    newcore::Part * create_part(newcore::EntityId id, const std::string & data) override;
-    void destroy_part(newcore::EntityId id, newcore::Part * p) override;
-  };
+  */
 
   class Action;
 
   class Engine {
     public:
     Engine(View & view)
-      : uni(factory)
-      , ai_sys(uni, phys_sys, dijkstra_sys)
-      , phys_sys(uni, space, { &view_sys, &fov_sys, &dijkstra_sys })
-      , fov_sys(uni, space, { &view_sys })
-      , dijkstra_sys(uni)
-      , view_sys(view, uni, space)
+      //: uni(factory)
+      //, ai_sys(uni, phys_sys, dijkstra_sys)
+      //, phys_sys(uni, space, { &view_sys, &fov_sys, &dijkstra_sys })
+      //, fov_sys(uni, space, { &view_sys })
+      //, dijkstra_sys(uni)
+      : view_sys(view, em)
     {}
 
-    std::pair<bool, ObjectHandle> step(unsigned int max_ticks);
+    std::pair<bool, unsigned int> step(unsigned int max_ticks);
     void complete_turn(const Action & action);
 
-    void move_attack(ObjectHandle obj, Vec2i delta);
-    void wait(ObjectHandle obj);
-
-    //void set_size(unsigned int w, unsigned int h);
-    //void set_tile(Vec2i pos, unsigned int id);
+    void move_attack(unsigned int eid, Vec2i delta);
+    void wait(unsigned int eid);
 
     unsigned int create_space(Vec2u size);
     void         destroy_space(unsigned int sid);
 
-    ObjectHandle create_hero();
-    ObjectHandle create_badguy(ObjectHandle kill_obj);
-    void spawn(ObjectHandle obj, unsigned int sid, Vec2i pos);
+    unsigned int create_hero();
+    unsigned int create_badguy(unsigned int kill_eid);
+    void spawn(unsigned int eid, unsigned int sid, Vec2i pos);
 
     private:
-    class PartFactory : public BasePartFactory {
-      std::map<std::string, Part * (*)(const std::string &)> ctors;
-      public:
-      PartFactory();
-      virtual Part * create(const std::string & data) override;
-      virtual void destroy(Part * p) override;
-    };
+    EntityManager em;
 
-    EntityManager entities;
-
-    PartFactory factory;
-    Universe uni;
     Space space;
     std::map<unsigned int, Space> spaces;
 
-    ObjectHandle incomplete_turn;
+    std::pair<bool, unsigned int> incomplete_turn;
 
-    AISys ai_sys;
-    PhysicsSys phys_sys;
-    FOVSys fov_sys;
-    DijkstraSys dijkstra_sys;
+    //AISys ai_sys;
+    //PhysicsSys phys_sys;
+    //FOVSys fov_sys;
+    //DijkstraSys dijkstra_sys;
     ViewSys view_sys;
 
-    ObjectHandle get_player();
-
-    std::vector<ObjectHandle> objs_with_turn_this_tick() const;
+    std::vector<unsigned int> objs_with_turn_this_tick() const;
 
     void tick();
 
@@ -221,19 +206,19 @@ namespace game {
   class Action {
     public:
     virtual ~Action() = default;
-    virtual void perform(Engine & E, ObjectHandle obj) const = 0;
+    virtual void perform(Engine & E, unsigned int eid) const = 0;
   };
 
   class MoveAction : public Action {
     Vec2i delta;
     public:
     MoveAction(Vec2i delta) : delta(delta) {}
-    void perform(Engine & E, ObjectHandle obj) const override;
+    void perform(Engine & E, unsigned int eid) const override;
   };
 
   class WaitAction : public Action {
     public:
-    void perform(Engine & E, ObjectHandle obj) const override;
+    void perform(Engine & E, unsigned int eid) const override;
   };
 }
 

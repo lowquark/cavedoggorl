@@ -263,12 +263,12 @@ int main(int argc, char ** argv) {
 
       unsigned int sid = muh_engine.create_space(Vec2u(60, 60));
 
-      auto hero_obj = muh_engine.create_hero();
-      muh_view.follow(hero_obj.id());
-      muh_engine.spawn(hero_obj, sid, Vec2i(2, 1));
+      auto hero_eid = muh_engine.create_hero();
+      muh_view.follow(hero_eid);
+      muh_engine.spawn(hero_eid, sid, Vec2i(2, 1));
 
       for(int i = 0 ; i < 4 ; i ++) {
-        muh_engine.spawn(muh_engine.create_badguy(hero_obj), sid, Vec2i(rand() % 60, rand() % 60));
+        muh_engine.spawn(muh_engine.create_badguy(hero_eid), sid, Vec2i(rand() % 60, rand() % 60));
       }
 
       step_game();

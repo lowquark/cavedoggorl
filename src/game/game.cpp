@@ -58,37 +58,43 @@ namespace game {
     view.set_tile(pos, new_val);
   }
 
-  void ViewSys::on_spawn(ObjectHandle obj) {
+  void ViewSys::on_spawn(unsigned int eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
+    /*
     auto glyph_part = get_part<GlyphPart>(uni, obj);
     auto spatial_part = get_part<SpatialPart>(uni, obj);
     if(glyph_part && spatial_part) {
       view.set_glyph(obj.id(), glyph_part->type_id, spatial_part->pos, glyph_part->color);
     }
+    */
   }
-  void ViewSys::on_despawn(ObjectHandle obj) {
+  void ViewSys::on_despawn(unsigned int eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
   }
-  void ViewSys::on_move(ObjectHandle obj, Vec2i from, Vec2i to) {
+  void ViewSys::on_move(unsigned int eid, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
+    /*
     auto glyph_part = get_part<GlyphPart>(uni, obj);
     auto spatial_part = get_part<SpatialPart>(uni, obj);
     if(glyph_part && spatial_part) {
       view.move_glyph(obj.id(), from, to);
     }
+    */
   }
 
-  void ViewSys::on_fov_update(ObjectHandle obj) {
+  void ViewSys::on_fov_update(unsigned int eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
+    /*
     auto agent_part = get_part<AgentPart>(uni, obj);
 
     if(agent_part) {
       view.set_fov(obj.id(), agent_part->fov);
     }
+    */
   }
 
-
+  /*
   void FOVSys::on_spawn(ObjectHandle obj) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto agent_part = get_part<AgentPart>(uni, obj);
@@ -114,29 +120,8 @@ namespace game {
         h->on_fov_update(obj);
       }
 
-      /*
-      for(int j = 0 ; j < 21 ; j ++) {
-        for(int i = 0 ; i < 21 ; i ++) {
-          Vec2i p(i, j);
-          if(agent_part->fov.is_visible(p)) {
-            if(p == spatial_part->pos) {
-              printf("@");
-            } else if(space.opaque.get(p) == 1) {
-              printf("#");
-            } else {
-              printf(".");
-            }
-          } else {
-            printf(" ");
-          }
-        }
-        printf("\n");
-      }
-      printf("\n");
-      */
     }
   }
-
 
   unsigned int PhysicsSys::move(ObjectHandle obj, Vec2i delta) {
     printf("%s, %d, %d\n", __PRETTY_FUNCTION__, delta.x, delta.y);
@@ -220,6 +205,7 @@ namespace game {
 
     return wait_time;
   }
+  */
 
   /*
   LevelState * generated_level_state = nullptr;
@@ -339,52 +325,51 @@ namespace game {
   }
 
   // World public
-  std::pair<bool, ObjectHandle> Engine::step(unsigned int max_ticks) {
+  std::pair<bool, unsigned int> Engine::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
+      /*
       auto objs_with_turn = objs_with_turn_this_tick();
 
       if(!objs_with_turn.empty()) {
-        auto obj = objs_with_turn.front();
+        auto eid = objs_with_turn.front();
 
-        auto player_control_part = get_part<PlayerControlPart>(uni, obj);
-        if(player_control_part) {
-          incomplete_turn = obj;
-          return std::pair<bool, ObjectHandle>(true, obj);
-        } else {
-          auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
-          //ai_turn(obj);
-          turn_taker_part->wait_time = ai_sys.on_turn(obj);
-        }
+        turn_taker_part->wait_time = 10;
       }
+      */
 
       tick();
     }
 
-    incomplete_turn = ObjectHandle();
-    return std::pair<bool, ObjectHandle>(false, ObjectHandle());
+    incomplete_turn = std::pair<bool, unsigned int>(false, 0);
+    return incomplete_turn;
   }
 
   void Engine::complete_turn(const Action & action) {
-    if(incomplete_turn) {
-      action.perform(*this, incomplete_turn);
+    if(incomplete_turn.first) {
+      action.perform(*this, incomplete_turn.second);
     }
   }
 
-  void Engine::move_attack(ObjectHandle obj, Vec2i delta) {
+  void Engine::move_attack(unsigned int eid, Vec2i delta) {
+    /*
     if(obj) {
       auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
       if(turn_taker_part) {
-        turn_taker_part->wait_time = phys_sys.move(obj, delta);
+        //turn_taker_part->wait_time = phys_sys.move(obj, delta);
+        turn_taker_part->wait_time = 10;
       }
     }
+    */
   }
-  void Engine::wait(ObjectHandle obj) {
+  void Engine::wait(unsigned int eid) {
+    /*
     if(obj) {
       auto turn_taker_part = get_part<TurnTakerPart>(uni, obj);
       if(turn_taker_part) {
         turn_taker_part->wait_time = 10;
       }
     }
+    */
   }
 
   unsigned int Engine::create_space(Vec2u size) {
@@ -412,107 +397,57 @@ namespace game {
   void Engine::destroy_space(unsigned int sid) {
   }
 
-  ObjectHandle Engine::create_hero() {
-    auto obj = uni.create_object({
-      "Glyph 0 255 127 0",
-      "TurnTaker 5",
-      "Agent",
-      "PlayerControl 1",
-    });
-    return obj;
+  unsigned int Engine::create_hero() {
+    return em.create({ "Glyph 0 255 127 0" });
   };
-  ObjectHandle Engine::create_badguy(ObjectHandle kill_obj) {
-    auto obj = uni.create_object({
-      "Glyph 1 200 0 0",
-      "TurnTaker 10",
-      "Agent",
-      AIControlPart::state(kill_obj),
-    });
-    return obj;
+  unsigned int Engine::create_badguy(unsigned int kill_eid) {
+    return em.create({ "Glyph 1 200 0 0" });
   }
-  void Engine::spawn(ObjectHandle obj, unsigned int sid, Vec2i pos) {
-    for(auto & a : space.agents) {
-      if(a == obj) {
+  void Engine::spawn(unsigned int eid, unsigned int sid, Vec2i pos) {
+    for(auto & e : space.entities) {
+      if(e == eid) {
         return;
       }
     }
-    space.agents.push_back(obj);
-    uni.create_part(obj, SpatialPart::state(pos));
 
-    view_sys.on_spawn(obj);
-    fov_sys.on_spawn(obj);
+    space.entities.push_back(eid);
+    em.add_part(eid, "PhysPart 10 10");
+
+    view_sys.on_spawn(eid);
+    //fov_sys.on_spawn(obj);
   }
 
   // Engine private
-  template <typename T>
-  static Part * ctor(const std::string & data) {
-    return new T(data);
-  }
-  Engine::PartFactory::PartFactory() {
-    ctors["Glyph"]         = ctor<GlyphPart>;
-    ctors["Spatial"]       = ctor<SpatialPart>;
-    ctors["TurnTaker"]     = ctor<TurnTakerPart>;
-    ctors["Agent"]         = ctor<AgentPart>;
-    ctors["PlayerControl"] = ctor<PlayerControlPart>;
-    ctors["AIControl"]     = ctor<AIControlPart>;
-  }
-  Part * Engine::PartFactory::create(const std::string & data) {
-    std::stringstream ss(data);
-    std::string name;
-    ss >> name;
+  std::vector<unsigned int> Engine::objs_with_turn_this_tick() const {
+    std::vector<unsigned int> objs_with_turn;
 
-    auto ctor_it = ctors.find(name);
-    if(ctor_it == ctors.end()) {
-      return nullptr;
-    } else {
-      return ctor_it->second(data);
-    }
-  }
-  void Engine::PartFactory::destroy(Part * p) {
-    delete p;
-  }
-
-  ObjectHandle Engine::get_player() {
-    auto objs_with_turn = objs_with_turn_this_tick();
-
-    if(!objs_with_turn.empty()) {
-      auto obj = objs_with_turn.front();
-
-      auto player_control_part = get_part<PlayerControlPart>(uni, obj);
-      if(player_control_part) {
-        return obj;
-      }
-    }
-
-    return ObjectHandle();
-  }
-
-  std::vector<ObjectHandle> Engine::objs_with_turn_this_tick() const {
-    std::vector<ObjectHandle> objs_with_turn;
-
+    /*
     uni.for_all_with({ TurnTakerPart::part_class }, [&](const Universe & u, ObjectHandle obj) {
       auto part = get_part<TurnTakerPart>(u, obj);
       if(part->wait_time == 0) {
         objs_with_turn.push_back(obj);
       }
     });
+    */
 
     return objs_with_turn;
   }
   void Engine::tick() {
+    /*
     uni.for_all_with({ TurnTakerPart::part_class }, [&](Universe & u, ObjectHandle obj) {
       auto part = get_part<TurnTakerPart>(u, obj);
       if(part->wait_time > 0) {
         part->wait_time --;
       }
     });
+    */
   }
 
-  void MoveAction::perform(Engine & E, ObjectHandle obj) const {
-    E.move_attack(obj, delta);
+  void MoveAction::perform(Engine & E, unsigned int eid) const {
+    E.move_attack(eid, delta);
   }
-  void WaitAction::perform(Engine & E, ObjectHandle obj) const {
-    E.wait(obj);
+  void WaitAction::perform(Engine & E, unsigned int eid) const {
+    E.wait(eid);
   }
 }
 
