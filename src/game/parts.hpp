@@ -6,6 +6,7 @@
 #include <deque>
 
 #include <game/core.hpp>
+#include <game/actions.hpp>
 #include <game/Color.hpp>
 #include <game/FOV.hpp>
 #include <util/Vec2.hpp>
@@ -13,37 +14,10 @@
 #include <game/queries.hpp>
 
 namespace game {
-  using namespace newcore;
+  using namespace nc;
 
-  static constexpr TypeId PHYS_PART_ID = 1;
   static constexpr TypeId GLYPH_PART_ID = 2;
-
-  struct PhysPart : public Part {
-    Vec2i pos;
-
-    PhysPart(const std::string & data) : Part(PHYS_PART_ID) {
-      std::stringstream ss(data);
-
-      std::string name;
-      ss >> name;
-      assert(name == "Phys");
-
-      int x, y;
-      ss >> x >> y;
-
-      pos = Vec2i(x, y);
-    }
-    static std::string state(Vec2i pos) {
-      std::stringstream ss;
-      ss << "Phys " << pos.x << " " << pos.y;
-      return ss.str();
-    }
-    std::string serialize() const {
-      std::stringstream ss;
-      ss << "Phys " << pos.x << " " << pos.y;
-      return ss.str();
-    }
-  };
+  static constexpr TypeId RANDOM_CONTROL_PART_ID = 3;
 
   struct GlyphPart : public Part {
     unsigned int type_id = 0;
@@ -71,6 +45,19 @@ namespace game {
       this->type_id = std::abs(type_id);
     }
 
+    void query(GlyphQuery & q) const {
+      printf("%s\n", __PRETTY_FUNCTION__);
+
+      q.glyph_id = type_id;
+      q.color = color;
+      q.abort();
+    }
+    void query(Query & q) const override {
+      switch(q.type_id()) {
+        case GLYPH_QUERY_ID: query(static_cast<GlyphQuery&>(q)); break;
+        default: break;
+      }
+    }
     /*
     std::string serialize() const {
       std::stringstream ss;
@@ -81,6 +68,23 @@ namespace game {
       return ss.str();
     }
     */
+  };
+  struct RandomControlPart : public Part {
+    RandomControlPart(const std::string & data) : Part(RANDOM_CONTROL_PART_ID) {}
+
+    void query(ActionQuery & q) const {
+      printf("%s\n", __PRETTY_FUNCTION__);
+
+      Vec2i delta((rand() % 3) - 1, (rand() % 3) - 1);
+      q.action = std::unique_ptr<MoveAction>(new MoveAction(delta));
+      q.abort();
+    }
+    void query(Query & q) const override {
+      switch(q.type_id()) {
+        case ACTION_QUERY_ID: query(static_cast<ActionQuery&>(q)); break;
+        default: break;
+      }
+    }
   };
 }
 

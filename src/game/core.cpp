@@ -1,6 +1,6 @@
 
 #include <game/core.hpp>
 
-namespace game {
+namespace nc {
 }
 

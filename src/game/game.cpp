@@ -15,38 +15,40 @@ namespace game {
     return tiles.get(pos) == 2;
   }
 
-  void ViewSys::on_spawn_space(newcore::Id sid) {
+  void ViewSys::on_spawn_space(nc::Id sid) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto s = world.spaces[sid];
     if(s) {
       view.spawn_space(sid, s->tiles.size());
     }
   }
-  void ViewSys::on_despawn_space(newcore::Id sid) {
+  void ViewSys::on_despawn_space(nc::Id sid) {
     view.despawn_space(sid);
   }
-  void ViewSys::on_tile_update(newcore::Id sid, Vec2i pos, unsigned int new_val) {
+  void ViewSys::on_tile_update(nc::Id sid, Vec2i pos, unsigned int new_val) {
     //printf("%s\n", __PRETTY_FUNCTION__);
     view.set_tile(sid, pos, new_val);
   }
 
-  void ViewSys::on_spawn(newcore::Id eid) {
+  void ViewSys::on_spawn(nc::Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto e = world.entities[eid];
     if(e) {
-      view.set_glyph(eid, eid.idx == 0 ? 0 : 1, e->position, Color(255, 255, 255));
+      GlyphQuery q;
+      e->ext.query(q);
+      view.set_glyph(eid, q.glyph_id, e->position, q.color);
     }
   }
-  void ViewSys::on_despawn(newcore::Id eid) {
+  void ViewSys::on_despawn(nc::Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
     view.clear_glyph(eid);
   }
-  void ViewSys::on_move(newcore::Id eid, Vec2i from, Vec2i to) {
+  void ViewSys::on_move(nc::Id eid, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
     view.move_glyph(eid, from, to);
   }
 
-  void ViewSys::on_fov_update(newcore::Id eid) {
+  void ViewSys::on_fov_update(nc::Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
   }
 
@@ -102,13 +104,13 @@ namespace game {
   }
   */
 
-  void TurnSys::add_turn(newcore::Id eid, unsigned int speed) {
+  void TurnSys::add_turn(nc::Id eid, unsigned int speed) {
     turns[eid.idx].eid = eid;
     turns[eid.idx].energy = 1000; // ready to roll
     turns[eid.idx].speed = speed;
     printf("Turn added for entity %u\n", eid.idx);
   }
-  void TurnSys::remove_turn(newcore::Id eid) {
+  void TurnSys::remove_turn(nc::Id eid) {
     turns.erase(eid.idx);
     printf("Turn removed for entity %u\n", eid.idx);
   }
@@ -120,14 +122,14 @@ namespace game {
     }
   }
 
-  std::pair<bool, newcore::Id> TurnSys::whos_turn() const {
+  std::pair<bool, nc::Id> TurnSys::whos_turn() const {
     for(auto & kvpair : turns) {
       auto & turn = kvpair.second;
       if(turn.energy >= 1000) {
-        return std::pair<bool, newcore::Id>(true, turn.eid);
+        return std::pair<bool, nc::Id>(true, turn.eid);
       }
     }
-    return std::pair<bool, newcore::Id>(false, newcore::Id());
+    return std::pair<bool, nc::Id>(false, nc::Id());
   }
   void TurnSys::finish_turn() {
     for(auto & kvpair : turns) {
@@ -140,27 +142,35 @@ namespace game {
   }
 
   // Engine public
-  std::pair<bool, newcore::Id> Engine::step(unsigned int max_ticks) {
+  std::pair<bool, nc::Id> Engine::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto turn = turn_sys.whos_turn();
-      if(turn.first) {
+      while(turn.first) {
         auto e = world.entities[turn.second];
         if(e) {
           // query for an action to take
+          ActionQuery q;
+          e->ext.query(q);
 
-          // if no action to take, yield
-          return turn;
+          if(q.action) {
+            q.action->perform(*this, turn.second);
+            turn_sys.finish_turn();
+          } else {
+            // if no action to take, yield
+            return turn;
+          }
         } else {
           // this entity is invalid, it should have been deleted
           printf("Warning: Invalid entity still in turn queue\n");
           turn_sys.finish_turn();
         }
+        turn = turn_sys.whos_turn();
       }
 
       tick();
     }
 
-    return std::pair<bool, newcore::Id>(false, newcore::Id());
+    return std::pair<bool, nc::Id>(false, nc::Id());
   }
 
   void Engine::complete_turn(const Action & action) {
@@ -171,16 +181,21 @@ namespace game {
     }
   }
 
-  newcore::Id Engine::create_hero() {
+  nc::Id Engine::create_hero() {
     auto eid = world.entities.create();
+    auto & e = *world.entities[eid];
+    e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
     return eid;
   }
-  newcore::Id Engine::create_badguy(newcore::Id kill_eid) {
+  nc::Id Engine::create_badguy(nc::Id kill_eid) {
     auto eid = world.entities.create();
+    auto & e = *world.entities[eid];
+    e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
+    e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
     return eid;
   }
  
-  newcore::Id Engine::create_space(Vec2u size) {
+  nc::Id Engine::create_space(Vec2u size) {
     auto sid = world.spaces.create();
     auto & space = *world.spaces[sid];
 
@@ -207,11 +222,11 @@ namespace game {
   }
 
   /*
-  void Engine::destroy_space(newcore::Id sid) {
+  void Engine::destroy_space(nc::Id sid) {
   }
   */
 
-  void Engine::spawn(newcore::Id eid, newcore::Id sid, Vec2i pos) {
+  void Engine::spawn(nc::Id eid, nc::Id sid, Vec2i pos) {
     auto e = world.entities[eid];
     auto s = world.spaces[sid];
     if(e && s) {
@@ -229,7 +244,7 @@ namespace game {
     }
   }
 
-  void Engine::move_attack(newcore::Id eid, Vec2i delta) {
+  void Engine::move_attack(nc::Id eid, Vec2i delta) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto e = world.entities[eid];
     if(e) {
@@ -245,7 +260,7 @@ namespace game {
       }
     }
   }
-  void Engine::wait(newcore::Id eid) {
+  void Engine::wait(nc::Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
   }
 
@@ -254,10 +269,10 @@ namespace game {
     turn_sys.tick();
   }
 
-  void MoveAction::perform(Engine & E, newcore::Id eid) const {
+  void MoveAction::perform(Engine & E, nc::Id eid) const {
     E.move_attack(eid, delta);
   }
-  void WaitAction::perform(Engine & E, newcore::Id eid) const {
+  void WaitAction::perform(Engine & E, nc::Id eid) const {
     E.wait(eid);
   }
 }

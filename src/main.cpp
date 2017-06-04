@@ -38,20 +38,20 @@ class MuhView : public game::View {
   unsigned int follow_obj_id = 0;
 
   public:
-  void spawn_space(newcore::Id sid, Vec2u size) override {
+  void spawn_space(nc::Id sid, Vec2u size) override {
     grid_world.set_size(size);
   }
-  void despawn_space(newcore::Id sid) override {
+  void despawn_space(nc::Id sid) override {
   }
 
-  void set_tile(newcore::Id sid, const Vec2i & pos, unsigned int type_id) override {
+  void set_tile(nc::Id sid, const Vec2i & pos, unsigned int type_id) override {
     grid_world.set_tile(pos, type_id);
   }
-  void clear_tile(newcore::Id sid, const Vec2i & pos) override {
+  void clear_tile(nc::Id sid, const Vec2i & pos) override {
     grid_world.clear_tile(pos);
   }
 
-  void set_glyph(newcore::Id eid,
+  void set_glyph(nc::Id eid,
                  unsigned int type_id,
                  const Vec2i & pos,
                  const game::Color & color) override {
@@ -61,10 +61,10 @@ class MuhView : public game::View {
     gfx_color.b = (float) color.b / 255;
     grid_world.add_agent(eid.idx, type_id, pos, gfx_color);
   }
-  void clear_glyph(newcore::Id eid) override {
+  void clear_glyph(nc::Id eid) override {
     grid_world.remove_agent(eid.idx);
   }
-  void move_glyph(newcore::Id eid,
+  void move_glyph(nc::Id eid,
                   const Vec2i & from,
                   const Vec2i & to) override {
     grid_world.move_agent(eid.idx, from, to);
@@ -74,7 +74,7 @@ class MuhView : public game::View {
     message_log.push(message);
   }
 
-  void follow(newcore::Id eid) override {
+  void follow(nc::Id eid) override {
     follow_obj_id = eid.idx;
     grid_world.follow_agent(eid.idx);
   }
@@ -268,11 +268,9 @@ int main(int argc, char ** argv) {
       //muh_view.follow(hero_eid);
       muh_engine.spawn(hero_eid, sid, Vec2i(2, 1));
 
-      /*
       for(int i = 0 ; i < 4 ; i ++) {
         muh_engine.spawn(muh_engine.create_badguy(hero_eid), sid, Vec2i(rand() % 60, rand() % 60));
       }
-      */
 
       step_game();
 

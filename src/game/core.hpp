@@ -7,61 +7,82 @@
 #include <memory>
 #include <map>
 
-namespace newcore {
+namespace nc {
   typedef unsigned int TypeId;
 
   class Event {
     public:
-    Event(unsigned int type_id) : _type_id(type_id) {}
+    Event(TypeId type_id) : _type_id(type_id) {}
     virtual ~Event() = default;
 
-    unsigned int type_id() const { return _type_id; }
+    TypeId type_id() const { return _type_id; }
 
     private:
-    unsigned int _type_id;
+    TypeId _type_id;
   };
 
   class Query {
     public:
-    Query(unsigned int type_id) : _type_id(type_id) {}
+    Query(TypeId type_id) : _type_id(type_id) {}
     virtual ~Query() = default;
 
-    unsigned int type_id() const { return _type_id; }
+    TypeId type_id() const { return _type_id; }
     void abort() { _abort_flag = true; }
     bool abort_flag() const { return _abort_flag; }
 
     private:
-    unsigned int _type_id;
+    TypeId _type_id;
     bool _abort_flag = false;
   };
 
   class Part {
     public:
-    Part(unsigned int type_id) : _type_id(type_id) {}
+    Part(TypeId type_id) : _type_id(type_id) {}
     virtual ~Part() = default;
 
-    unsigned int type_id() const { return _type_id; }
+    TypeId type_id() const { return _type_id; }
 
-    virtual void handle_event(const Event & event) { }
-    virtual void handle_query(Query & query) { }
+    virtual void notify(const Event & event) { }
+    virtual void query(Query & query) const { }
 
     private:
-    unsigned int _type_id;
+    TypeId _type_id;
   };
 
   class Entity {
     public:
-    void notify(const Event & event) {
+    void notify(const Event & event) const {
       for(auto & p : parts) {
-        p->handle_event(event);
+        p->notify(event);
       }
     }
-    bool query(Query & query) {
+    bool query(Query & query) const {
       for(auto & p : parts) {
         if(query.abort_flag()) { return true; }
-        p->handle_query(query);
+        p->query(query);
       }
       return false;
+    }
+
+    void add_part(std::unique_ptr<Part> && part) {
+      for(auto & p : parts) {
+        if(p->type_id() == part->type_id()) {
+          p = std::move(part);
+          return;
+        }
+      }
+      parts.push_back(std::move(part));
+    }
+    void remove_part(TypeId type_id) {
+      for(auto it = parts.begin() ;
+          it != parts.end() ; ) {
+        if((*it)->type_id() == type_id) {
+          parts.erase(it);
+          return;
+        } else {
+          it ++;
+        }
+      }
     }
 
     private:
