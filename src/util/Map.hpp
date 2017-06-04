@@ -7,36 +7,33 @@
 template <typename T>
 class Map {
   std::vector<T> _data;
-  unsigned int _w, _h;
+  Vec2u _size;
 
   public:
-  Map() : _w(0), _h(0) {}
-
-  Map(unsigned int w, unsigned int h, const T & fill = T()) : _w(0), _h(0) {
-    resize(w, h, fill);
+  Map() = default;
+  Map(Vec2u size, const T & fill = T()) {
+    resize(size, fill);
   }
 
   void clear() {
-    this->_w = 0;
-    this->_h = 0;
+    _size = Vec2u(0, 0);
     _data.clear();
   }
-  void resize(unsigned int w, unsigned int h, const T & fill = T()) {
-    this->_w = w;
-    this->_h = h;
-    _data.resize(_w * _h, fill);
+  void resize(Vec2u size, const T & fill = T()) {
+    _size = size;
+    _data.resize(_size.x * _size.y, fill);
   }
 
   bool valid(Vec2i pos) const {
     if(pos.x < 0) { return false; }
-    if(pos.x >= _w) { return false; }
+    if(pos.x >= _size.x) { return false; }
     if(pos.y < 0) { return false; }
-    if(pos.y >= _h) { return false; }
+    if(pos.y >= _size.y) { return false; }
 
     return true;
   }
   unsigned int index(Vec2i pos) const {
-    return pos.x + pos.y*_w;
+    return pos.x + pos.y*_size.x;
   }
 
   const T * get_ptr(Vec2i pos) const {
@@ -64,8 +61,7 @@ class Map {
     }
   }
 
-  unsigned int w() const { return _w; }
-  unsigned int h() const { return _h; }
+  Vec2u size() const { return _size; }
   const std::vector<T> & data() const { return _data; }
 };
 

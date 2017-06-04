@@ -77,10 +77,10 @@ bool DoAStar4(std::vector<Vec2i> & path_out,
               const Map<unsigned int> & cost_map,
               Vec2i start_pos,
               Vec2i end_pos) {
-  Map<AStarNode> nodes(cost_map.w(), cost_map.h());
+  Map<AStarNode> nodes(cost_map.size());
 
-  for(unsigned int j = 0 ; j < nodes.h() ; j ++) {
-    for(unsigned int i = 0 ; i < nodes.w() ; i ++) {
+  for(unsigned int j = 0 ; j < nodes.size().y ; j ++) {
+    for(unsigned int i = 0 ; i < nodes.size().x ; i ++) {
       Vec2i tile_pos = Vec2i(i, j);
       AStarNode node;
       node.pos = tile_pos;
@@ -165,10 +165,10 @@ bool DoAStar8(std::vector<Vec2i> & path_out,
               const Map<unsigned int> & cost_map,
               Vec2i start_pos,
               Vec2i end_pos) {
-  Map<AStarNode> nodes(cost_map.w(), cost_map.h());
+  Map<AStarNode> nodes(cost_map.size());
 
-  for(unsigned int j = 0 ; j < nodes.h() ; j ++) {
-    for(unsigned int i = 0 ; i < nodes.w() ; i ++) {
+  for(unsigned int j = 0 ; j < nodes.size().y ; j ++) {
+    for(unsigned int i = 0 ; i < nodes.size().x ; i ++) {
       Vec2i tile_pos = Vec2i(i, j);
       AStarNode node;
       node.pos = tile_pos;

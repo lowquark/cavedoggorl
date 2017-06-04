@@ -214,16 +214,16 @@ namespace gfx {
     if(_camera_rect.pos.y < 0) {
       _camera_rect.pos.y = 0;
     }
-    if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.w()) {
-      _camera_rect.pos.x = tile_sprites.w() - _camera_rect.size.x;
+    if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.size().x) {
+      _camera_rect.pos.x = tile_sprites.size().x - _camera_rect.size.x;
     }
-    if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.h()) {
-      _camera_rect.pos.y = tile_sprites.h() - _camera_rect.size.y;
+    if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.size().y) {
+      _camera_rect.pos.y = tile_sprites.size().y - _camera_rect.size.y;
     }
   }
 
   void GridWorld::set_size(Vec2u size) {
-    tile_sprites.resize(size.x, size.y);
+    tile_sprites.resize(size);
     tile_map.set_size(size);
   }
   void GridWorld::set_tile(const Vec2i & pos, unsigned int type_id) {
@@ -272,8 +272,8 @@ namespace gfx {
 
     printf("%s\n", __PRETTY_FUNCTION__);
 
-    for(int j = 0 ; j < tile_sprites.h() ; j ++) {
-      for(int i = 0 ; i < tile_sprites.w() ; i ++) {
+    for(int j = 0 ; j < tile_sprites.size().x ; j ++) {
+      for(int i = 0 ; i < tile_sprites.size().y ; i ++) {
         Vec2i pos(i, j);
         auto tile = tile_sprites.get(pos);
         if(fov.is_visible(pos)) {

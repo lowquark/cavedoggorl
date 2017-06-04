@@ -15,6 +15,7 @@
 namespace game {
   static constexpr newcore::TypeId PHYS_PART_ID = 1;
   static constexpr newcore::TypeId GLYPH_PART_ID = 2;
+  static constexpr newcore::TypeId TURN_PART_ID = 3;
 
   struct PhysPart : public newcore::Part {
     Vec2i pos;
@@ -30,6 +31,50 @@ namespace game {
       ss >> x >> y;
 
       pos = Vec2i(x, y);
+    }
+    static std::string state(Vec2i pos) {
+      std::stringstream ss;
+      ss << "Phys " << pos.x << " " << pos.y;
+      return ss.str();
+    }
+    std::string serialize() const {
+      std::stringstream ss;
+      ss << "Phys " << pos.x << " " << pos.y;
+      return ss.str();
+    }
+  };
+  struct TurnPart : public newcore::Part {
+    unsigned int energy = 0;
+
+    TurnPart(const std::string & data) : newcore::Part(TURN_PART_ID) {
+      std::stringstream ss(data);
+
+      std::string name;
+      ss >> name;
+      assert(name == "Turn");
+
+      int energy;
+      ss >> energy;
+
+      this->energy = (unsigned int)energy;
+    }
+
+    static std::string state(unsigned int energy) {
+      std::stringstream ss;
+      ss << "Turn " << energy;
+      return ss.str();
+    }
+
+    void add_energy(unsigned int amt) {
+      energy += amt;
+    }
+
+    bool take() {
+      if(energy >= 100) {
+        energy -= 100;
+        return true;
+      }
+      return false;
     }
   };
 

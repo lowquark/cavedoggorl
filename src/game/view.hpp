@@ -15,22 +15,23 @@ namespace game {
   };
 
   struct View {
-    virtual void set_world_size(unsigned int tiles_x, unsigned int tiles_y) {}
-    virtual void set_tile(const Vec2i & pos, unsigned int type_id) {}
-    virtual void clear_tile(const Vec2i & pos) {}
+    virtual void spawn_space(newcore::Id sid, Vec2u size) {}
+    virtual void despawn_space(newcore::Id sid) {}
+    virtual void set_tile(newcore::Id sid, const Vec2i & pos, unsigned int type_id) {}
+    virtual void clear_tile(newcore::Id sid, const Vec2i & pos) {}
 
-    virtual void set_glyph(ObjectHandle obj,
+    virtual void set_glyph(newcore::Id eid,
                            unsigned int type_id,
                            const Vec2i & pos,
                            const Color & color) {}
-    virtual void clear_glyph(ObjectHandle obj) {}
-    virtual void move_glyph(ObjectHandle obj,
+    virtual void clear_glyph(newcore::Id eid) {}
+    virtual void move_glyph(newcore::Id eid,
                             const Vec2i & from,
                             const Vec2i & to) {}
 
     virtual void message(const std::string & message) {}
 
-    virtual void follow(ObjectHandle obj) {}
+    virtual void follow(newcore::Id eid) {}
 
     virtual void set_fov(unsigned int id, const FOV & fov) {}
 

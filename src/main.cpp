@@ -38,17 +38,20 @@ class MuhView : public game::View {
   unsigned int follow_obj_id = 0;
 
   public:
-  void set_world_size(unsigned int tiles_x, unsigned int tiles_y) override {
-    grid_world.set_size(Vec2u(tiles_x, tiles_y));
+  void spawn_space(newcore::Id sid, Vec2u size) override {
+    grid_world.set_size(size);
   }
-  void set_tile(const Vec2i & pos, unsigned int type_id) override {
+  void despawn_space(newcore::Id sid) override {
+  }
+
+  void set_tile(newcore::Id sid, const Vec2i & pos, unsigned int type_id) override {
     grid_world.set_tile(pos, type_id);
   }
-  void clear_tile(const Vec2i & pos) override {
+  void clear_tile(newcore::Id sid, const Vec2i & pos) override {
     grid_world.clear_tile(pos);
   }
 
-  void set_glyph(game::ObjectHandle obj,
+  void set_glyph(newcore::Id eid,
                  unsigned int type_id,
                  const Vec2i & pos,
                  const game::Color & color) override {
@@ -56,24 +59,24 @@ class MuhView : public game::View {
     gfx_color.r = (float) color.r / 255;
     gfx_color.g = (float) color.g / 255;
     gfx_color.b = (float) color.b / 255;
-    grid_world.add_agent(obj.id(), type_id, pos, gfx_color);
+    grid_world.add_agent(eid.idx, type_id, pos, gfx_color);
   }
-  void clear_glyph(game::ObjectHandle obj) override {
-    grid_world.remove_agent(obj.id());
+  void clear_glyph(newcore::Id eid) override {
+    grid_world.remove_agent(eid.idx);
   }
-  void move_glyph(game::ObjectHandle obj,
+  void move_glyph(newcore::Id eid,
                   const Vec2i & from,
                   const Vec2i & to) override {
-    grid_world.move_agent(obj.id(), from, to);
+    grid_world.move_agent(eid.idx, from, to);
   }
 
   void message(const std::string & message) override {
     message_log.push(message);
   }
 
-  void follow(game::ObjectHandle obj) override {
-    follow_obj_id = obj.id();
-    grid_world.follow_agent(obj.id());
+  void follow(newcore::Id eid) override {
+    follow_obj_id = eid.idx;
+    grid_world.follow_agent(eid.idx);
   }
 
   void set_fov(unsigned int id, const FOV & fov) override {
@@ -99,7 +102,7 @@ Vec2i mouse_tile;
 bool is_player_turn = false;
 void step_game() {
   printf("step_game()\n");
-  is_player_turn = muh_engine.step(200).first;
+  is_player_turn = muh_engine.step(20).first;
 }
 
 void update() {
@@ -156,12 +159,10 @@ void update() {
     }
   }
 
-  /*
   if(is_player_turn == false && grid_world.are_animations_finished()) {
-    // should prompt for continue in this case
+    // prompt for continue in this case ?
     step_game();
   }
-  */
 
   Vec2i mouse_pos;
   SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
@@ -261,15 +262,17 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      unsigned int sid = muh_engine.create_space(Vec2u(60, 60));
+      auto sid = muh_engine.create_space(Vec2u(60, 60));
 
       auto hero_eid = muh_engine.create_hero();
-      muh_view.follow(hero_eid);
+      //muh_view.follow(hero_eid);
       muh_engine.spawn(hero_eid, sid, Vec2i(2, 1));
 
+      /*
       for(int i = 0 ; i < 4 ; i ++) {
         muh_engine.spawn(muh_engine.create_badguy(hero_eid), sid, Vec2i(rand() % 60, rand() % 60));
       }
+      */
 
       step_game();
 
