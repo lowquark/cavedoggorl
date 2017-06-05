@@ -10,6 +10,9 @@
 #include <game/FOV.hpp>
 #include <game/Color.hpp>
 
+#include <world/world.hpp>
+
+// game: loaded, volatile, fun state
 namespace game {
   class View {
     public:
@@ -76,15 +79,16 @@ namespace game {
 
   class Player {
     public:
-    Player(WorldId id, View & view) : _id(id), _view(view) {}
+    Player(world::Id id, View & view) : _id(id), _view(view) {}
 
-    WorldId id() const { return _id; }
+    world::Id id() const { return _id; }
     View & view() const { return _view; }
 
+    world::Id location = 0;
     std::unique_ptr<Action> next_action;
 
     private:
-    WorldId _id;
+    world::Id _id;
     View & _view;
   };
 
@@ -92,10 +96,10 @@ namespace game {
     public:
     ViewSys(std::vector<Player *> & players, const World & world) : players(players), world(world) {}
 
-    void on_spawn(WorldId eid);
-    void on_move(WorldId eid, Vec2i from, Vec2i to);
+    void on_spawn(world::Id eid);
+    void on_move(world::Id eid, Vec2i from, Vec2i to);
 
-    void load_level(Player * player);
+    void full_update(Player * player, world::Id eid, world::Id loc);
 
     private:
     std::vector<Player *> & players;
@@ -104,11 +108,11 @@ namespace game {
 
   class TurnSys {
     public:
-    void add_turn(WorldId eid, unsigned int speed);
-    void remove_turn(WorldId eid);
+    void add_turn(world::Id eid, unsigned int speed);
+    void remove_turn(world::Id eid);
     void tick();
 
-    std::pair<bool, WorldId> whos_turn() const;
+    std::pair<bool, world::Id> whos_turn() const;
     void finish_turn();
 
     private:
@@ -117,7 +121,7 @@ namespace game {
       unsigned int speed;
     };
 
-    std::map<WorldId, Turn> turns;
+    std::map<world::Id, Turn> turns;
   };
 
   class MobSys {
@@ -127,7 +131,7 @@ namespace game {
       , world(world)
     {}
 
-    void move_attack(WorldId eid, Vec2i delta);
+    void move_attack(world::Id eid, Vec2i delta);
 
     private:
     ViewSys & view_sys;
@@ -136,42 +140,33 @@ namespace game {
 
   class Engine {
     public:
-    Engine()
-      : view_sys(players, world)
-      , mob_sys(view_sys, world)
-    {
-      world.player_locations[0] = 0;
-    }
+    Engine(world::WorldStore & world_store)
+      : world_store(world_store)
+      , view_sys(players, world)
+      , mob_sys(view_sys, world) {}
 
-    Player * create_player(WorldId id, View & view);
+    Player * create_player(world::Id id, View & view);
 
-    std::pair<bool, WorldId> step(unsigned int max_ticks);
+    std::pair<bool, world::Id> step(unsigned int max_ticks);
     void complete_turn(const Action & action);
 
-    /*
-    WorldId load_entity(const std::string & type, const std::string & space_name, Vec2i pos);
-    void   unload_entity(WorldId id);
-
-    WorldId load_space(const std::string & name, Vec2u size);
-    void unload_space(WorldId id);
-
-    void spawn_entity(WorldId eid, Vec2i pos, WorldId sid);
-    void despawn_entity(WorldId eid);
-    */
-
     private:
-    std::vector<Player *> players;
+    world::WorldStore & world_store;
     World world;
+    std::vector<Player *> players;
 
     ViewSys view_sys;
     MobSys mob_sys;
 
     TurnSys turn_sys;
 
-    void spawn_player(Player * player);
+    void set_entity(world::Id eid, const world::Entity & state);
 
-    Space & load_level(WorldId id);
-    void unload_level(WorldId id);
+    void spawn_player(Player * player);
+    void despawn_player(Player * player);
+
+    Level & load_level(world::Id world_id);
+    void unload_level(world::Id world_id);
 
     void tick();
   };

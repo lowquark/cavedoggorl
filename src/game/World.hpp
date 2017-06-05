@@ -4,13 +4,11 @@
 #include <string>
 #include <set>
 #include <game/core.hpp>
+#include <world/world.hpp>
 #include <util/Vec2.hpp>
 #include <util/Map.hpp>
 
 namespace game {
-  namespace eng {
-  };
-
   class ItemType {
     public:
     std::string name;
@@ -42,14 +40,12 @@ namespace game {
     Item item;
   };
 
-  typedef uint64_t WorldId;
-
-  struct Space {
+  struct Level {
     Map<unsigned int> tiles;
     Map<unsigned int> opaque;
 
     std::vector<WorldItem> items;
-    std::set<WorldId> entities;
+    std::set<world::Id> entities;
 
     bool is_passable(Vec2i pos);
   };
@@ -58,34 +54,31 @@ namespace game {
     public:
     std::string name;
 
-    WorldId location;
+    world::Id location;
     Vec2i position;
 
     std::vector<Item> inventory;
     std::map<std::string, Item> equipment;
-
-    bool has_ai = false;
-    bool has_turn = false;
 
     nc::Entity ext;
   };
 
   class World {
     public:
-    WorldId new_entity() {
+    world::Id new_entity() {
       return ++ next_eid;
     }
-    WorldId new_space() {
+    world::Id new_space() {
       return ++ next_sid;
     }
 
-    std::map<WorldId, Entity> entities;
-    std::map<WorldId, Space> spaces;
-    std::map<WorldId, WorldId> player_locations;
+    std::map<world::Id, Entity> entities;
+    std::map<world::Id, Level> levels;
+    //std::map<world::Id, Player> players;
 
     private:
-    WorldId next_eid = 0;
-    WorldId next_sid = 0;
+    world::Id next_eid = 0;
+    world::Id next_sid = 0;
   };
 }
 

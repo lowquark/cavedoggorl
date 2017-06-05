@@ -70,7 +70,8 @@ class MuhView : public game::View {
   }
 };
 
-game::Engine muh_engine;
+world::SPCaveWorld muh_world;
+game::Engine muh_engine(muh_world);
 
 MuhView muh_view;
 game::Player * muh_player = nullptr;
