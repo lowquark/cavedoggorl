@@ -242,7 +242,7 @@ int main(int argc, char ** argv) {
       gfx::load();
 
 
-      muh_player = muh_engine.create_player(muh_view);
+      muh_player = muh_engine.create_player(0, muh_view);
 
       step_game();
 
