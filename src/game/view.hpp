@@ -1,19 +1,19 @@
 #ifndef GAME_VIEW_HPP
 #define GAME_VIEW_HPP
 
+/*
 #include <string>
 
 #include <util/Vec2.hpp>
 #include <game/core.hpp>
 #include <game/Color.hpp>
-#include <game/FOV.hpp>
 
 namespace game {
   struct View {
-    virtual void spawn_space(nc::Id sid, Vec2u size) {}
-    virtual void despawn_space(nc::Id sid) {}
-    virtual void set_tile(nc::Id sid, const Vec2i & pos, unsigned int type_id) {}
-    virtual void clear_tile(nc::Id sid, const Vec2i & pos) {}
+    virtual void load_space(const std::string & loc, Vec2u size) {}
+    virtual void unload_space(const std::string & loc) {}
+    virtual void set_tile(const std::string & loc, const Vec2i & pos, unsigned int type_id) {}
+    virtual void clear_tile(const std::string & loc, const Vec2i & pos) {}
 
     virtual void set_glyph(nc::Id eid,
                            unsigned int type_id,
@@ -33,5 +33,6 @@ namespace game {
     virtual void clear() {}
   };
 }
+*/
 
 #endif

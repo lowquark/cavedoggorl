@@ -1,115 +1,96 @@
-#ifndef GAME_HPP
-#define GAME_HPP
+#ifndef GAME_GAME_HPP
+#define GAME_GAME_HPP
 
-#include <string>
 #include <set>
 #include <memory>
+
 #include <game/actions.hpp>
+#include <game/World.hpp>
 #include <game/view.hpp>
-#include <game/core.hpp>
-#include <util/Vec2.hpp>
+#include <game/FOV.hpp>
+#include <game/Color.hpp>
 
 namespace game {
-  class ItemType {
+  class View {
     public:
-    std::string name;
+    virtual ~View() = default;
 
-    nc::Entity ext;
+    struct TileState {
+      unsigned int glyph_id = 0;
+      bool visible = true;
+    };
+    struct EntityState {
+      Vec2i pos;
+      unsigned int glyph_id = 0;
+    };
 
-    ItemType(unsigned int id) : _id(id) {}
 
-    unsigned int id() const { return _id; }
+    const std::string & location_name() const { return _location_name; }
+    const Map<TileState> & tiles() const { return _tiles; }
+    const std::map<unsigned int, EntityState> & entities() const { return _entities; }
+    const std::pair<bool, unsigned int> & player_entity_id() const { return _player_entity_id; }
+
+    void set_location_name(const std::string & str) {
+      _location_name = str;
+      notify_location_name_update();
+    }
+    void set_tiles(const Map<TileState> & tiles) {
+      _tiles = tiles;
+      notify_tiles_update();
+    }
+    void set_entity(unsigned int id, const EntityState & state) {
+      _entities[id] = state;
+      notify_entity_update(id);
+    }
+
+    void move_entity(unsigned int id, Vec2i from, Vec2i to) {
+      auto kvpair_it = _entities.find(id);
+      if(kvpair_it != _entities.end()) {
+        auto & e = kvpair_it->second;
+        e.pos = to;
+        notify_entity_move(id, from, to);
+      }
+    }
 
     private:
-    unsigned int _id;
+    std::string _location_name;
+    Map<TileState> _tiles;
+    std::map<unsigned int, EntityState> _entities;
+    std::pair<bool, unsigned int> _player_entity_id = decltype(_player_entity_id)(false, 0);
+
+
+    virtual void notify_tiles_update() {}
+
+    virtual void notify_entity_update(unsigned int id) {};
+    virtual void notify_entity_delete(unsigned int id) {}
+    virtual void notify_entity_show(unsigned int id) {}
+    virtual void notify_entity_hide(unsigned int id) {}
+    // Could probably be a little more creative with deducing from/to
+    virtual void notify_entity_move(unsigned int id, Vec2i from, Vec2i to) {}
+    virtual void notify_player_update() {}
+    virtual void notify_fov_update() {}
+
+    virtual void notify_location_name_update() {}
+    virtual void notify_message(const std::string & message) {}
   };
-  class Item {
+
+  class Player {
     public:
-    unsigned int quantity = 0;
+    Player(View & view) : view(view) {}
 
-    Item() = default;
-    Item(const ItemType * type) : _type(type) {}
-
-    const ItemType * type() const { return _type; }
-
-    private:
-    const ItemType * _type = nullptr;
-  };
-
-  struct WorldItem {
-    Vec2i position;
-    Item item;
-  };
-
-  struct Space {
-    Map<unsigned int> tiles;
-    Map<unsigned int> opaque;
-
-    std::vector<WorldItem> items;
-    std::set<nc::Id> entities;
-
-    bool is_passable(Vec2i pos);
-  };
-
-  class Entity {
-    public:
-    std::string name;
-
-    Vec2i position;
-    nc::Id space_id;
-
-    std::vector<Item> inventory;
-    std::map<std::string, Item> equipment;
-
-    nc::Entity ext;
-  };
-
-  struct World {
-    nc::IdSet<Entity> entities;
-    nc::IdSet<Space> spaces;
-  };
-
-
-  class SpawnHandler {
-    public:
-    virtual void on_spawn(nc::Id eid) = 0;
-  };
-  class DespawnHandler {
-    public:
-    virtual void on_despawn(nc::Id eid) = 0;
-  };
-  class MoveHandler {
-    public:
-    virtual void on_move(nc::Id eid, Vec2i from, Vec2i to) = 0;
-  };
-  class FOVUpdateHandler {
-    public:
-    virtual void on_fov_update(nc::Id eid) = 0;
-  };
-
-  struct EngineView {
-  };
-
-  // Systems exist to split up the code in World
-  class ViewSys : public SpawnHandler,
-                  public DespawnHandler,
-                  public MoveHandler,
-                  public FOVUpdateHandler {
-    public:
-    ViewSys(View & view, const World & world) : view(view), world(world) {}
-
-    void on_spawn_space(nc::Id sid);
-    void on_despawn_space(nc::Id sid);
-    void on_tile_update(nc::Id sid, Vec2i pos, unsigned int new_val);
-
-    void on_spawn(nc::Id eid) override;
-    void on_despawn(nc::Id eid) override;
-    void on_move(nc::Id eid, Vec2i from, Vec2i to) override;
-
-    void on_fov_update(nc::Id eid) override;
-
-    private:
     View & view;
+    std::unique_ptr<Action> next_action;
+  };
+
+  class ViewSys {
+    public:
+    ViewSys(std::vector<Player *> & players, const World & world) : players(players), world(world) {}
+
+    void on_spawn(nc::Id eid);
+    void on_move(nc::Id eid, Vec2i from, Vec2i to);
+
+    private:
+    std::vector<Player *> & players;
     const World & world;
   };
 
@@ -124,41 +105,69 @@ namespace game {
 
     private:
     struct Turn {
-      nc::Id eid;
       unsigned int energy;
       unsigned int speed;
     };
 
-    std::map<decltype(nc::Id::idx), Turn> turns;
+    std::map<nc::Id, Turn> turns;
   };
 
-  class Action;
+  /*
+  class AISys {
+    public:
+    void add_ai(nc::Id eid);
+    void remove_ai(nc::Id eid);
+    void tick();
+
+    private:
+    std::set<nc::Id> eids;
+  };
+  */
+
+  class MobSys {
+    public:
+    MobSys(ViewSys & view_sys, World & world)
+      : view_sys(view_sys)
+      , world(world)
+    {}
+
+    void move_attack(nc::Id eid, Vec2i delta);
+
+    private:
+    ViewSys & view_sys;
+    World & world;
+  };
 
   class Engine {
     public:
-    Engine(View & view)
-      : view_sys(view, world)
+    Engine()
+      : view_sys(players, world)
+      , mob_sys(view_sys, world)
     {}
+
+    Player * create_player(View & view);
 
     std::pair<bool, nc::Id> step(unsigned int max_ticks);
     void complete_turn(const Action & action);
 
-    nc::Id create_hero();
-    nc::Id create_badguy(nc::Id kill_eid);
+    /*
+    nc::Id load_entity(const std::string & type, const std::string & space_name, Vec2i pos);
+    void   unload_entity(nc::Id id);
 
-    nc::Id create_space(Vec2u size);
-    void        destroy_space(nc::Id sid);
+    nc::Id load_space(const std::string & name, Vec2u size);
+    void unload_space(nc::Id id);
 
-    void spawn(nc::Id eid, nc::Id sid, Vec2i pos);
-    void despawn(nc::Id eid);
-
-    void move_attack(nc::Id eid, Vec2i delta);
-    void wait(nc::Id eid);
+    void spawn_entity(nc::Id eid, Vec2i pos, nc::Id sid);
+    void despawn_entity(nc::Id eid);
+    */
 
     private:
+    std::vector<Player *> players;
     World world;
 
     ViewSys view_sys;
+    MobSys mob_sys;
+
     TurnSys turn_sys;
 
     void tick();

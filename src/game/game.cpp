@@ -15,41 +15,31 @@ namespace game {
     return tiles.get(pos) == 2;
   }
 
-  void ViewSys::on_spawn_space(nc::Id sid) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    auto s = world.spaces[sid];
-    if(s) {
-      view.spawn_space(sid, s->tiles.size());
-    }
-  }
-  void ViewSys::on_despawn_space(nc::Id sid) {
-    view.despawn_space(sid);
-  }
-  void ViewSys::on_tile_update(nc::Id sid, Vec2i pos, unsigned int new_val) {
-    //printf("%s\n", __PRETTY_FUNCTION__);
-    view.set_tile(sid, pos, new_val);
-  }
-
   void ViewSys::on_spawn(nc::Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
+
     auto e = world.entities[eid];
     if(e) {
       GlyphQuery q;
       e->ext.query(q);
-      view.set_glyph(eid, q.glyph_id, e->position, q.color);
+
+      View::EntityState es;
+      es.glyph_id = q.glyph_id;
+      es.pos = e->position;
+      for(auto & p : players) {
+        p->view.set_entity(eid.idx, es);
+      }
     }
-  }
-  void ViewSys::on_despawn(nc::Id eid) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    view.clear_glyph(eid);
   }
   void ViewSys::on_move(nc::Id eid, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
-    view.move_glyph(eid, from, to);
-  }
 
-  void ViewSys::on_fov_update(nc::Id eid) {
-    printf("%s\n", __PRETTY_FUNCTION__);
+    auto e = world.entities[eid];
+    if(e) {
+      for(auto & p : players) {
+        p->view.move_entity(eid.idx, from, to);
+      }
+    }
   }
 
   /*
@@ -104,31 +94,44 @@ namespace game {
   }
   */
 
+  /*
+  void AISys::add_ai(nc::Id eid) {
+    eids.insert(eid);
+  }
+  void AISys::remove_ai(nc::Id eid) {
+    eids.erase(eid);
+  }
+  void AISys::tick() {
+  }
+  */
+
   void TurnSys::add_turn(nc::Id eid, unsigned int speed) {
-    turns[eid.idx].eid = eid;
-    turns[eid.idx].energy = 1000; // ready to roll
-    turns[eid.idx].speed = speed;
+    turns[eid].energy = 1000; // ready to roll
+    turns[eid].speed = speed;
     printf("Turn added for entity %u\n", eid.idx);
   }
   void TurnSys::remove_turn(nc::Id eid) {
-    turns.erase(eid.idx);
+    turns.erase(eid);
     printf("Turn removed for entity %u\n", eid.idx);
   }
   void TurnSys::tick() {
     for(auto & kvpair : turns) {
       auto & turn = kvpair.second;
       turn.energy += turn.speed;
-      printf("%u: %u, %u\n", kvpair.first, turn.energy, turn.speed);
+      printf("%u: %u, %u\n", kvpair.first.idx, turn.energy, turn.speed);
     }
   }
 
   std::pair<bool, nc::Id> TurnSys::whos_turn() const {
     for(auto & kvpair : turns) {
+      auto eid = kvpair.first;
       auto & turn = kvpair.second;
+
       if(turn.energy >= 1000) {
-        return std::pair<bool, nc::Id>(true, turn.eid);
+        return std::pair<bool, nc::Id>(true, eid);
       }
     }
+
     return std::pair<bool, nc::Id>(false, nc::Id());
   }
   void TurnSys::finish_turn() {
@@ -141,7 +144,59 @@ namespace game {
     }
   }
 
+  void MobSys::move_attack(nc::Id eid, Vec2i delta) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto e = world.entities[eid];
+    if(e) {
+      Vec2i old_pos = e->position;
+      Vec2i new_pos = e->position + delta;
+
+      e->position = new_pos;
+      view_sys.on_move(eid, old_pos, new_pos);
+    }
+  }
+
+  void MoveAction::perform(MobSys & sys, nc::Id eid) const {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    sys.move_attack(eid, delta);
+  }
+  void WaitAction::perform(MobSys & sys, nc::Id eid) const {
+    printf("%s\n", __PRETTY_FUNCTION__);
+  }
+
   // Engine public
+  Player * Engine::create_player(View & view) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto new_player = new Player(view);
+    players.push_back(new_player);
+
+    // this is where the motherfucking magic happens
+
+    Map<View::TileState> tile_state;
+    tile_state.resize(Vec2u(60, 60));
+    View::TileState rock;
+    rock.glyph_id = 1;
+    tile_state.set(Vec2i(0, 0), rock);
+    tile_state.set(Vec2i(1, 1), rock);
+    tile_state.set(Vec2i(2, 2), rock);
+    new_player->view.set_tiles(tile_state);
+
+    View::EntityState es;
+    es.glyph_id = 0;
+    es.pos = Vec2i(10, 10);
+    new_player->view.set_entity(0, es);
+
+    auto eid = world.entities.create();
+    auto e = world.entities[eid];
+    e->ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
+    e->position = Vec2i(10, 10);
+
+    turn_sys.add_turn(eid, 100);
+    view_sys.on_spawn(eid);
+
+    return new_player;
+  }
+
   std::pair<bool, nc::Id> Engine::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto turn = turn_sys.whos_turn();
@@ -153,7 +208,7 @@ namespace game {
           e->ext.query(q);
 
           if(q.action) {
-            q.action->perform(*this, turn.second);
+            q.action->perform(mob_sys, turn.second);
             turn_sys.finish_turn();
           } else {
             // if no action to take, yield
@@ -172,36 +227,47 @@ namespace game {
 
     return std::pair<bool, nc::Id>(false, nc::Id());
   }
-
   void Engine::complete_turn(const Action & action) {
     auto turn = turn_sys.whos_turn();
     if(turn.first) {
-      action.perform(*this, turn.second);
+      action.perform(mob_sys, turn.second);
       turn_sys.finish_turn();
     }
   }
 
-  nc::Id Engine::create_hero() {
+  /*
+  nc::Id Engine::load_entity(const std::string & type, const std::string & loc, Vec2i pos) {
     auto eid = world.entities.create();
     auto & e = *world.entities[eid];
-    e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
+    if(type == "player_doggo") {
+      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
+      turn_sys.add_turn(eid, 100);
+    } else {
+      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
+      e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
+      turn_sys.add_turn(eid, 100);
+      ai_sys.add_ai(eid);
+    }
+    e.location = loc;
+    e.position = pos;
+
+    view_sys.on_spawn(eid);
+
     return eid;
   }
-  nc::Id Engine::create_badguy(nc::Id kill_eid) {
-    auto eid = world.entities.create();
-    auto & e = *world.entities[eid];
-    e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
-    e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
-    return eid;
+  */
+  /*
+  void Engine::unload_entity(nc::Id sid) {
   }
+  */
  
-  nc::Id Engine::create_space(Vec2u size) {
-    auto sid = world.spaces.create();
-    auto & space = *world.spaces[sid];
+  /*
+  void Engine::load_space(const std::string & loc, Vec2u size) {
+    auto & space = world.spaces[loc];
 
     space.tiles.resize(size);
     space.opaque.resize(size);
-    view_sys.on_spawn_space(sid);
+    view_sys.on_load_space(loc);
 
     for(unsigned int j = 0 ; j < size.y ; j ++) {
       for(unsigned int i = 0 ; i < size.x ; i ++) {
@@ -209,71 +275,25 @@ namespace game {
         if(rand() % 5 == 0) {
           space.tiles.set(pos, 1);
           space.opaque.set(pos, 1);
-          view_sys.on_tile_update(sid, pos, 1);
+          view_sys.on_tile_update(loc, pos, 1);
         } else {
           space.tiles.set(pos, 2);
           space.opaque.set(pos, 0);
-          view_sys.on_tile_update(sid, pos, 2);
+          view_sys.on_tile_update(loc, pos, 2);
         }
       }
     }
-
-    return sid;
   }
-
+  */
   /*
-  void Engine::destroy_space(nc::Id sid) {
+  void Engine::unload_space(nc::Id sid) {
   }
   */
 
-  void Engine::spawn(nc::Id eid, nc::Id sid, Vec2i pos) {
-    auto e = world.entities[eid];
-    auto s = world.spaces[sid];
-    if(e && s) {
-      if(e->space_id) {
-        printf("Already spawned!\n");
-      } else {
-        turn_sys.add_turn(eid, 100);
-        e->position = pos;
-
-        s->entities.insert(eid);
-        e->space_id = sid;
-
-        view_sys.on_spawn(eid);
-      }
-    }
-  }
-
-  void Engine::move_attack(nc::Id eid, Vec2i delta) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    auto e = world.entities[eid];
-    if(e) {
-      auto s = world.spaces[e->space_id];
-      if(s) {
-        Vec2i old_pos = e->position;
-        Vec2i new_pos = e->position + delta;
-
-        if(s->is_passable(new_pos)) {
-          e->position = new_pos;
-          view_sys.on_move(eid, old_pos, new_pos);
-        }
-      }
-    }
-  }
-  void Engine::wait(nc::Id eid) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-  }
-
   // Engine private
   void Engine::tick() {
+    //ai_sys.tick();
     turn_sys.tick();
-  }
-
-  void MoveAction::perform(Engine & E, nc::Id eid) const {
-    E.move_attack(eid, delta);
-  }
-  void WaitAction::perform(Engine & E, nc::Id eid) const {
-    E.wait(eid);
   }
 }
 

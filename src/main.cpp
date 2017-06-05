@@ -35,73 +35,52 @@ gfx::WorldMessageLog message_log;
 
 
 class MuhView : public game::View {
-  unsigned int follow_obj_id = 0;
+  private:
+  void notify_tiles_update() override {
+    grid_world.set_size(tiles().size());
 
-  public:
-  void spawn_space(nc::Id sid, Vec2u size) override {
-    grid_world.set_size(size);
-  }
-  void despawn_space(nc::Id sid) override {
-  }
-
-  void set_tile(nc::Id sid, const Vec2i & pos, unsigned int type_id) override {
-    grid_world.set_tile(pos, type_id);
-  }
-  void clear_tile(nc::Id sid, const Vec2i & pos) override {
-    grid_world.clear_tile(pos);
-  }
-
-  void set_glyph(nc::Id eid,
-                 unsigned int type_id,
-                 const Vec2i & pos,
-                 const game::Color & color) override {
-    gfx::Color gfx_color;
-    gfx_color.r = (float) color.r / 255;
-    gfx_color.g = (float) color.g / 255;
-    gfx_color.b = (float) color.b / 255;
-    grid_world.add_agent(eid.idx, type_id, pos, gfx_color);
-  }
-  void clear_glyph(nc::Id eid) override {
-    grid_world.remove_agent(eid.idx);
-  }
-  void move_glyph(nc::Id eid,
-                  const Vec2i & from,
-                  const Vec2i & to) override {
-    grid_world.move_agent(eid.idx, from, to);
-  }
-
-  void message(const std::string & message) override {
-    message_log.push(message);
-  }
-
-  void follow(nc::Id eid) override {
-    follow_obj_id = eid.idx;
-    grid_world.follow_agent(eid.idx);
-  }
-
-  void set_fov(unsigned int id, const FOV & fov) override {
-    printf("%s: id = %u\n", __PRETTY_FUNCTION__, id);
-
-    if(id == follow_obj_id) {
-      grid_world.set_fov(fov);
+    for(unsigned int y = 0 ; y < tiles().size().y ; y ++) {
+      for(unsigned int x = 0 ; x < tiles().size().x ; x ++) {
+        Vec2i pos((int)x, (int)y);
+        grid_world.set_tile(pos, tiles().get(pos).glyph_id);
+      }
     }
   }
 
-  void clear() override {
-    grid_world.clear_sprites();
+  void notify_entity_update(unsigned int id) override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto kvpair_it = entities().find(id);
+
+    if(kvpair_it != entities().end()) {
+      auto & e = kvpair_it->second;
+      gfx::Color gfx_color;
+      gfx_color.r = 1.0f;
+      gfx_color.g = 1.0f;
+      gfx_color.b = 1.0f;
+      grid_world.add_agent(id, e.glyph_id, e.pos, gfx_color);
+    }
+  }
+  void notify_entity_delete(unsigned int id) override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    grid_world.remove_agent(id);
+  }
+  void notify_entity_move(unsigned int id, Vec2i from, Vec2i to) override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    grid_world.move_agent(id, from, to);
   }
 };
 
-MuhView muh_view;
+game::Engine muh_engine;
 
-game::Engine muh_engine(muh_view);
+MuhView muh_view;
+game::Player * muh_player = nullptr;
 
 
 Vec2i mouse_tile;
 
 bool is_player_turn = false;
 void step_game() {
-  printf("step_game()\n");
+  //printf("step_game()\n");
   is_player_turn = muh_engine.step(20).first;
 }
 
@@ -262,17 +241,11 @@ int main(int argc, char ** argv) {
 
       gfx::load();
 
-      auto sid = muh_engine.create_space(Vec2u(60, 60));
 
-      auto hero_eid = muh_engine.create_hero();
-      //muh_view.follow(hero_eid);
-      muh_engine.spawn(hero_eid, sid, Vec2i(2, 1));
-
-      for(int i = 0 ; i < 4 ; i ++) {
-        muh_engine.spawn(muh_engine.create_badguy(hero_eid), sid, Vec2i(rand() % 60, rand() % 60));
-      }
+      muh_player = muh_engine.create_player(muh_view);
 
       step_game();
+
 
       run();
 
