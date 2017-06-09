@@ -26,21 +26,47 @@ namespace game {
     View::EntityState es;
     es.glyph_id = q.glyph_id;
     es.pos = e.position;
-    for(auto & p : players) {
-      p->view().set_entity(eid, es);
-    }
+
+    view_proxies.at(0).view.set_entity(eid, es);
+  }
+  void ViewSys::on_despawn(world::Id eid) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+
+    view_proxies.at(0).view.clear_entity(eid);
   }
   void ViewSys::on_move(world::Id eid, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
-    for(auto & p : players) {
-      p->view().move_entity(eid, from, to);
+    view_proxies.at(0).view.move_entity(eid, from, to);
+  }
+
+  void ViewSys::set_view(world::Id pid, View & view) {
+    auto kvpair_it = view_proxies.insert(std::make_pair(pid, ViewProxy(view))).first;
+    auto & view_proxy = kvpair_it->second;
+
+    auto & player = world.players.at(pid);
+    auto & entity = world.entities.at(player.entity);
+    auto & level = world.levels.at(entity.location);
+
+    full_update(view_proxy.view, level);
+  }
+  void ViewSys::unset_view(world::Id pid) {
+    view_proxies.erase(pid);
+  }
+
+  void ViewSys::on_transfer(world::Id eid, world::Id loc) {
+    for(auto & kvpair : world.players) {
+      auto pid = kvpair.first;
+      auto & p = kvpair.second;
+      if(p.entity == eid) {
+        printf("%s: Entity is owned by player.\n", __PRETTY_FUNCTION__);
+        full_update(view_proxies.at(pid).view, world.levels.at(loc));
+        return;
+      }
     }
   }
 
-  void ViewSys::full_update(Player * player, world::Id eid, world::Id loc) {
-    auto & level = world.levels.at(loc);
-
+  void ViewSys::full_update(View & view, const Level & level) {
     Map<View::TileState> tiles;
     tiles.resize(level.tiles.size());
 
@@ -54,7 +80,8 @@ namespace game {
       }
     }
 
-    player->view().set_tiles(tiles);
+    view.clear_entities();
+    view.set_tiles(tiles);
 
     for(auto & eid : level.entities) {
       auto & e = world.entities.at(eid);
@@ -65,7 +92,8 @@ namespace game {
       View::EntityState es;
       es.glyph_id = q.glyph_id;
       es.pos = e.position;
-      player->view().set_entity(eid, es);
+
+      view.set_entity(eid, es);
     }
   }
 
@@ -160,41 +188,151 @@ namespace game {
     }
   }
 
-  void MobSys::move_attack(world::Id eid, Vec2i delta) {
+  void MobSys::perform(world::Id eid, const MoveAction & action) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto & e = world.entities.at(eid);
 
     Vec2i old_pos = e.position;
-    Vec2i new_pos = e.position + delta;
+    Vec2i new_pos = e.position + action.delta;
 
     e.position = new_pos;
     view_sys.on_move(eid, old_pos, new_pos);
   }
+  void MobSys::perform(world::Id eid, const WaitAction & action) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+  }
+  void MobSys::perform(world::Id eid, const StairAction & action) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    auto & e = world.entities.at(eid);
+
+    load_sys.transfer_mob(eid, (e.location + 1) % 4, Vec2i(10, 10));
+  }
 
   void MoveAction::perform(MobSys & sys, world::Id eid) const {
     printf("%s\n", __PRETTY_FUNCTION__);
-    sys.move_attack(eid, delta);
+    sys.perform(eid, *this);
   }
   void WaitAction::perform(MobSys & sys, world::Id eid) const {
     printf("%s\n", __PRETTY_FUNCTION__);
+    sys.perform(eid, *this);
+  }
+  void StairAction::perform(MobSys & sys, world::Id eid) const {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    sys.perform(eid, *this);
   }
 
-  // Engine public
-  Player * Engine::create_player(world::Id id, View & view) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    auto new_player = new Player(id, view);
-    players.push_back(new_player);
-
-    // this is where the motherfucking magic happens
-
+  bool LoadSys::load_player(world::Id id) {
     auto world_player = world_store.player(id);
     auto player_entity = world_store.entity(world_player.entity);
 
     load_level(player_entity.location);
 
-    view_sys.full_update(new_player, world_player.entity, player_entity.location);
+    world.players[id].entity = world_player.entity;
 
-    return new_player;
+    return true; // FOOLISH
+  }
+  void LoadSys::transfer_mob(world::Id eid, world::Id loc, Vec2i pos) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+
+    for(auto & kvpair : world.players) {
+      auto pid = kvpair.first;
+      auto & p = kvpair.second;
+
+      if(p.entity == eid) {
+        printf("%s: Entity is owned by player.\n", __PRETTY_FUNCTION__);
+
+        auto & entity = world.entities.at(p.entity);
+
+        if(entity.location != loc) {
+          auto current_level_id = entity.location;
+          auto new_level_id = loc;
+
+          auto & current_level = world.levels.at(current_level_id);
+          auto & new_level = load_level(new_level_id);
+
+          current_level.entities.erase(eid);
+          new_level.entities.insert(eid);
+
+          entity.location = new_level_id;
+          entity.position = pos;
+
+          unload_level(current_level_id);
+
+          view_sys.on_transfer(pid, new_level_id);
+        }
+
+        return;
+      }
+    }
+  }
+ 
+  void LoadSys::load_entity(world::Id eid, const world::Entity & state) {
+    auto & e = world.entities[eid];
+    if(state.name == "lambdoggo") {
+      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
+    } else {
+      e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
+      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
+    }
+    e.name = state.name;
+    e.location = state.location;
+    e.position = state.position;
+    turn_sys.add_turn(eid, 100);
+  }
+  void LoadSys::unload_entity(world::Id eid) {
+    turn_sys.remove_turn(eid);
+  }
+
+  Level & LoadSys::load_level(world::Id world_id) {
+    world::Level level = world_store.level(world_id);
+
+    // load the level into the space
+    auto & new_level = world.levels[world_id];
+
+    new_level.tiles.resize(level.tiles.size());
+    new_level.opaque.resize(level.tiles.size());
+
+    for(unsigned int j = 0 ; j < level.tiles.size().y ; j ++) {
+      for(unsigned int i = 0 ; i < level.tiles.size().x ; i ++) {
+        Vec2i pos(i, j);
+
+        if(level.tiles.get(pos).type_id == 1) {
+          new_level.tiles.set(pos, 1);
+          new_level.opaque.set(pos, 1);
+        } else if(level.tiles.get(pos).type_id == 2) {
+          new_level.tiles.set(pos, 2);
+          new_level.opaque.set(pos, 0);
+        }
+      }
+    }
+
+    for(auto & eid : level.entities) {
+      new_level.entities.insert(eid);
+      load_entity(eid, world_store.entity(eid));
+    }
+
+    return new_level;
+  }
+  void LoadSys::unload_level(world::Id id) {
+    auto & level = world.levels.at(id);
+
+    for(auto & eid : level.entities) {
+      unload_entity(eid);
+    }
+
+    level.entities.clear();
+
+    world.levels.erase(id);
+  }
+
+  // Engine public
+  void Engine::spawn_player(world::Id id, View & view) {
+    printf("%s\n", __PRETTY_FUNCTION__);
+
+    // this is where the motherfucking magic happens
+    load_sys.load_player(id);
+    // this is where magic happens, too
+    view_sys.set_view(id, view);
   }
 
   std::pair<bool, world::Id> Engine::step(unsigned int max_ticks) {
@@ -228,53 +366,6 @@ namespace game {
       action.perform(mob_sys, turn.second);
       turn_sys.finish_turn();
     }
-  }
- 
-  void Engine::set_entity(world::Id eid, const world::Entity & state) {
-    auto & e = world.entities[eid];
-    if(state.name == "lambdoggo") {
-      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
-    } else {
-      e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
-      e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
-    }
-    e.name = state.name;
-    e.location = state.location;
-    e.position = state.position;
-    turn_sys.add_turn(eid, 100);
-  }
-
-  Level & Engine::load_level(world::Id world_id) {
-    world::Level level = world_store.level(world_id);
-
-    // load the level into the space
-    auto & new_level = world.levels[world_id];
-
-    new_level.tiles.resize(level.tiles.size());
-    new_level.opaque.resize(level.tiles.size());
-
-    for(unsigned int j = 0 ; j < level.tiles.size().y ; j ++) {
-      for(unsigned int i = 0 ; i < level.tiles.size().x ; i ++) {
-        Vec2i pos(i, j);
-
-        if(level.tiles.get(pos).type_id == 1) {
-          new_level.tiles.set(pos, 1);
-          new_level.opaque.set(pos, 1);
-        } else if(level.tiles.get(pos).type_id == 2) {
-          new_level.tiles.set(pos, 2);
-          new_level.opaque.set(pos, 0);
-        }
-      }
-    }
-
-    for(auto & eid : level.entities) {
-      new_level.entities.insert(eid);
-      set_entity(eid, world_store.entity(eid));
-    }
-
-    return new_level;
-  }
-  void Engine::unload_level(world::Id id) {
   }
 
   // Engine private

@@ -1,8 +1,8 @@
-#ifndef ACTIONS_HPP
-#define ACTIONS_HPP
+#ifndef GAME_ACTIONS_HPP
+#define GAME_ACTIONS_HPP
 
 #include <util/Vec2.hpp>
-#include <game/World.hpp>
+#include <world/world.hpp>
 
 namespace game {
   class MobSys;
@@ -13,12 +13,16 @@ namespace game {
     virtual void perform(MobSys & sys, world::Id eid) const = 0;
   };
   class MoveAction : public Action {
-    Vec2i delta;
     public:
+    Vec2i delta;
     MoveAction(Vec2i delta) : delta(delta) {}
     void perform(MobSys & sys, world::Id eid) const override;
   };
   class WaitAction : public Action {
+    public:
+    void perform(MobSys & sys, world::Id eid) const override;
+  };
+  class StairAction : public Action {
     public:
     void perform(MobSys & sys, world::Id eid) const override;
   };

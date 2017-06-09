@@ -47,6 +47,10 @@ class MuhView : public game::View {
     }
   }
 
+  void notify_clear_entities() override {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    grid_world.clear_sprites();
+  }
   void notify_entity_update(unsigned int id) override {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto kvpair_it = entities().find(id);
@@ -60,7 +64,7 @@ class MuhView : public game::View {
       grid_world.add_agent(id, e.glyph_id, e.pos, gfx_color);
     }
   }
-  void notify_entity_delete(unsigned int id) override {
+  void notify_entity_remove(unsigned int id) override {
     printf("%s\n", __PRETTY_FUNCTION__);
     grid_world.remove_agent(id);
   }
@@ -127,14 +131,12 @@ void update() {
           step_game();
         }
 
-        /*
-        if(event.key.keysym.sym == SDLK_COMMA) {
+        if(event.key.keysym.sym == SDLK_COMMA || event.key.keysym.sym == SDLK_PERIOD) {
           if(event.key.keysym.mod & KMOD_SHIFT) {
-            muh_engine.player_activate_tile();
+            muh_engine.complete_turn(game::StairAction());
             step_game();
           }
         }
-        */
       }
     }
   }
@@ -202,7 +204,6 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
-  //const char * font = "/usr/share/fonts/TTF/DejaVuSans.ttf";
   const char * font = "Kingthings_Exeter.ttf";
   main_log.logf("Loading font from %s...", font);
   main_log.flush();
@@ -216,7 +217,7 @@ int main(int argc, char ** argv) {
   gfx::load_tiles("./tiles.png", tile_size);
   gfx::draw::set_window_size(window_size);
 
-
+  // create window
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
     main_log.logf<Log::ERROR>("%s", SDL_GetError());
   }
@@ -229,28 +230,28 @@ int main(int argc, char ** argv) {
       window_size.y,
       SDL_WINDOW_OPENGL);
 
+  // grafix config
+  message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
+  grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
+  grid_world.set_camera_size(view_size);
+  grid_world.set_camera_margin(10);
+
   if(window != nullptr) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
 
     if(gl_ctx != nullptr) {
       glewInit(); 
 
-      message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-      grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-      grid_world.set_camera_size(view_size);
-      grid_world.set_camera_margin(10);
-
+      // grafix load to grafix card
       gfx::load();
 
-
-      muh_player = muh_engine.create_player(0, muh_view);
+      // start le engine
+      muh_engine.spawn_player(0, muh_view);
 
       step_game();
 
 
       run();
-
-      //muh_game.save("asdf");
 
       gfx::unload();
 
