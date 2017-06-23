@@ -15,7 +15,8 @@
 #include <GL/glu.h>
 
 
-#include <game/game.hpp>
+#include <game/Engine.hpp>
+#include <game/Game.hpp>
 #include <game/FOV.hpp>
 #include <gfx/gfx.hpp>
 #include <gfx/draw.hpp>
@@ -47,6 +48,9 @@ class MuhView : public game::View {
     }
   }
 
+  void notify_update_tile(Vec2i pos) override {
+  }
+
   void notify_clear_entities() override {
     printf("%s\n", __PRETTY_FUNCTION__);
     grid_world.clear_sprites();
@@ -74,128 +78,104 @@ class MuhView : public game::View {
   }
 };
 
-world::SPCaveWorld muh_world;
-game::Engine muh_engine(muh_world);
-
-MuhView muh_view;
-game::Player * muh_player = nullptr;
-
-
 Vec2i mouse_tile;
 
-bool is_player_turn = false;
-void step_game() {
-  //printf("step_game()\n");
-  is_player_turn = muh_engine.step(20).first;
-}
+class MuhGameHooks : public game::Game::HookHandler {
+  std::unique_ptr<game::Action> player_action() {
+    printf("%s\n", __PRETTY_FUNCTION__);
 
-void update() {
-  SDL_Event event;
-  while(SDL_PollEvent(&event)) {
-    if(event.type == SDL_QUIT) {
-      quit_signal = true;
-      return;
-    }
-
-    if(event.type == SDL_KEYDOWN) {
-      if(event.key.keysym.sym == SDLK_0) {
-        quit_signal = true;
-        return;
-      }
-      if(is_player_turn) {
-        grid_world.skip_animations();
-
-        if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i( 1,  0)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_9) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i( 1, -1)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i( 0, -1)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_7) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i(-1, -1)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i(-1,  0)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_1) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i(-1,  1)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i( 0,  1)));
-          step_game();
-        } else if(event.key.keysym.sym == SDLK_KP_3) {
-          muh_engine.complete_turn(game::MoveAction(Vec2i( 1,  1)));
-          step_game();
+    while(true) {
+      SDL_Event event;
+      while(SDL_PollEvent(&event)) {
+        if(event.type == SDL_QUIT) {
+          return nullptr;
         }
 
-        if(event.key.keysym.sym == SDLK_COMMA || event.key.keysym.sym == SDLK_PERIOD) {
-          if(event.key.keysym.mod & KMOD_SHIFT) {
-            muh_engine.complete_turn(game::StairAction());
-            step_game();
+        if(event.type == SDL_KEYDOWN) {
+          if(event.key.keysym.sym == SDLK_0) {
+            return nullptr;
+          }
+
+          grid_world.skip_animations();
+
+          if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, 0)));
+          } else if(event.key.keysym.sym == SDLK_KP_9) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(0, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_7) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, 0)));
+          } else if(event.key.keysym.sym == SDLK_KP_1) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, 1)));
+          } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(0, 1)));
+          } else if(event.key.keysym.sym == SDLK_KP_3) {
+            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, 1)));
+          }
+
+          if(event.key.keysym.sym == SDLK_COMMA || event.key.keysym.sym == SDLK_PERIOD) {
+            if(event.key.keysym.mod & KMOD_SHIFT) {
+              return std::unique_ptr<game::StairAction>(new game::StairAction);
+            }
           }
         }
       }
+
+      Vec2i mouse_pos;
+      SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+
+      Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
+      if(new_mouse_tile != mouse_tile) {
+        mouse_tile = new_mouse_tile;
+
+        std::string look_str;
+        if(grid_world.look_str(look_str, mouse_tile)) {
+          hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
+        } else {
+          hud.look_finish();
+        }
+      }
+
+
+      grid_world.tick();
+      hud.tick();
+      message_log.tick();
+
+
+      glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+      glMatrixMode(GL_PROJECTION);
+      glLoadIdentity();
+      gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+
+      glEnable(GL_STENCIL_TEST);
+
+
+      grid_world.draw();
+      hud.draw();
+      message_log.draw();
+
+
+      SDL_GL_SwapWindow(window);
+
+      SDL_Delay(14);
     }
+
+    return nullptr;
   }
+};
 
-  if(is_player_turn == false && grid_world.are_animations_finished()) {
-    // prompt for continue in this case ?
-    step_game();
-  }
+MuhGameHooks muh_game_hooks;
+MuhView muh_view;
+world::SPCaveWorld muh_world;
+game::Game muh_game(muh_game_hooks, muh_view, muh_world);
 
-  Vec2i mouse_pos;
-  SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
-
-  Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
-  if(new_mouse_tile != mouse_tile) {
-    mouse_tile = new_mouse_tile;
-
-    std::string look_str;
-    if(grid_world.look_str(look_str, mouse_tile)) {
-      hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
-    } else {
-      hud.look_finish();
-    }
-  }
-
-
-  grid_world.tick();
-  hud.tick();
-  message_log.tick();
-
-
-  glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-
-  glEnable(GL_STENCIL_TEST);
-
-
-  grid_world.draw();
-  hud.draw();
-  message_log.draw();
-
-
-  SDL_GL_SwapWindow(window);
-
-  SDL_Delay(14);
-}
-
-void run() {
-  quit_signal = false;
-  while(true) {
-    update();
-    if(quit_signal) { break; }
-  }
-}
 
 Log main_log;
 
@@ -246,12 +226,8 @@ int main(int argc, char ** argv) {
       gfx::load();
 
       // start le engine
-      muh_engine.spawn_player(0, muh_view);
 
-      step_game();
-
-
-      run();
+      muh_game.run();
 
       gfx::unload();
 

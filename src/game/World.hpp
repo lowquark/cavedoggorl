@@ -51,12 +51,16 @@ namespace game {
     bool is_passable(Vec2i pos);
   };
 
+  class Player;
+
   class Entity {
     public:
     std::string name;
 
     world::Id location;
     Vec2i position;
+
+    Player * player = nullptr;
 
     std::vector<Item> inventory;
     std::map<std::string, Item> equipment;
@@ -121,6 +125,7 @@ namespace game {
     std::pair<bool, unsigned int> _player_entity_id = decltype(_player_entity_id)(false, 0);
 
 
+    virtual void notify_update_tile(Vec2i pos) {}
     virtual void notify_tiles_update() {}
 
     virtual void notify_clear_entities() {}
@@ -137,10 +142,15 @@ namespace game {
     virtual void notify_message(const std::string & message) {}
   };
 
+  struct PlayerLevelData {
+    Map<unsigned int> seen;
+  };
+
   class Player {
     public:
     world::Id entity = 0;
     std::unique_ptr<Action> next_action;
+    std::map<world::Id, PlayerLevelData> level_data;
   };
 
   class World {

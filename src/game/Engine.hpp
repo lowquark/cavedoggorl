@@ -1,8 +1,5 @@
-#ifndef GAME_GAME_HPP
-#define GAME_GAME_HPP
-
-#include <set>
-#include <memory>
+#ifndef GAME_ENGINE_HPP
+#define GAME_ENGINE_HPP
 
 #include <game/actions.hpp>
 #include <game/World.hpp>
@@ -38,6 +35,19 @@ namespace game {
     std::map<world::Id, ViewProxy> view_proxies;
 
     void full_update(View & view, const Level & level);
+  };
+
+  class FOVSys {
+    public:
+    FOVSys(const World & world)
+      : world(world) {}
+
+    void on_spawn(world::Id eid);
+    void on_despawn(world::Id eid);
+    void on_move(world::Id eid, Vec2i from, Vec2i to);
+
+    private:
+    const World & world;
   };
 
   class TurnSys {
@@ -120,27 +130,52 @@ namespace game {
 
   class Engine {
     public:
-    Engine(world::WorldStore & world_store)
-      : load_sys(world, world_store, view_sys, turn_sys)
+    typedef unsigned int Id;
+
+    class HookHandler {
+      public:
+      virtual ~HookHandler() = default;
+      virtual void on_player_turn(Engine::Id player_id) {}
+      virtual void on_transfer(Engine::Id eid, world::Id wid, Vec2i pos) {}
+    };
+
+    Engine(HookHandler & hh, world::WorldStore & world_store)
+      : hh(hh)
+      , load_sys(world, world_store, view_sys, turn_sys)
       , roam_sys(world, world_store)
+      , fov_sys(world)
       , view_sys(world)
       , mob_sys(world, load_sys, view_sys) {}
+
+    // [Turn Sys] -- action       --> [Mob Sys]
+    // [Mob Sys]  -- move_request --> [Phys Sys]
+    // [Phys Sys] -- move_event   --> [FOV Sys]
+    // [Phys Sys] -- move_event   --> [View Sys]
+    // [FOV Sys]  -- fov_update   --> [View Sys]
 
     void spawn_player(world::Id pid, View & view);
     void despawn_player(world::Id pid);
 
-    std::pair<bool, world::Id> step(unsigned int max_ticks);
+    bool run(unsigned int max_ticks);
+    void run();
+
     void complete_turn(const Action & action);
 
+    bool paused() const { return _paused; }
+    void set_paused(bool paused) { this->_paused = paused; }
+
     private:
+    HookHandler & hh;
     World world;
 
     LoadSys load_sys;
     RoamSys roam_sys;
+    FOVSys fov_sys;
     ViewSys view_sys;
     MobSys mob_sys;
     TurnSys turn_sys;
 
+    bool _paused = false;
     void tick();
   };
 }

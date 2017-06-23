@@ -1,5 +1,5 @@
 
-#include "game.hpp"
+#include "Engine.hpp"
 
 #include <game/parts.hpp>
 #include <game/AStar.hpp>
@@ -148,6 +148,15 @@ namespace game {
     return wait_time;
   }
   */
+
+
+  void FOVSys::on_spawn(world::Id eid) {
+  }
+  void FOVSys::on_despawn(world::Id eid) {
+  }
+  void FOVSys::on_move(world::Id eid, Vec2i from, Vec2i to) {
+  }
+
 
   void TurnSys::add_turn(world::Id eid, unsigned int speed) {
     turns[eid].energy = 1000; // ready to roll
@@ -335,6 +344,35 @@ namespace game {
     view_sys.set_view(id, view);
   }
 
+  void Engine::run() {
+    _paused = false;
+
+    while(true) {
+      auto turn = turn_sys.whos_turn();
+
+      while(turn.first) {
+        auto & e = world.entities.at(turn.second);
+        // query for an action to take
+        ActionQuery q;
+        e.ext.query(q);
+
+        if(q.action) {
+          q.action->perform(mob_sys, turn.second);
+          turn_sys.finish_turn();
+        } else {
+          // if no action to take, ask the player
+          hh.on_player_turn(0);
+          if(_paused) { return; }
+        }
+
+        turn = turn_sys.whos_turn();
+      }
+
+      tick();
+    }
+  }
+
+  /*
   std::pair<bool, world::Id> Engine::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto turn = turn_sys.whos_turn();
@@ -360,6 +398,7 @@ namespace game {
 
     return std::pair<bool, world::Id>(false, world::Id());
   }
+  */
   void Engine::complete_turn(const Action & action) {
     auto turn = turn_sys.whos_turn();
     if(turn.first) {

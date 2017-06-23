@@ -8,8 +8,9 @@ OBJECTS := build/main.o \
 					 build/gfx/gl/Buffer.o \
 					 build/gfx/gl/Program.o \
 					 build/gfx/gl/Texture.o \
-					 build/game/game.o \
-					 build/game/core.o \
+					 build/game/Engine.o \
+					 build/game/Game.o \
+					 build/game/nc.o \
 					 build/game/parts.o \
 					 build/game/view.o \
 	         build/game/AStar.o \
