@@ -71,10 +71,7 @@ namespace game {
     public:
     virtual ~View() = default;
 
-    struct TileState {
-      unsigned int glyph_id = 0;
-      bool visible = true;
-    };
+    typedef unsigned int TileState;
     struct EntityState {
       Vec2i pos;
       unsigned int glyph_id = 0;

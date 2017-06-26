@@ -43,7 +43,7 @@ class MuhView : public game::View {
     for(unsigned int y = 0 ; y < tiles().size().y ; y ++) {
       for(unsigned int x = 0 ; x < tiles().size().x ; x ++) {
         Vec2i pos((int)x, (int)y);
-        grid_world.set_tile(pos, tiles().get(pos).glyph_id);
+        grid_world.set_tile(pos, tiles().get(pos));
       }
     }
   }

@@ -11,42 +11,6 @@
 namespace game {
   typedef unsigned int Id;
 
-  class ViewSys {
-    public:
-    ViewSys(const World & world)
-      : world(world) {}
-
-    void notify_spawn(Id eid);
-    void notify_despawn(Id eid);
-    void notify_move(Id eid, Vec2i from, Vec2i to);
-    void notify_fov_update(Id eid);
-
-    void set_view(Id eid, View & view);
-    void unset_view(Id eid);
-
-    private:
-    const World & world;
-
-    std::map<Id, std::reference_wrapper<View>> views;
-
-    void full_update(View & view, const Level & level);
-  };
-
-  class FOVSys {
-    public:
-    FOVSys(World & world)
-      : world(world) {}
-
-    void add(Id eid);
-    void remove(Id eid);
-    void notify_move(Id eid, Vec2i from, Vec2i to);
-
-    private:
-    World & world;
-
-    std::set<Id> entities;
-  };
-
   class TurnSys {
     public:
     void add_turn(Id eid, unsigned int speed);
@@ -65,36 +29,24 @@ namespace game {
     std::map<Id, Turn> turns;
   };
 
-  class MobSys {
-    public:
-    MobSys(World & world, ViewSys & view_sys)
-      : world(world)
-      , view_sys(view_sys) {}
-
-    void perform(Id eid, const MoveAction & action);
-    void perform(Id eid, const WaitAction & action);
-    void perform(Id eid, const StairAction & action);
-
-    private:
-    World & world;
-    ViewSys & view_sys;
-  };
-
-  class EngineObserver {
-    public:
-    virtual ~EngineObserver() = default;
-    virtual void notify_spawn(Id eid) {}
-    virtual void notify_despawn(Id eid) {}
-    virtual void notify_move(Id eid) {}
-    virtual void notify_fov_update(Id eid) {}
-  };
   class Engine {
     public:
-    Engine(EngineObserver & obs)
-      : obs(obs)
-      , fov_sys(world)
-      , view_sys(world)
-      , mob_sys(world, view_sys) {}
+    class Observer {
+      public:
+      virtual ~Observer() = default;
+
+      virtual void   notify_entity_load(const Engine & eng, Id eid) {}
+      virtual void notify_entity_unload(const Engine & eng, Id eid) {}
+
+      virtual void   notify_entity_move(const Engine & eng, Id eid) {}
+
+      virtual void    notify_level_load(const Engine & eng, Id lid) {}
+      virtual void  notify_level_unload(const Engine & eng, Id lid) {}
+
+      virtual void   notify_tile_update(const Engine & eng, Id lid, Vec2i pos) {}
+    };
+
+    Engine(Observer & obs) : obs(obs) {}
 
     void load_entity(Id eid, const std::string & name, Id loc, Vec2i pos);
     void unload_entity(Id eid);
@@ -102,7 +54,10 @@ namespace game {
     void load_level(Id loc, const Level & level);
     void unload_level(Id loc);
 
-    void attach_player(Id pid, Id eid, View & view);
+    void perform(const Action & action, Id eid);
+    void perform(const MoveAction & action, Id eid);
+    void perform(const WaitAction & action, Id eid);
+    void perform(const StairAction & action, Id eid);
 
     // Run until external input is required
     // Returns the mob requiring input's id
@@ -120,13 +75,18 @@ namespace game {
     // If max_ticks have been elapsed, returns (0, false)
     std::pair<Id, bool> step(const Action & action, unsigned int max_ticks);
 
+    Vec2i entity_position(Id eid) const;
+    Id entity_location(Id eid) const;
+    unsigned int entity_glyph_id(Id eid) const;
+
+    Vec2u level_size(Id lid) const;
+    unsigned int tile_glyph_id(Id lid, Vec2i pos) const;
+    Map<unsigned int> tile_glyph_ids(Id lid) const;
+
     private:
     World world;
 
-    EngineObserver obs;
-    FOVSys fov_sys;
-    ViewSys view_sys;
-    MobSys mob_sys;
+    Observer & obs;
     TurnSys turn_sys;
 
     void complete_turn(const Action & action);

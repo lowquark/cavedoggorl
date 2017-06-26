@@ -5,26 +5,27 @@
 #include <game/common.hpp>
 
 namespace game {
-  class MobSys;
+  class Engine;
 
   class Action {
     public:
     virtual ~Action() = default;
-    virtual void perform(MobSys & sys, Id eid) const = 0;
+    virtual void perform(Engine & eng, Id eid) const = 0;
   };
+
   class MoveAction : public Action {
     public:
     Vec2i delta;
     MoveAction(Vec2i delta) : delta(delta) {}
-    void perform(MobSys & sys, Id eid) const override;
+    void perform(Engine & eng, Id eid) const override;
   };
   class WaitAction : public Action {
     public:
-    void perform(MobSys & sys, Id eid) const override;
+    void perform(Engine & eng, Id eid) const override;
   };
   class StairAction : public Action {
     public:
-    void perform(MobSys & sys, Id eid) const override;
+    void perform(Engine & eng, Id eid) const override;
   };
 }
 

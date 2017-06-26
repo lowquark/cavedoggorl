@@ -16,19 +16,20 @@ namespace game {
 
     Game(HookHandler & hooks, View & view, world::WorldStore & world_store)
       : world_store(world_store)
+      , player_view(view)
       , hooks(hooks)
-      , eng(ew) {
-      load_player(view);
+      , engine_watch(*this)
+      , engine(engine_watch) {
+      load_player();
     }
 
-    void load_player(View & view) {
+    void load_player() {
       world::Id player_id = 0;
 
       auto world_player = world_store.player(player_id);
       auto player_entity = world_store.entity(world_player.entity);
 
       load_level(player_entity.location);
-      eng.attach_player(player_id, world_player.entity, view);
     }
 
     void load_level(world::Id loc) {
@@ -51,22 +52,22 @@ namespace game {
         }
       }
 
-      eng.load_level(loc, new_level);
+      engine.load_level(loc, new_level);
 
       for(auto & eid : level.entities) {
         auto e = world_store.entity(eid);
-        eng.load_entity(eid, e.name, e.location, e.position);
+        engine.load_entity(eid, e.name, e.location, e.position);
       }
     }
     void unload_level(world::Id loc) {
     }
 
     void run() {
-      if(eng.step(100).second) {
+      if(engine.step(100).second) {
         while(true) {
           auto action = hooks.player_action();
           if(action) {
-            eng.step(*action);
+            engine.step(*action);
           } else {
             printf("%s: pausing\n", __PRETTY_FUNCTION__);
             break;
@@ -77,24 +78,51 @@ namespace game {
       }
     }
 
-    bool paused() const { return _paused; }
-    void set_paused(bool paused) { this->_paused = paused; }
-
     private:
-    class EngineWatch : public EngineObserver {
-      virtual void notify_spawn(Id eid) {}
-      virtual void notify_despawn(Id eid) {}
-      virtual void notify_move(Id eid) {}
-      virtual void notify_fov_update(Id eid) {}
+    class EngineWatch : public Engine::Observer {
+      Game & game;
+
+      public:
+      EngineWatch(Game & game) : game(game) { printf("%s\n", __PRETTY_FUNCTION__); }
+
+      void notify_entity_load(const Engine & engine, Id eid) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+        View::EntityState es;
+        es.glyph_id = engine.entity_glyph_id(eid);
+        es.pos = engine.entity_position(eid);
+
+        game.player_view.set_entity(eid, es);
+      }
+      void notify_entity_unload(const Engine & engine, Id eid) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+        game.player_view.clear_entity(eid);
+      }
+
+      void notify_entity_move(const Engine & engine, Id eid) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+        auto pos = engine.entity_position(eid);
+        game.player_view.move_entity(eid, pos, pos);
+      }
+
+      void notify_level_load(const Engine & engine, Id lid) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+        game.player_view.set_tiles(engine.tile_glyph_ids(lid));
+      }
+      void notify_level_unload(const Engine & engine, Id lid) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+      }
+
+      void notify_tile_update(const Engine & engine, Id lid, Vec2i pos) override {
+        printf("%s\n", __PRETTY_FUNCTION__);
+      }
     };
 
-    bool _paused = false;
-
     world::WorldStore & world_store;
+    View & player_view;
 
     HookHandler & hooks;
-    EngineWatch ew;
-    Engine eng;
+    EngineWatch engine_watch;
+    Engine engine;
   };
 }
 
