@@ -3,7 +3,8 @@
 
 #include <string>
 #include <set>
-#include <game/core.hpp>
+#include <game/common.hpp>
+#include <game/nc.hpp>
 #include <game/actions.hpp>
 #include <world/world.hpp>
 #include <util/Vec2.hpp>
@@ -51,8 +52,6 @@ namespace game {
     bool is_passable(Vec2i pos);
   };
 
-  class Player;
-
   class Entity {
     public:
     std::string name;
@@ -60,10 +59,10 @@ namespace game {
     world::Id location;
     Vec2i position;
 
-    Player * player = nullptr;
+    std::vector<bool> fov;
 
-    std::vector<Item> inventory;
-    std::map<std::string, Item> equipment;
+    //std::vector<Item> inventory;
+    //std::map<std::string, Item> equipment;
 
     nc::Entity ext;
   };
@@ -142,22 +141,10 @@ namespace game {
     virtual void notify_message(const std::string & message) {}
   };
 
-  struct PlayerLevelData {
-    Map<unsigned int> seen;
-  };
-
-  class Player {
-    public:
-    world::Id entity = 0;
-    std::unique_ptr<Action> next_action;
-    std::map<world::Id, PlayerLevelData> level_data;
-  };
-
   class World {
     public:
     std::map<world::Id, Entity> entities;
     std::map<world::Id, Level> levels;
-    std::map<world::Id, Player> players;
   };
 }
 

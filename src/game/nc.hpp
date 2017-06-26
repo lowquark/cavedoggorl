@@ -1,5 +1,5 @@
-#ifndef GAME_CORE_HPP
-#define GAME_CORE_HPP
+#ifndef GAME_NC_HPP
+#define GAME_NC_HPP
 
 #include <cassert>
 #include <algorithm>

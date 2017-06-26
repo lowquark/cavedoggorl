@@ -5,7 +5,7 @@
 #include <cassert>
 #include <deque>
 
-#include <game/core.hpp>
+#include <game/nc.hpp>
 #include <game/actions.hpp>
 #include <game/Color.hpp>
 #include <game/FOV.hpp>

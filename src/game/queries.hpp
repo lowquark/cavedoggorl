@@ -1,7 +1,7 @@
 #ifndef QUERIES_HPP
 #define QUERIES_HPP
 
-#include <game/core.hpp>
+#include <game/nc.hpp>
 #include <game/actions.hpp>
 #include <game/Color.hpp>
 #include <util/Vec2.hpp>

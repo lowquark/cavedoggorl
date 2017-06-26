@@ -1,5 +1,5 @@
 
-#include <game/core.hpp>
+#include <game/nc.hpp>
 
 namespace nc {
 }

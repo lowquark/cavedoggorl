@@ -15,7 +15,7 @@ namespace game {
     return tiles.get(pos) == 2;
   }
 
-  void ViewSys::on_spawn(world::Id eid) {
+  void ViewSys::notify_spawn(Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
     auto & e = world.entities.at(eid);
@@ -27,43 +27,29 @@ namespace game {
     es.glyph_id = q.glyph_id;
     es.pos = e.position;
 
-    view_proxies.at(0).view.set_entity(eid, es);
+    views.at(0).get().set_entity(eid, es);
   }
-  void ViewSys::on_despawn(world::Id eid) {
+  void ViewSys::notify_despawn(Id eid) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
-    view_proxies.at(0).view.clear_entity(eid);
+    views.at(0).get().clear_entity(eid);
   }
-  void ViewSys::on_move(world::Id eid, Vec2i from, Vec2i to) {
+  void ViewSys::notify_move(Id eid, Vec2i from, Vec2i to) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
-    view_proxies.at(0).view.move_entity(eid, from, to);
+    views.at(0).get().move_entity(eid, from, to);
   }
 
-  void ViewSys::set_view(world::Id pid, View & view) {
-    auto kvpair_it = view_proxies.insert(std::make_pair(pid, ViewProxy(view))).first;
-    auto & view_proxy = kvpair_it->second;
+  void ViewSys::set_view(Id eid, View & view) {
+    views.insert(std::make_pair(eid, std::ref(view)));
 
-    auto & player = world.players.at(pid);
-    auto & entity = world.entities.at(player.entity);
+    auto & entity = world.entities.at(eid);
     auto & level = world.levels.at(entity.location);
 
-    full_update(view_proxy.view, level);
+    full_update(view, level);
   }
-  void ViewSys::unset_view(world::Id pid) {
-    view_proxies.erase(pid);
-  }
-
-  void ViewSys::on_transfer(world::Id eid, world::Id loc) {
-    for(auto & kvpair : world.players) {
-      auto pid = kvpair.first;
-      auto & p = kvpair.second;
-      if(p.entity == eid) {
-        printf("%s: Entity is owned by player.\n", __PRETTY_FUNCTION__);
-        full_update(view_proxies.at(pid).view, world.levels.at(loc));
-        return;
-      }
-    }
+  void ViewSys::unset_view(Id eid) {
+    views.erase(eid);
   }
 
   void ViewSys::full_update(View & view, const Level & level) {
@@ -150,42 +136,52 @@ namespace game {
   */
 
 
-  void FOVSys::on_spawn(world::Id eid) {
+  void FOVSys::add(Id eid) {
+    entities.insert(eid);
   }
-  void FOVSys::on_despawn(world::Id eid) {
+  void FOVSys::remove(Id eid) {
+    entities.erase(eid);
   }
-  void FOVSys::on_move(world::Id eid, Vec2i from, Vec2i to) {
+  void FOVSys::notify_move(Id eid, Vec2i from, Vec2i to) {
+    if(entities.find(eid) != entities.end()) {
+      auto & entity = world.entities.at(eid);
+      auto & level = world.levels.at(entity.location);
+
+      BresenhamFOV fov;
+      fov.update(level.opaque, entity.position, 10);
+      entity.fov = fov.sample(Rect2i(Vec2i(), level.tiles.size()));
+    }
   }
 
 
-  void TurnSys::add_turn(world::Id eid, unsigned int speed) {
+  void TurnSys::add_turn(Id eid, unsigned int speed) {
     turns[eid].energy = 1000; // ready to roll
     turns[eid].speed = speed;
-    printf("Turn added for entity %lu\n", eid);
+    printf("Turn added for entity %u\n", eid);
   }
-  void TurnSys::remove_turn(world::Id eid) {
+  void TurnSys::remove_turn(Id eid) {
     turns.erase(eid);
-    printf("Turn removed for entity %lu\n", eid);
+    printf("Turn removed for entity %u\n", eid);
   }
   void TurnSys::tick() {
     for(auto & kvpair : turns) {
       auto & turn = kvpair.second;
       turn.energy += turn.speed;
-      printf("%lu: %u, %u\n", kvpair.first, turn.energy, turn.speed);
+      printf("%u: %u, %u\n", kvpair.first, turn.energy, turn.speed);
     }
   }
 
-  std::pair<bool, world::Id> TurnSys::whos_turn() const {
+  std::pair<bool, Id> TurnSys::whos_turn() const {
     for(auto & kvpair : turns) {
       auto eid = kvpair.first;
       auto & turn = kvpair.second;
 
       if(turn.energy >= 1000) {
-        return std::pair<bool, world::Id>(true, eid);
+        return std::pair<bool, Id>(true, eid);
       }
     }
 
-    return std::pair<bool, world::Id>(false, world::Id());
+    return std::pair<bool, Id>(false, Id());
   }
   void TurnSys::finish_turn() {
     for(auto & kvpair : turns) {
@@ -197,7 +193,7 @@ namespace game {
     }
   }
 
-  void MobSys::perform(world::Id eid, const MoveAction & action) {
+  void MobSys::perform(Id eid, const MoveAction & action) {
     printf("%s\n", __PRETTY_FUNCTION__);
     auto & e = world.entities.at(eid);
 
@@ -205,42 +201,33 @@ namespace game {
     Vec2i new_pos = e.position + action.delta;
 
     e.position = new_pos;
-    view_sys.on_move(eid, old_pos, new_pos);
+    view_sys.notify_move(eid, old_pos, new_pos);
   }
-  void MobSys::perform(world::Id eid, const WaitAction & action) {
+  void MobSys::perform(Id eid, const WaitAction & action) {
     printf("%s\n", __PRETTY_FUNCTION__);
   }
-  void MobSys::perform(world::Id eid, const StairAction & action) {
+  void MobSys::perform(Id eid, const StairAction & action) {
     printf("%s\n", __PRETTY_FUNCTION__);
-    auto & e = world.entities.at(eid);
+    //auto & e = world.entities.at(eid);
 
-    load_sys.transfer_mob(eid, (e.location + 1) % 4, Vec2i(10, 10));
+    //load_sys.transfer_mob(eid, (e.location + 1) % 4, Vec2i(10, 10));
   }
 
-  void MoveAction::perform(MobSys & sys, world::Id eid) const {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    sys.perform(eid, *this);
-  }
-  void WaitAction::perform(MobSys & sys, world::Id eid) const {
+  void MoveAction::perform(MobSys & sys, Id eid) const {
     printf("%s\n", __PRETTY_FUNCTION__);
     sys.perform(eid, *this);
   }
-  void StairAction::perform(MobSys & sys, world::Id eid) const {
+  void WaitAction::perform(MobSys & sys, Id eid) const {
+    printf("%s\n", __PRETTY_FUNCTION__);
+    sys.perform(eid, *this);
+  }
+  void StairAction::perform(MobSys & sys, Id eid) const {
     printf("%s\n", __PRETTY_FUNCTION__);
     sys.perform(eid, *this);
   }
 
-  bool LoadSys::load_player(world::Id id) {
-    auto world_player = world_store.player(id);
-    auto player_entity = world_store.entity(world_player.entity);
-
-    load_level(player_entity.location);
-
-    world.players[id].entity = world_player.entity;
-
-    return true; // FOOLISH
-  }
-  void LoadSys::transfer_mob(world::Id eid, world::Id loc, Vec2i pos) {
+  /*
+  void LoadSys::transfer_mob(Id eid, Id loc, Vec2i pos) {
     printf("%s\n", __PRETTY_FUNCTION__);
 
     for(auto & kvpair : world.players) {
@@ -274,79 +261,44 @@ namespace game {
       }
     }
   }
- 
-  void LoadSys::load_entity(world::Id eid, const world::Entity & state) {
+  */
+
+  // Engine public
+  void Engine::load_entity(Id eid, const std::string & name, Id loc, Vec2i pos) {
     auto & e = world.entities[eid];
-    if(state.name == "lambdoggo") {
+    if(name == "lambdoggo") {
       e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 0 255 0 255")));
+      fov_sys.add(eid);
     } else {
       e.ext.add_part(std::unique_ptr<RandomControlPart>(new RandomControlPart("")));
       e.ext.add_part(std::unique_ptr<GlyphPart>(new GlyphPart("Glyph 1 255 0 255")));
     }
-    e.name = state.name;
-    e.location = state.location;
-    e.position = state.position;
+    e.name = name;
+    e.location = loc;
+    e.position = pos;
     turn_sys.add_turn(eid, 100);
+
+    auto & level = world.levels.at(loc);
+    level.entities.insert(eid);
   }
-  void LoadSys::unload_entity(world::Id eid) {
+  void Engine::unload_entity(Id eid) {
+    world.entities.erase(eid);
+    fov_sys.remove(eid);
     turn_sys.remove_turn(eid);
   }
 
-  Level & LoadSys::load_level(world::Id world_id) {
-    world::Level level = world_store.level(world_id);
-
-    // load the level into the space
-    auto & new_level = world.levels[world_id];
-
-    new_level.tiles.resize(level.tiles.size());
-    new_level.opaque.resize(level.tiles.size());
-
-    for(unsigned int j = 0 ; j < level.tiles.size().y ; j ++) {
-      for(unsigned int i = 0 ; i < level.tiles.size().x ; i ++) {
-        Vec2i pos(i, j);
-
-        if(level.tiles.get(pos).type_id == 1) {
-          new_level.tiles.set(pos, 1);
-          new_level.opaque.set(pos, 1);
-        } else if(level.tiles.get(pos).type_id == 2) {
-          new_level.tiles.set(pos, 2);
-          new_level.opaque.set(pos, 0);
-        }
-      }
-    }
-
-    for(auto & eid : level.entities) {
-      new_level.entities.insert(eid);
-      load_entity(eid, world_store.entity(eid));
-    }
-
-    return new_level;
+  void Engine::load_level(Id loc, const Level & level) {
+    world.levels[loc] = level;
   }
-  void LoadSys::unload_level(world::Id id) {
-    auto & level = world.levels.at(id);
-
-    for(auto & eid : level.entities) {
-      unload_entity(eid);
-    }
-
-    level.entities.clear();
-
-    world.levels.erase(id);
+  void Engine::unload_level(Id loc) {
+    world.levels.erase(loc);
   }
 
-  // Engine public
-  void Engine::spawn_player(world::Id id, View & view) {
-    printf("%s\n", __PRETTY_FUNCTION__);
-
-    // this is where the motherfucking magic happens
-    load_sys.load_player(id);
-    // this is where magic happens, too
-    view_sys.set_view(id, view);
+  void Engine::attach_player(Id pid, Id eid, View & view) {
+    view_sys.set_view(eid, view);
   }
 
-  void Engine::run() {
-    _paused = false;
-
+  Id Engine::step() {
     while(true) {
       auto turn = turn_sys.whos_turn();
 
@@ -360,9 +312,8 @@ namespace game {
           q.action->perform(mob_sys, turn.second);
           turn_sys.finish_turn();
         } else {
-          // if no action to take, ask the player
-          hh.on_player_turn(0);
-          if(_paused) { return; }
+          // if no action to take, break
+          return turn.second;
         }
 
         turn = turn_sys.whos_turn();
@@ -371,11 +322,10 @@ namespace game {
       tick();
     }
   }
-
-  /*
-  std::pair<bool, world::Id> Engine::step(unsigned int max_ticks) {
+  std::pair<Id, bool> Engine::step(unsigned int max_ticks) {
     for(unsigned int t = 0 ; t < max_ticks ; t ++) {
       auto turn = turn_sys.whos_turn();
+
       while(turn.first) {
         auto & e = world.entities.at(turn.second);
         // query for an action to take
@@ -386,8 +336,8 @@ namespace game {
           q.action->perform(mob_sys, turn.second);
           turn_sys.finish_turn();
         } else {
-          // if no action to take, yield
-          return turn;
+          // if no action to take, ask the player
+          return std::make_pair(turn.second, true);
         }
 
         turn = turn_sys.whos_turn();
@@ -396,9 +346,18 @@ namespace game {
       tick();
     }
 
-    return std::pair<bool, world::Id>(false, world::Id());
+    return std::make_pair((Id)0, true);
   }
-  */
+  Id Engine::step(const Action & action) {
+    complete_turn(action);
+    return step();
+  }
+  std::pair<Id, bool> Engine::step(const Action & action, unsigned int max_ticks) {
+    complete_turn(action);
+    return step(max_ticks);
+  }
+
+  // Engine private
   void Engine::complete_turn(const Action & action) {
     auto turn = turn_sys.whos_turn();
     if(turn.first) {
@@ -407,7 +366,6 @@ namespace game {
     }
   }
 
-  // Engine private
   void Engine::tick() {
     turn_sys.tick();
   }

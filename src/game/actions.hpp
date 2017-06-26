@@ -2,7 +2,7 @@
 #define GAME_ACTIONS_HPP
 
 #include <util/Vec2.hpp>
-#include <world/world.hpp>
+#include <game/common.hpp>
 
 namespace game {
   class MobSys;
@@ -10,21 +10,21 @@ namespace game {
   class Action {
     public:
     virtual ~Action() = default;
-    virtual void perform(MobSys & sys, world::Id eid) const = 0;
+    virtual void perform(MobSys & sys, Id eid) const = 0;
   };
   class MoveAction : public Action {
     public:
     Vec2i delta;
     MoveAction(Vec2i delta) : delta(delta) {}
-    void perform(MobSys & sys, world::Id eid) const override;
+    void perform(MobSys & sys, Id eid) const override;
   };
   class WaitAction : public Action {
     public:
-    void perform(MobSys & sys, world::Id eid) const override;
+    void perform(MobSys & sys, Id eid) const override;
   };
   class StairAction : public Action {
     public:
-    void perform(MobSys & sys, world::Id eid) const override;
+    void perform(MobSys & sys, Id eid) const override;
   };
 }
 
