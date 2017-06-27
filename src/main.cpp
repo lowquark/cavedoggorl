@@ -35,46 +35,46 @@ gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
 
 
-class MuhView : public game::View {
+class MuhViewWatch : public game::View::Observer {
   private:
-  void notify_tiles_update() override {
-    grid_world.set_size(tiles().size());
+  void notify_tiles_update(const game::View & view) override {
+    auto & tiles = view.tiles();
+    grid_world.set_size(tiles.size());
 
-    for(unsigned int y = 0 ; y < tiles().size().y ; y ++) {
-      for(unsigned int x = 0 ; x < tiles().size().x ; x ++) {
+    for(unsigned int y = 0 ; y < tiles.size().y ; y ++) {
+      for(unsigned int x = 0 ; x < tiles.size().x ; x ++) {
         Vec2i pos((int)x, (int)y);
-        grid_world.set_tile(pos, tiles().get(pos));
+        grid_world.set_tile(pos, tiles.get(pos));
       }
     }
   }
 
-  void notify_update_tile(Vec2i pos) override {
+  void notify_update_tile(const game::View & view, Vec2i pos) override {
   }
 
-  void notify_clear_entities() override {
+  void notify_clear_entities(const game::View & view) override {
     printf("%s\n", __PRETTY_FUNCTION__);
     grid_world.clear_sprites();
   }
-  void notify_entity_update(unsigned int id) override {
+  void notify_entity_update(const game::View & view, game::Id eid) override {
     printf("%s\n", __PRETTY_FUNCTION__);
-    auto kvpair_it = entities().find(id);
+    auto & e = view.entities().at(eid);
 
-    if(kvpair_it != entities().end()) {
-      auto & e = kvpair_it->second;
-      gfx::Color gfx_color;
-      gfx_color.r = 1.0f;
-      gfx_color.g = 1.0f;
-      gfx_color.b = 1.0f;
-      grid_world.add_agent(id, e.glyph_id, e.pos, gfx_color);
-    }
+    gfx::Color gfx_color;
+    gfx_color.r = 1.0f;
+    gfx_color.g = 1.0f;
+    gfx_color.b = 1.0f;
+    grid_world.add_agent(eid, e.glyph_id, e.pos, gfx_color);
   }
-  void notify_entity_remove(unsigned int id) override {
+  void notify_entity_remove(const game::View & view, game::Id id) override {
     printf("%s\n", __PRETTY_FUNCTION__);
     grid_world.remove_agent(id);
   }
-  void notify_entity_move(unsigned int id, Vec2i from, Vec2i to) override {
+  void notify_entity_move(const game::View & view, game::Id eid) override {
     printf("%s\n", __PRETTY_FUNCTION__);
-    grid_world.move_agent(id, from, to);
+    auto & e = view.entities().at(eid);
+
+    grid_world.move_agent(eid, e.pos, e.pos);
   }
 };
 
@@ -172,8 +172,9 @@ class MuhGameHooks : public game::Game::HookHandler {
 };
 
 MuhGameHooks muh_game_hooks;
-MuhView muh_view;
 world::SPCaveWorld muh_world;
+MuhViewWatch muh_view_watch;
+game::View muh_view(muh_view_watch);
 game::Game muh_game(muh_game_hooks, muh_view, muh_world);
 
 

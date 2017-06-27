@@ -275,6 +275,13 @@ namespace game {
     return q.glyph_id;
   }
 
+  bool Engine::level_is_loaded(Id lid) const {
+    if(world.levels.find(lid) == world.levels.end()) {
+      return false;
+    } else {
+      return true;
+    }
+  }
   Vec2u Engine::level_size(Id lid) const {
     auto & level = world.levels.at(lid);
     return level.tiles.size();

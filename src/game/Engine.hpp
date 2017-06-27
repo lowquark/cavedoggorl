@@ -79,6 +79,7 @@ namespace game {
     Id entity_location(Id eid) const;
     unsigned int entity_glyph_id(Id eid) const;
 
+    bool level_is_loaded(Id lid) const;
     Vec2u level_size(Id lid) const;
     unsigned int tile_glyph_id(Id lid, Vec2i pos) const;
     Map<unsigned int> tile_glyph_ids(Id lid) const;
