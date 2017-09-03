@@ -37,6 +37,17 @@ gfx::WorldMessageLog message_log;
 
 class MuhViewWatch : public game::View::Observer {
   private:
+  void notify_cell_update(const game::View & view, Vec2i pos) override {
+    grid_world.set_tile(pos, view.cells().get(pos).tile_type);
+  }
+  void notify_location_name_update(const game::View & view) override {
+  }
+  void notify_focus_update(const game::View & view) override {
+  }
+  void notify_message(const game::View & view, const std::string & message) override {
+  }
+
+  /*
   void notify_tiles_update(const game::View & view) override {
     auto & tiles = view.tiles();
     grid_world.set_size(tiles.size());
@@ -54,7 +65,7 @@ class MuhViewWatch : public game::View::Observer {
 
   void notify_clear_entities(const game::View & view) override {
     printf("%s\n", __PRETTY_FUNCTION__);
-    grid_world.clear_sprites();
+    //grid_world.clear_sprites();
   }
   void notify_entity_update(const game::View & view, game::Id eid) override {
     printf("%s\n", __PRETTY_FUNCTION__);
@@ -76,6 +87,7 @@ class MuhViewWatch : public game::View::Observer {
 
     grid_world.move_agent(eid, e.pos, e.pos);
   }
+  */
 };
 
 Vec2i mouse_tile;
@@ -204,7 +216,7 @@ int main(int argc, char ** argv) {
   }
 
   window = SDL_CreateWindow(
-      "cavedogrl",
+      "cavedoggorl",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
       window_size.x,

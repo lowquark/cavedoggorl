@@ -10,72 +10,68 @@ namespace game {
     class Observer {
       public:
       virtual ~Observer() = default;
-      virtual void notify_update_tile(const View & view, Vec2i pos) {}
-      virtual void notify_tiles_update(const View & view) {}
-
-      virtual void notify_clear_entities(const View & view) {}
-      virtual void notify_entity_update(const View & view, Id eid) {}
-      virtual void notify_entity_remove(const View & view, Id eid) {}
-
-      virtual void notify_entity_show(const View & view, Id eid) {}
-      virtual void notify_entity_hide(const View & view, Id eid) {}
-      virtual void notify_entity_move(const View & view, Id eid) {}
-
-      virtual void notify_player_update(const View & view) {}
-      virtual void notify_fov_update(const View & view) {}
-
+      virtual void notify_cell_update(const View & view, Vec2i pos) {}
       virtual void notify_location_name_update(const View & view) {}
+      virtual void notify_focus_update(const View & view) {}
       virtual void notify_message(const View & view, const std::string & message) {}
     };
 
     View(Observer & observer) : observer(observer) {}
 
-    typedef unsigned int TileState;
-    struct EntityState {
-      Vec2i pos;
-      unsigned int glyph_id = 0;
+    struct Cell {
+      struct Entity {
+        Id game_id;
+        unsigned int glyph_id;
+        std::string description;
+
+        // attributes, like moving from, fade-in/out, flashing, colored, etc
+      };
+      unsigned int tile_type;
+      std::vector<Entity> entity;
+    };
+    struct Event {
+      // messages, bullets, explosions, etc
     };
 
-    const std::string & location_name() const { return _location_name; }
-    const Map<TileState> & tiles() const { return _tiles; }
-    const std::map<unsigned int, EntityState> & entities() const { return _entities; }
-    const std::pair<bool, unsigned int> & player_entity_id() const { return _player_entity_id; }
-
+    const std::string & location_name() const {
+      return _location_name;
+    }
     void set_location_name(const std::string & str) {
       _location_name = str;
       observer.notify_location_name_update(*this);
     }
-    void set_tiles(const Map<TileState> & tiles) {
-      _tiles = tiles;
-      observer.notify_tiles_update(*this);
+
+    const Map<Cell> & cells() const {
+      return _cells;
+    }
+    void set_level_size(Vec2u size) {
+      _cells.resize(size);
+    }
+    void set_tile(Vec2i cell_pos, unsigned int type) {
+      observer.notify_cell_update(*this, cell_pos);
+    }
+    void remove_entity(Vec2i cell_pos, Id eid) {
+      observer.notify_cell_update(*this, cell_pos);
+    }
+    void update_entity(Vec2i cell_pos, const Cell::Entity & e) {
+      observer.notify_cell_update(*this, cell_pos);
     }
 
-    void clear_entities() {
-      _entities.clear();
-      observer.notify_clear_entities(*this);
+    Vec2i focus() const {
+      return _focus;
     }
-    void set_entity(Id eid, const EntityState & state) {
-      _entities[eid] = state;
-      observer.notify_entity_update(*this, eid);
-    }
-    void clear_entity(Id eid) {
-      _entities.erase(eid);
-      observer.notify_entity_remove(*this, eid);
-    }
-
-    void move_entity(Id eid, Vec2i dst_pos) {
-      auto & e = _entities.at(eid);
-      e.pos = dst_pos;
-      observer.notify_entity_move(*this, eid);
+    void set_focus(Vec2i pos) {
+      _focus = pos;
+      observer.notify_focus_update(*this);
+      return;
     }
 
     private:
     Observer & observer;
 
     std::string _location_name;
-    Map<TileState> _tiles;
-    std::map<unsigned int, EntityState> _entities;
-    std::pair<bool, unsigned int> _player_entity_id = decltype(_player_entity_id)(false, 0);
+    Map<Cell> _cells;
+    Vec2i _focus;
   };
 
   // Single player game
@@ -158,26 +154,36 @@ namespace game {
 
       void notify_entity_load(const Engine & engine, Id eid) override {
         printf("%s\n", __PRETTY_FUNCTION__);
-        View::EntityState es;
+        View::Cell::Entity es;
+        es.game_id = eid;
         es.glyph_id = engine.entity_glyph_id(eid);
-        es.pos = engine.entity_position(eid);
+        es.description = "whoaa";
 
-        game.player_view.set_entity(eid, es);
+        game.player_view.update_entity(engine.entity_position(eid), es);
       }
       void notify_entity_unload(const Engine & engine, Id eid) override {
         printf("%s\n", __PRETTY_FUNCTION__);
-        game.player_view.clear_entity(eid);
+        //game.player_view.clear_entity(eid);
       }
 
       void notify_entity_move(const Engine & engine, Id eid) override {
         printf("%s\n", __PRETTY_FUNCTION__);
-        auto pos = engine.entity_position(eid);
-        game.player_view.move_entity(eid, pos);
+        //auto pos = engine.entity_position(eid);
+        //game.player_view.move_entity(eid, pos);
       }
 
       void notify_level_load(const Engine & engine, Id lid) override {
         printf("%s\n", __PRETTY_FUNCTION__);
-        game.player_view.set_tiles(engine.tile_glyph_ids(lid));
+        auto glyph_ids = engine.tile_glyph_ids(lid);
+
+        game.player_view.set_level_size(glyph_ids.size());
+
+        for(unsigned int j = 0 ; j < glyph_ids.size().y ; j ++) {
+          for(unsigned int i = 0 ; i < glyph_ids.size().x ; i ++) {
+            auto pos = Vec2i((int)i, (int)j);
+            game.player_view.set_tile(pos, glyph_ids.get(pos));
+          }
+        }
       }
       void notify_level_unload(const Engine & engine, Id lid) override {
         printf("%s\n", __PRETTY_FUNCTION__);
