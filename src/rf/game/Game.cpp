@@ -24,11 +24,22 @@ namespace rf {
     Level GameSave::level(Id id) {
       Level lv;
       lv.tiles.resize(Vec2u(32, 32));
+
       for(unsigned int j = 0 ; j < 32 ; j ++) {
         for(unsigned int i = 0 ; i < 32 ; i ++) {
-          lv.tiles.get(Vec2u(i, j)).add(new BasicGlyph(Glyph(0, Color(i * 8, j * 8, 0x00))));
+          Vec2u pi(i, j);
+          auto & tile = lv.tiles.get(pi);
+          unsigned int r = (rand() % 100);
+          if(r == 0) {
+            tile.add(new BasicGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
+          } else if(r <= 8) {
+            tile.add(new BasicGlyph(Glyph(5 + 4*16, Color(0x33, 0x66, 0x33))));
+          } else {
+            tile.add(new BasicGlyph(Glyph(5 + 6*16, Color(0x22, 0x44, 0x44))));
+          }
         }
       }
+
       return lv;
     }
     void GameSave::set_level(Id id, const Level & l) {

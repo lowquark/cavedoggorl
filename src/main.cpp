@@ -90,7 +90,8 @@ void handle_turn() {
     message_log.tick();
 
 
-    glClearColor(0.3f, 0.1f, 0.0f, 0.0f);
+    //glClearColor(0.3f, 0.1f, 0.0f, 0.0f);
+    glClearColor((float)0x11/0xFF, (float)0x11/0xFF, (float)0x11/0xFF, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -199,7 +200,7 @@ int main(int argc, char ** argv) {
   // grafix config
   message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
   gfx_scene.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-  gfx_scene.set_viewport(Rect2i(0, 0, 24, 16));
+  gfx_scene.set_viewport(Rect2i(0, 0, 30, 30));
   gfx_scene.set_tileset("file://tiles.png");
   gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
 
