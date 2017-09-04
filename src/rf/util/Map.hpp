@@ -10,17 +10,17 @@ namespace rf {
   class Map {
     public:
     Map() noexcept {}
-    Map(Vec2u size, const T & fill = T()) {
-      resize(size, fill);
+    Map(Vec2u size) {
+      resize(size);
     }
 
     void clear() noexcept {
       _size = Vec2u(0, 0);
       _data.clear();
     }
-    void resize(Vec2u size, const T & fill = T()) {
+    void resize(Vec2u size) {
       _size = size;
-      _data.resize(_size.x * _size.y, fill);
+      _data.resize(_size.x * _size.y);
     }
 
     bool valid(Vec2u pos) const noexcept {

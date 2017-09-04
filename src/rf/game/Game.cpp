@@ -22,7 +22,14 @@ namespace rf {
     }
 
     Level GameSave::level(Id id) {
-      return Level();
+      Level lv;
+      lv.tiles.resize(Vec2u(32, 32));
+      for(unsigned int j = 0 ; j < 32 ; j ++) {
+        for(unsigned int i = 0 ; i < 32 ; i ++) {
+          lv.tiles.get(Vec2u(i, j)).add(new BasicGlyph(Glyph(0, Color(i * 8, j * 8, 0x00))));
+        }
+      }
+      return lv;
     }
     void GameSave::set_level(Id id, const Level & l) {
     }
@@ -57,7 +64,27 @@ namespace rf {
     }
 
     SceneState Game::draw(Rect2i roi) {
-      return SceneState();
+      SceneState st;
+
+      st.cells.resize(roi.size);
+
+      for(unsigned int j = 0 ; j < roi.size.y ; j ++) {
+        for(unsigned int i = 0 ; i < roi.size.x ; i ++) {
+          Vec2u pi(i, j);
+          Vec2i p(pi + roi.pos);
+
+          auto & cell = st.cells.get(pi);
+
+          if(level.tiles.valid(p)) {
+            auto & tile = level.tiles.get(p);
+            cell.tile.glyph = tile.glyph();
+          } else {
+            cell.tile.glyph = Glyph(0, Color());
+          }
+        }
+      }
+
+      return st;
     }
 
     void Game::handle_events(GameEventVisitor & v) {

@@ -2,49 +2,21 @@
 #define RF_GAME_OBJECT_HPP
 
 #include <rf/util/Vec2.hpp>
+#include <rf/game/Glyph.hpp>
+#include <rf/game/Handlers.hpp>
 
 namespace rf {
   namespace game {
-    // attaches handlers, and is serializable ; exists to be deleted when the
-    // object is deleted
-    class ObjectHandlers;
-    class Part {
-      public:
-      virtual ~Part() = default;
-      virtual void init(ObjectHandlers & oh) {}
-    };
-
-    // Queries
-    class GlyphHandler {
-      public:
-      virtual ~GlyphHandler() = default;
-      virtual Glyph operator()() const { return Glyph(); }
-    };
-
-    class DeadHandler {
-      public:
-      virtual ~DeadHandler() = default;
-      virtual bool operator()() const { return false; }
-    };
-    class PassiveDamageHandler {
-      public:
-      virtual ~PassiveDamageHandler() = default;
-      virtual int operator()() const { return 0; }
-    };
-
-    // Events
-    class MoveHandler {
-      public:
-      virtual ~MoveHandler() = default;
-      virtual void operator()(Vec2i target) {}
-    };
-    class DamageHandler {
-      public:
-      virtual ~DamageHandler() = default;
-      virtual void operator()(int d) {}
-    };
-
     class ObjectHandlers {
+      public:
+      void add(const GlyphHandler & h) { glyph.push_back(&h); }
+      void add(const DeadHandler & h) { dead.push_back(&h); }
+      void add(const PassiveDamageHandler & h) { passive_damage.push_back(&h); }
+
+      void add(MoveHandler & h) { move.push_back(&h); }
+      void add(DamageHandler & h) { damage.push_back(&h); }
+
+      private:
       std::vector<const GlyphHandler *> glyph;
       std::vector<const DeadHandler *> dead;
       std::vector<const PassiveDamageHandler *> passive_damage;
@@ -53,13 +25,14 @@ namespace rf {
       std::vector<DamageHandler *> damage;
 
       friend class Object;
-      public:
-      void add(const GlyphHandler & h) { glyph.push_back(&h); }
-      void add(const DeadHandler & h) { dead.push_back(&h); }
-      void add(const PassiveDamageHandler & h) { passive_damage.push_back(&h); }
+    };
 
-      void add(MoveHandler & h) { move.push_back(&h); }
-      void add(DamageHandler & h) { damage.push_back(&h); }
+    // attaches handlers, and is serializable ; exists to be deleted when the
+    // object is deleted
+    class Part {
+      public:
+      virtual ~Part() = default;
+      virtual void init(ObjectHandlers & oh) {}
     };
 
     // extremely composed, homogeneous, universal game objects
@@ -72,6 +45,8 @@ namespace rf {
       Object() = default;
       Object(const Object & other) = delete;
       Object & operator=(const Object & other) = delete;
+      Object(Object && other) noexcept = default;
+      Object & operator=(Object && other) noexcept = default;
       ~Object() {
         for(auto & p : parts) {
           delete p;
@@ -124,8 +99,6 @@ namespace rf {
           (*h)(d);
         }
       }
-    };
-    struct Tile {
     };
   }
 }

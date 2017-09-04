@@ -67,7 +67,7 @@ namespace rf {
       if(shader_program.linked()) {
         shader_program.use();
 
-        glUniform2i(tilemap_size_loc, data.size.x, data.size.x);
+        glUniform2i(tilemap_size_loc, data.size.x, data.size.y);
         glUniform2i(tileset_size_loc, tileset_size.x, tileset_size.y);
 
         glEnable(GL_VERTEX_ARRAY);

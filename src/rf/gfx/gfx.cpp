@@ -17,13 +17,13 @@ namespace rf {
     static LogTopic & gfx_topic = logtopic("gfx");
 
 
-    extern std::shared_ptr<gl::Texture> get_texture(const std::string & uri) {
+    std::shared_ptr<gl::Texture> get_texture(const std::string & uri) {
       return tileset;
     }
-    extern Vec2u get_tileset_size(const std::string & uri) {
+    Vec2u get_tileset_size(const std::string & uri) {
       return Vec2u(16, 16);
     }
-    extern Vec2u get_tileset_tile_size(const std::string & uri) {
+    Vec2u get_tileset_tile_size(const std::string & uri) {
       return Vec2u(16, 16);
     }
 
@@ -195,6 +195,7 @@ namespace rf {
     void unload() {
       tilemap_shader.reset();
       tileset.reset();
+      font_atlas.reset();
     }
   }
 }

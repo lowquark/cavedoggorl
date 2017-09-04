@@ -11,6 +11,7 @@ namespace rf {
       Rect2i viewport() const { return _viewport; }
       void set_viewport(Rect2i r);
 
+      void set_tileset(const std::string & uri);
       void set_state(const game::SceneState & state);
       void add_missile();
 
@@ -30,6 +31,9 @@ namespace rf {
       Rect2i _draw_rect;
       // in-game rect to sample from
       Rect2i _viewport;
+
+      // updated when set_tileset is called
+      Vec2u tile_size;
 
       game::SceneState state;
 

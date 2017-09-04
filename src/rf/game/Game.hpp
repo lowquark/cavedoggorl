@@ -9,6 +9,7 @@
 #include <rf/game/types.hpp>
 #include <rf/game/SceneState.hpp>
 #include <rf/game/Object.hpp>
+#include <rf/game/Tile.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 
