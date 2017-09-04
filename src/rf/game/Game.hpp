@@ -1,5 +1,5 @@
-#ifndef RF_GAME_HPP
-#define RF_GAME_HPP
+#ifndef RF_GAME_GAME_HPP
+#define RF_GAME_GAME_HPP
 
 #include <vector>
 #include <map>
@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <rf/game/types.hpp>
+#include <rf/game/SceneState.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 
@@ -16,21 +17,6 @@ namespace rf {
     class Object {
     };
     struct Tile {
-    };
-
-    // Representation of what the game world 'looks like' to the player
-    struct SceneState {
-      struct Cell {
-        struct Object {
-          Id object_id;
-          Id glyph_id;
-          std::string description;
-          // attributes, like moving from, fade-in/out, flashing, colored, etc
-        };
-        std::vector<Object> objects;
-        Id tile_type;
-      };
-      Map<Cell> cells;
     };
 
     // Represents a level, should contain no game logic
