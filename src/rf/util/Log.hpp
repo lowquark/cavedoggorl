@@ -3,90 +3,147 @@
 
 #include <cstdio>
 #include <cstdarg>
+#include <ctime>
 
 namespace rf {
   class Log {
     public:
     Log() : file(stdout) {}
     Log(FILE * f) : file(f) {}
+    virtual ~Log() = default;
 
-    void logtopicvf(const char * topic, const char * fmt, va_list args) {
-      fprintf(file, "XX:XX:XX [%s] ", topic);
+    void get_timestr(char (*str)[10]) {
+      time_t t = time(NULL);
+      struct tm time_val;
+      localtime_r(&t, &time_val);
+      strftime(*str, 10, "%H:%M:%S ", &time_val);
+    }
+
+    virtual void logvf(const char * fmt, va_list args) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs(timestr, file);
       vfprintf(file, fmt, args);
       fputs("\n", file);
     }
-    void logvf(const char * fmt, va_list args) {
-      fprintf(file, "XX:XX:XX ");
-      vfprintf(file, fmt, args);
-      fputs("\n", file);
-    }
-
-    void logtopicf(const char * topic, const char * fmt, ...) {
-      va_list args;
-      va_start(args, fmt);
-      logtopicvf(topic, fmt, args);
-      va_end(args);
-    }
-    void logf(const char * fmt, ...) {
+    virtual void logf(const char * fmt, ...) {
       va_list args;
       va_start(args, fmt);
       logvf(fmt, args);
       va_end(args);
     }
-
-    void logtopic(const char * topic, const char * str) {
-      fprintf(file, "XX:XX:XX [%s] %s\n", topic, str);
+    virtual void log(const char * str) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs(timestr, file);
+      fputs(str, file);
+      fputs("\n", file);
     }
-    void log(const char * str) {
-      fprintf(file, "XX:XX:XX %s\n", str);
-    }
 
-    void warntopicvf(const char * topic, const char * fmt, va_list args) {
-      fprintf(file, "\x1b[33mXX:XX:XX [%s] \x1b[33;1mWARNING:\x1b[0;33m ", topic);
+    virtual void warnvf(const char * fmt, va_list args) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs("\x1b[33m", file);
+      fputs(timestr, file);
+      fputs("\x1b[33;1mWARNING:\x1b[0;33m ", file);
       vfprintf(file, fmt, args);
       fputs("\x1b[0m\n", file);
     }
-    void warnvf(const char * fmt, va_list args) {
-      fprintf(file, "\x1b[33mXX:XX:XX \x1b[33;1mWARNING:\x1b[0;33m ");
-      vfprintf(file, fmt, args);
-      fputs("\x1b[0m\n", file);
-    }
-
-    void warntopicf(const char * topic, const char * fmt, ...) {
-      va_list args;
-      va_start(args, fmt);
-      warntopicvf(topic, fmt, args);
-      va_end(args);
-    }
-    void warnf(const char * fmt, ...) {
+    virtual void warnf(const char * fmt, ...) {
       va_list args;
       va_start(args, fmt);
       warnvf(fmt, args);
       va_end(args);
     }
-    void warntopic(const char * topic, const char * str) {
-      fprintf(file, "\x1b[33mXX:XX:XX [%s] \x1b[33;1mWARNING:\x1b[0;33m %s\x1b[0m\n", topic, str);
-    }
-    void warn(const char * str) {
-      fprintf(file, "\x1b[33mXX:XX:XX \x1b[33;1mWARNING:\x1b[0;33m %s\x1b[0m\n", str);
+    virtual void warn(const char * str) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs("\x1b[33m", file);
+      fputs(timestr, file);
+      fputs("\x1b[33;1mWARNING:\x1b[0;33m ", file);
+      fputs(str, file);
+      fputs("\x1b[0m\n", file);
     }
 
     void flush() {
       fflush(file);
     }
 
-    private:
+    protected:
     FILE * file;
   };
 
-  void logtopicf(const char * topic, const char * fmt, ...);
+  class LogTopic : public Log {
+    public:
+    LogTopic(const char * topic) : Log(stdout), topic(topic) {}
+    LogTopic(const char * topic, FILE * f) : Log(f), topic(topic) {}
+
+    virtual void logvf(const char * fmt, va_list args) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs(timestr, file);
+      fputs("[", file);
+      fputs(topic, file);
+      fputs("] ", file);
+      vfprintf(file, fmt, args);
+      fputs("\n", file);
+    }
+    virtual void logf(const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      logvf(fmt, args);
+      va_end(args);
+    }
+    virtual void log(const char * str) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs(timestr, file);
+      fputs("[", file);
+      fputs(topic, file);
+      fputs("] ", file);
+      fputs(str, file);
+      fputs("\n", file);
+    }
+
+    virtual void warnvf(const char * fmt, va_list args) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs("\x1b[33m", file);
+      fputs(timestr, file);
+      fputs("[", file);
+      fputs(topic, file);
+      fputs("] \x1b[33;1mWARNING:\x1b[0;33m ", file);
+      vfprintf(file, fmt, args);
+      fputs("\x1b[0m\n", file);
+    }
+    virtual void warnf(const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      warnvf(fmt, args);
+      va_end(args);
+    }
+    virtual void warn(const char * str) {
+      char timestr[10];
+      get_timestr(&timestr);
+      fputs("\x1b[33m", file);
+      fputs(timestr, file);
+      fputs("[", file);
+      fputs(topic, file);
+      fputs("] \x1b[33;1mWARNING:\x1b[0;33m ", file);
+      fputs(str, file);
+      fputs("\x1b[0m\n", file);
+    }
+
+    private:
+    const char * topic;
+  };
+
+  LogTopic & logtopic(const char * topic);
+
   void logf(const char * fmt, ...);
-  void logtopic(const char * topic, const char * str);
   void log(const char * str);
 
-  void warntopicf(const char * topic, const char * fmt, ...);
   void warnf(const char * fmt, ...);
-  void warntopic(const char * topic, const char * str);
   void warn(const char * str);
 }
 

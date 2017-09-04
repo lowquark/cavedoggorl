@@ -154,12 +154,13 @@ int main(int argc, char ** argv) {
 
   warn("hi");
   log("hi");
-  warntopic("topic!", "hi");
-  logtopic("topic!", "hi");
   warnf("hi %d", 5);
   logf("hi %d", 5);
-  warntopicf("topic!", "hi %d", 5);
-  logtopicf("topic!", "hi %d", 5);
+
+  logtopic("topic!").log("hi");
+  logtopic("topic!").warn("hi");
+  logtopic("topic!").logf("hi %d", 5);
+  logtopic("topic!").warnf("hi %d", 5);
 
   const char * font = "Kingthings_Exeter.ttf";
   printf("Loading font from %s...\n", font);
