@@ -15,15 +15,12 @@
 #include <GL/glu.h>
 
 
-#include <game/Engine.hpp>
-#include <game/Game.hpp>
-#include <game/FOV.hpp>
 #include <gfx/gfx.hpp>
 #include <gfx/draw.hpp>
 #include <util/Vec2.hpp>
 #include <util/Log.hpp>
 
-#include <rf/Game.hpp>
+#include <rf/game/Game.hpp>
 
 
 Vec2u window_size;

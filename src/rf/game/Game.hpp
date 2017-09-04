@@ -5,8 +5,9 @@
 #include <map>
 #include <deque>
 #include <memory>
-#include <util/Vec2.hpp>
-#include <rf/types.hpp>
+
+#include <rf/game/types.hpp>
+#include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 
 namespace rf {

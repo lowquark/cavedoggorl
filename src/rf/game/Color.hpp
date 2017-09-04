@@ -1,9 +1,9 @@
-#ifndef GAME_COLOR_HPP
-#define GAME_COLOR_HPP
+#ifndef RF_GAME_COLOR_HPP
+#define RF_GAME_COLOR_HPP
 
 #include <cstdint>
 
-namespace game {
+namespace rf {
   struct Color {
     uint8_t r, g, b;
 

@@ -1,10 +1,10 @@
-#ifndef GAME_FOV_HPP
-#define GAME_FOV_HPP
+#ifndef RF_GAME_FOV_HPP
+#define RF_GAME_FOV_HPP
 
 #include <vector>
 
-#include <util/Vec2.hpp>
-#include <util/Map.hpp>
+#include <rf/util/Vec2.hpp>
+#include <rf/util/Map.hpp>
 
 class FOV {
   public:
