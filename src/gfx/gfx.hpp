@@ -36,22 +36,6 @@ namespace gfx {
 
   // An animated version of the game world
   class GridWorld {
-    Rect2i _draw_rect;
-
-    Rect2i _camera_rect;
-    int _camera_margin = 0;
-    unsigned int followed_agent_id = 0;
-
-
-    draw::TileMap tile_map; // tilemap of sprites displayed on screen
-    Map<TileSprite> tile_sprites; // sprites of the world
-    std::map<unsigned int, AgentSprite> agent_sprites;
-
-
-    std::deque<Animation *> queued_animations;
-    std::vector<Animation *> active_animations;
-
-
     public:
     void clear_sprites();
 
@@ -82,9 +66,6 @@ namespace gfx {
     // removes an agent sprite
     void remove_agent(unsigned int agent_id);
 
-    // moves / animates a previously added agent
-    void move_agent(unsigned int agent_id, const Vec2i & from, const Vec2i & to);
-
     // sets a given tile
     void set_tile(const Vec2i & pos, unsigned int type_id);
     // clears a given tile
@@ -113,9 +94,23 @@ namespace gfx {
     // draws clipped within rect
     void draw();
 
-    private:
-
     void update_camera(Vec2i focus, int margin);
+
+    private:
+    Rect2i _draw_rect;
+
+    Rect2i _camera_rect;
+    int _camera_margin = 0;
+    unsigned int followed_agent_id = 0;
+
+
+    draw::TileMap tilemap; // tilemap of sprites displayed on screen
+    Map<TileSprite> tile_sprites; // sprites of the world
+    std::map<unsigned int, AgentSprite> agent_sprites;
+
+
+    std::deque<Animation *> queued_animations;
+    std::vector<Animation *> active_animations;
   };
 
   class HUDOverlay {

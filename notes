@@ -1,0 +1,15 @@
+
+when the player uses a door, the following must happen (eventually)
+
+1) the destination level must be loaded and fast-forwarded
+
+2) the player object and its party must be transferred into the destination level
+
+3) objects that seek the player and may transit must be placed in transit
+
+4) the source level must be saved
+
+all transit-enabled objects have a home, and should transit home if their
+goal proves unattainable, teleporting if the player hasn't seen them for some time
+
+

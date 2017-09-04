@@ -9,6 +9,7 @@ OBJECTS := build/main.o \
 					 build/gfx/gl/Program.o \
 					 build/gfx/gl/Texture.o \
 					 build/game/Engine.o \
+					 build/rf/Game.o \
 					 build/game/Game.o \
 					 build/game/nc.o \
 					 build/game/parts.o \

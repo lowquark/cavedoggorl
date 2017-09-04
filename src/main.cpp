@@ -23,174 +23,133 @@
 #include <util/Vec2.hpp>
 #include <util/Log.hpp>
 
+#include <rf/Game.hpp>
+
 
 Vec2u window_size;
 
 SDL_Window * window = nullptr;
 bool quit_signal = false;
 
-
 gfx::GridWorld grid_world;
 gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
-
-
-class MuhViewWatch : public game::View::Observer {
-  private:
-  void notify_cell_update(const game::View & view, Vec2i pos) override {
-    grid_world.set_tile(pos, view.cells().get(pos).tile_type);
-  }
-  void notify_location_name_update(const game::View & view) override {
-  }
-  void notify_focus_update(const game::View & view) override {
-  }
-  void notify_message(const game::View & view, const std::string & message) override {
-  }
-
-  /*
-  void notify_tiles_update(const game::View & view) override {
-    auto & tiles = view.tiles();
-    grid_world.set_size(tiles.size());
-
-    for(unsigned int y = 0 ; y < tiles.size().y ; y ++) {
-      for(unsigned int x = 0 ; x < tiles.size().x ; x ++) {
-        Vec2i pos((int)x, (int)y);
-        grid_world.set_tile(pos, tiles.get(pos));
-      }
-    }
-  }
-
-  void notify_update_tile(const game::View & view, Vec2i pos) override {
-  }
-
-  void notify_clear_entities(const game::View & view) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    //grid_world.clear_sprites();
-  }
-  void notify_entity_update(const game::View & view, game::Id eid) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    auto & e = view.entities().at(eid);
-
-    gfx::Color gfx_color;
-    gfx_color.r = 1.0f;
-    gfx_color.g = 1.0f;
-    gfx_color.b = 1.0f;
-    grid_world.add_agent(eid, e.glyph_id, e.pos, gfx_color);
-  }
-  void notify_entity_remove(const game::View & view, game::Id id) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    grid_world.remove_agent(id);
-  }
-  void notify_entity_move(const game::View & view, game::Id eid) override {
-    printf("%s\n", __PRETTY_FUNCTION__);
-    auto & e = view.entities().at(eid);
-
-    grid_world.move_agent(eid, e.pos, e.pos);
-  }
-  */
-};
-
 Vec2i mouse_tile;
 
-class MuhGameHooks : public game::Game::HookHandler {
-  std::unique_ptr<game::Action> player_action() {
-    printf("%s\n", __PRETTY_FUNCTION__);
+rf::GameSave super_save;
+rf::Game super_game(super_save);
 
-    while(true) {
-      SDL_Event event;
-      while(SDL_PollEvent(&event)) {
-        if(event.type == SDL_QUIT) {
-          return nullptr;
+Log main_log;
+
+bool stop = false;
+void handle_turn() {
+  // wait for input
+  SDL_Event event;
+
+  while(true) {
+    SDL_WaitEvent(&event);
+
+    if(event.type == SDL_QUIT) {
+      stop = true;
+      return;
+    } else if(event.type == SDL_KEYDOWN) {
+      if(event.key.keysym.sym == SDLK_0) {
+        stop = true;
+        return;
+      } else {
+        // apply input
+        if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_w) {
+          super_game.step(rf::PlayerWaitAction());
+        } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, 0)));
+        } else if(event.key.keysym.sym == SDLK_KP_9) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, -1)));
+        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(0, -1)));
+        } else if(event.key.keysym.sym == SDLK_KP_7) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, -1)));
+        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, 0)));
+        } else if(event.key.keysym.sym == SDLK_KP_1) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, 1)));
+        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(0, 1)));
+        } else if(event.key.keysym.sym == SDLK_KP_3) {
+          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, 1)));
         }
-
-        if(event.type == SDL_KEYDOWN) {
-          if(event.key.keysym.sym == SDLK_0) {
-            return nullptr;
-          }
-
-          grid_world.skip_animations();
-
-          if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, 0)));
-          } else if(event.key.keysym.sym == SDLK_KP_9) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, -1)));
-          } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(0, -1)));
-          } else if(event.key.keysym.sym == SDLK_KP_7) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, -1)));
-          } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, 0)));
-          } else if(event.key.keysym.sym == SDLK_KP_1) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(-1, 1)));
-          } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(0, 1)));
-          } else if(event.key.keysym.sym == SDLK_KP_3) {
-            return std::unique_ptr<game::MoveAction>(new game::MoveAction(Vec2i(1, 1)));
-          }
-
-          if(event.key.keysym.sym == SDLK_COMMA || event.key.keysym.sym == SDLK_PERIOD) {
-            if(event.key.keysym.mod & KMOD_SHIFT) {
-              return std::unique_ptr<game::StairAction>(new game::StairAction);
-            }
-          }
-        }
+        return;
       }
-
-      Vec2i mouse_pos;
-      SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
-
-      Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
-      if(new_mouse_tile != mouse_tile) {
-        mouse_tile = new_mouse_tile;
-
-        std::string look_str;
-        if(grid_world.look_str(look_str, mouse_tile)) {
-          hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
-        } else {
-          hud.look_finish();
-        }
-      }
-
-
-      grid_world.tick();
-      hud.tick();
-      message_log.tick();
-
-
-      glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-      glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-      glMatrixMode(GL_PROJECTION);
-      glLoadIdentity();
-      gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-      glMatrixMode(GL_MODELVIEW);
-      glLoadIdentity();
-
-      glEnable(GL_STENCIL_TEST);
-
-
-      grid_world.draw();
-      hud.draw();
-      message_log.draw();
-
-
-      SDL_GL_SwapWindow(window);
-
-      SDL_Delay(14);
     }
 
-    return nullptr;
+
+    Vec2i mouse_pos;
+    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+
+    Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
+    if(new_mouse_tile != mouse_tile) {
+      mouse_tile = new_mouse_tile;
+
+      std::string look_str;
+      if(grid_world.look_str(look_str, mouse_tile)) {
+        hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
+      } else {
+        hud.look_finish();
+      }
+    }
+
+
+    grid_world.tick();
+    hud.tick();
+    message_log.tick();
+
+
+    glClearColor(0.1f, 0.0f, 0.1f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glEnable(GL_STENCIL_TEST);
+
+
+    grid_world.draw();
+    hud.draw();
+    message_log.draw();
+
+
+    SDL_GL_SwapWindow(window);
+
+    SDL_Delay(14);
+  }
+}
+
+class SuperVisitor : public rf::GameEventVisitor {
+  void visit(const rf::MissileEvent & event) override {
   }
 };
 
-MuhGameHooks muh_game_hooks;
-world::SPCaveWorld muh_world;
-MuhViewWatch muh_view_watch;
-game::View muh_view(muh_view_watch);
-game::Game muh_game(muh_game_hooks, muh_view, muh_world);
+void run() {
+  while(!stop) {
+    // draw world
 
+    if(super_game.is_player_turn()) {
+      handle_turn();
+    } else {
+      super_game.step();
+    }
 
-Log main_log;
+    SuperVisitor v;
+    super_game.handle_events(v);
+
+    // draw animations
+    //...
+  }
+
+  super_game.save();
+}
 
 int main(int argc, char ** argv) {
   // I hate these
@@ -225,6 +184,8 @@ int main(int argc, char ** argv) {
 
   // grafix config
   message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
+  grid_world.set_size(Vec2u(32, 32));
+  grid_world.set_tile(Vec2i(2, 2), 1);
   grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
   grid_world.set_camera_size(view_size);
   grid_world.set_camera_margin(10);
@@ -238,9 +199,8 @@ int main(int argc, char ** argv) {
       // grafix load to grafix card
       gfx::load();
 
-      // start le engine
-
-      muh_game.run();
+      // start le game
+      run();
 
       gfx::unload();
 

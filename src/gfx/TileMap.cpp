@@ -67,25 +67,25 @@ namespace draw {
       bg_color_data[4*i + 3] = a;
     }
   }
-  void TileMap::set_tile_set(const gl::Texture & texture, Vec2u tile_set_size, Vec2u tile_size) {
-    tile_set_texid = texture.id();
-    _tile_set_size = tile_set_size;
+  void TileMap::set_tileset(const gl::Texture & texture, Vec2u tileset_size, Vec2u tile_size) {
+    tileset_texid = texture.id();
+    _tileset_size = tileset_size;
     _tile_size = tile_size;
 
     extern Log log;
-    if((256 / tile_set_size.x) * tile_set_size.x != 256 ||
-       (256 / tile_set_size.y) * tile_set_size.y != 256) {
+    if((256 / tileset_size.x) * tileset_size.x != 256 ||
+       (256 / tileset_size.y) * tileset_size.y != 256) {
       log.logf<Log::WARNING>("%s: dimensions of tile set (%ux%u) are not both powers of 2",
                              __PRETTY_FUNCTION__,
-                             tile_set_size.x,
-                             tile_set_size.y);
+                             tileset_size.x,
+                             tileset_size.y);
     }
 
     // update indices now that tile set has been set
 
     for(unsigned int i = 0 ; i < _size.x * _size.y ; i ++) {
-      index_data[3*i + 0] = (indices[i] % tile_set_size.x) * 256 / tile_set_size.x;
-      index_data[3*i + 1] = (indices[i] / tile_set_size.y) * 256 / tile_set_size.y;
+      index_data[3*i + 0] = (indices[i] % tileset_size.x) * 256 / tileset_size.x;
+      index_data[3*i + 1] = (indices[i] / tileset_size.y) * 256 / tileset_size.y;
     }
   }
 
@@ -93,15 +93,15 @@ namespace draw {
     if(shader_program.is_loaded() && map._size.x && map._size.y) {
       shader_program.use();
 
-      glUniform2i(tile_map_size_loc, map._size.x, map._size.y);
-      glUniform2i(tile_set_size_loc, 16, 16);
+      glUniform2i(tilemap_size_loc, map._size.x, map._size.y);
+      glUniform2i(tileset_size_loc, 16, 16);
 
       glEnable(GL_VERTEX_ARRAY);
       glEnableVertexAttribArray(0);
       glEnableVertexAttribArray(1);
 
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, map.tile_set_texid);
+      glBindTexture(GL_TEXTURE_2D, map.tileset_texid);
 
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -134,7 +134,7 @@ namespace draw {
 
       glActiveTexture(GL_TEXTURE0);
 
-      glUniform1i(tile_set_loc, 0);
+      glUniform1i(tileset_loc, 0);
       glUniform1i(fg_color_loc, 1);
       glUniform1i(bg_color_loc, 2);
       glUniform1i(index_data_loc, 3);
@@ -185,10 +185,10 @@ namespace draw {
         if(shader_program.link()) {
           printf("Successfully linked TileMap::shader_program\n");
 
-          tile_map_size_loc = shader_program.getUniformLocation("tile_map_size");
-          tile_set_size_loc = shader_program.getUniformLocation("tile_set_size");
+          tilemap_size_loc = shader_program.getUniformLocation("tilemap_size");
+          tileset_size_loc = shader_program.getUniformLocation("tileset_size");
 
-          tile_set_loc = shader_program.getUniformLocation("tile_set");
+          tileset_loc = shader_program.getUniformLocation("tileset");
           fg_color_loc = shader_program.getUniformLocation("fg_color");
           bg_color_loc = shader_program.getUniformLocation("bg_color");
           index_data_loc = shader_program.getUniformLocation("index_data");
@@ -198,13 +198,13 @@ namespace draw {
           printf("shader_program.getAttribLocation(\"vertex_texcoord\"): %d\n",
               shader_program.getAttribLocation("vertex_texcoord"));
 
-          printf("shader_program.getUniformLocation(\"tile_map_size\"): %d\n",
-              shader_program.getUniformLocation("tile_map_size"));
-          printf("shader_program.getUniformLocation(\"tile_set_size\"): %d\n",
-              shader_program.getUniformLocation("tile_set_size"));
+          printf("shader_program.getUniformLocation(\"tilemap_size\"): %d\n",
+              shader_program.getUniformLocation("tilemap_size"));
+          printf("shader_program.getUniformLocation(\"tileset_size\"): %d\n",
+              shader_program.getUniformLocation("tileset_size"));
 
-          printf("shader_program.getUniformLocation(\"tile_set\"): %d\n",
-              shader_program.getUniformLocation("tile_set"));
+          printf("shader_program.getUniformLocation(\"tileset\"): %d\n",
+              shader_program.getUniformLocation("tileset"));
           printf("shader_program.getUniformLocation(\"fg_color\"): %d\n",
               shader_program.getUniformLocation("fg_color"));
           printf("shader_program.getUniformLocation(\"bg_color\"): %d\n",

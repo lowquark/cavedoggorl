@@ -3,6 +3,7 @@
 
 #include "Vec2.hpp"
 #include <vector>
+#include <stdexcept>
 
 template <typename T>
 class Map {
