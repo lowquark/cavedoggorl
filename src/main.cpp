@@ -5,6 +5,7 @@
 #include <GL/glu.h>
 
 #include <rf/gfx/gfx.hpp>
+#include <rf/gfx/Scene.hpp>
 #include <rf/gfx/draw.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Log.hpp>
@@ -17,13 +18,13 @@ Vec2u window_size;
 SDL_Window * window = nullptr;
 bool quit_signal = false;
 
-gfx::GridWorld grid_world;
+gfx::Scene gfx_scene;
 gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
 Vec2i mouse_tile;
 
-GameSave super_save;
-Game super_game(super_save);
+game::GameSave super_save;
+game::Game super_game(super_save);
 
 static LogTopic & gfx_topic = logtopic("gfx");
 
@@ -45,46 +46,46 @@ void handle_turn() {
       } else {
         // apply input
         if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(PlayerWaitAction());
+          super_game.step(game::PlayerWaitAction());
         } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          super_game.step(PlayerMoveAction(Vec2i(1, 0)));
+          super_game.step(game::PlayerMoveAction(Vec2i(1, 0)));
         } else if(event.key.keysym.sym == SDLK_KP_9) {
-          super_game.step(PlayerMoveAction(Vec2i(1, -1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(1, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(PlayerMoveAction(Vec2i(0, -1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(0, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_7) {
-          super_game.step(PlayerMoveAction(Vec2i(-1, -1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(-1, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          super_game.step(PlayerMoveAction(Vec2i(-1, 0)));
+          super_game.step(game::PlayerMoveAction(Vec2i(-1, 0)));
         } else if(event.key.keysym.sym == SDLK_KP_1) {
-          super_game.step(PlayerMoveAction(Vec2i(-1, 1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(-1, 1)));
         } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          super_game.step(PlayerMoveAction(Vec2i(0, 1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(0, 1)));
         } else if(event.key.keysym.sym == SDLK_KP_3) {
-          super_game.step(PlayerMoveAction(Vec2i(1, 1)));
+          super_game.step(game::PlayerMoveAction(Vec2i(1, 1)));
         }
         return;
       }
     }
 
-
+    /*
     Vec2i mouse_pos;
     SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
 
-    Vec2i new_mouse_tile = grid_world.grid_pos(mouse_pos - grid_world.draw_rect().pos);
+    Vec2i new_mouse_tile = gfx_scene.grid_pos(mouse_pos - gfx_scene.draw_rect().pos);
     if(new_mouse_tile != mouse_tile) {
       mouse_tile = new_mouse_tile;
 
       std::string look_str;
-      if(grid_world.look_str(look_str, mouse_tile)) {
-        hud.look(grid_world.draw_rect().pos + grid_world.screen_pos(mouse_tile), look_str);
+      if(gfx_scene.look_str(look_str, mouse_tile)) {
+        hud.look(gfx_scene.draw_rect().pos + gfx_scene.screen_pos(mouse_tile), look_str);
       } else {
         hud.look_finish();
       }
     }
+    */
 
-
-    grid_world.tick();
+    gfx_scene.tick();
     hud.tick();
     message_log.tick();
 
@@ -101,7 +102,7 @@ void handle_turn() {
     glEnable(GL_STENCIL_TEST);
 
 
-    grid_world.draw();
+    gfx_scene.draw();
     hud.draw();
     message_log.draw();
 
@@ -112,8 +113,40 @@ void handle_turn() {
   }
 }
 
-class SuperVisitor : public GameEventVisitor {
-  void visit(const MissileEvent & event) override {
+    /*
+    void GridWorld::update_camera(Vec2i focus, int margin) {
+      // TODO: Handle case where camera is larger than world
+      if(focus.x < _camera_rect.pos.x + margin) {
+        _camera_rect.pos.x = focus.x - margin;
+      }
+      if(focus.y < _camera_rect.pos.y + margin) {
+        _camera_rect.pos.y = focus.y - margin;
+      }
+
+      if(focus.x > _camera_rect.pos.x + _camera_rect.size.x - margin - 1) {
+        _camera_rect.pos.x = focus.x + margin - _camera_rect.size.x + 1;
+      }
+      if(focus.y + margin - _camera_rect.size.y > _camera_rect.pos.y - 1) {
+        _camera_rect.pos.y = focus.y + margin - _camera_rect.size.y + 1;
+      }
+
+      if(_camera_rect.pos.x < 0) {
+        _camera_rect.pos.x = 0;
+      }
+      if(_camera_rect.pos.y < 0) {
+        _camera_rect.pos.y = 0;
+      }
+      if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.size().x) {
+        _camera_rect.pos.x = tile_sprites.size().x - _camera_rect.size.x;
+      }
+      if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.size().y) {
+        _camera_rect.pos.y = tile_sprites.size().y - _camera_rect.size.y;
+      }
+    }
+    */
+
+class SuperVisitor : public game::GameEventVisitor {
+  void visit(const game::MissileEvent & event) override {
   }
 };
 
@@ -163,11 +196,8 @@ int main(int argc, char ** argv) {
 
   // grafix config
   message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-  grid_world.set_size(Vec2u(15, 15));
-  grid_world.set_tile(Vec2i(2, 2), 1);
-  grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-  grid_world.set_camera_size(Vec2u(4, 4));
-  grid_world.set_camera_margin(10);
+  gfx_scene.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
+  gfx_scene.set_viewport(Rect2i(0, 0, 20, 20));
 
   if(window != nullptr) {
     SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);

@@ -45,6 +45,15 @@ namespace rf {
       return Vec2(*this) *= scalar;
     }
 
+    Vec2 & operator/=(const T & scalar) noexcept {
+      this->x /= scalar;
+      this->y /= scalar;
+      return *this;
+    }
+    Vec2 operator/(const T & scalar) const noexcept {
+      return Vec2(*this) /= scalar;
+    }
+
     bool operator==(const Vec2 & other) const noexcept {
       return this->x == other.x &&
              this->y == other.y;
