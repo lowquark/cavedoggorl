@@ -8,17 +8,12 @@
 
 #include <rf/game/types.hpp>
 #include <rf/game/SceneState.hpp>
+#include <rf/game/Object.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 
 namespace rf {
   namespace game {
-    // extremely composed objects
-    class Object {
-    };
-    struct Tile {
-    };
-
     // Represents a level, should contain no game logic
     struct Level {
       Level() = default;

@@ -175,6 +175,8 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
+  logf("sizeof(rf::game::Object): %lu", sizeof(rf::game::Object));
+
   const Vec2u tile_size(16, 16);
   const Vec2u view_size(32, 32);
   window_size = Vec2u(tile_size.x * view_size.x, tile_size.y * view_size.y);
