@@ -4,6 +4,7 @@ all: mvp
 OBJECTS := build/main.o \
 					 build/rf/game/Game.o \
 					 build/rf/game/FOV.o \
+					 build/rf/util/Log.o \
 					 build/rf/util/Image.o \
 					 build/rf/util/load_png.o \
 					 build/rf/gfx/gfx.o \

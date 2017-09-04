@@ -152,6 +152,15 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
+  warn("hi");
+  log("hi");
+  warntopic("topic!", "hi");
+  logtopic("topic!", "hi");
+  warnf("hi %d", 5);
+  logf("hi %d", 5);
+  warntopicf("topic!", "hi %d", 5);
+  logtopicf("topic!", "hi %d", 5);
+
   const char * font = "Kingthings_Exeter.ttf";
   printf("Loading font from %s...\n", font);
   fflush(stdout);

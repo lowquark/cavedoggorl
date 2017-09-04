@@ -1,45 +1,45 @@
 
 #include "Log.hpp"
 
-const char * Log::levelStr[7] = { "  ERROR: ", "WARNING: ", "", "% ", "%  ", "%   ", "%    " };
+namespace rf {
+  Log global_log;
 
-void Log::setFile(FILE * f) {
-  file = f;
-}
-FILE * Log::getFile() {
-  return file;
-}
+  void logtopicf(const char * topic, const char * fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    global_log.logtopicvf(topic, fmt, args);
+    va_end(args);
+  }
+  void logf(const char * fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    global_log.logvf(fmt, args);
+    va_end(args);
+  }
+  void logtopic(const char * topic, const char * str) {
+    global_log.logtopic(topic, str);
+  }
+  void log(const char * str) {
+    global_log.log(str);
+  }
 
-void Log::flush() {
-  fflush(file);
+  void warntopicf(const char * topic, const char * fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    global_log.warntopicvf(topic, fmt, args);
+    va_end(args);
+  }
+  void warnf(const char * fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    global_log.warnvf(fmt, args);
+    va_end(args);
+  }
+  void warntopic(const char * topic, const char * str) {
+    global_log.warntopic(topic, str);
+  }
+  void warn(const char * str) {
+    global_log.warn(str);
+  }
 }
-
-/*
-static int evalFun() {
-  printf("FUN!\n");
-  return 5;
-}
-
-void testLog() {
-  gg::logf<gg::DEBUG3>("%u [via gg::logf<gg::DEBUG3>(...)]", evalFun());
-  gg::log<gg::DEBUG3>("%no %escape %sequences [via gg::log<gg::DEBUG3>(...)]");
-  gg::logf<gg::DEBUG2>("%u [via gg::logf<gg::DEBUG2>(...)]", evalFun());
-  gg::log<gg::DEBUG2>("%no %escape %sequences [via gg::log<gg::DEBUG2>(...)]");
-  gg::logf<gg::DEBUG1>("%u [via gg::logf<gg::DEBUG1>(...)]", evalFun());
-  gg::log<gg::DEBUG1>("%no %escape %sequences [via gg::log<gg::DEBUG1>(...)]");
-  gg::logf<gg::DEBUG0>("%u [via gg::logf<gg::DEBUG0>(...)]", evalFun());
-  gg::log<gg::DEBUG0>("%no %escape %sequences [via gg::log<gg::DEBUG0>(...)]");
-  gg::logf<gg::INFO>("%u [via gg::logf<gg::INFO>(...)]", evalFun());
-  gg::log<gg::INFO>("%no %escape %sequences [via gg::log<gg::INFO>(...)]");
-  gg::logf<gg::WARNING>("%u [via gg::logf<gg::WARNING>(...)]", evalFun());
-  gg::log<gg::WARNING>("%no %escape %sequences [via gg::log<gg::WARNING>(...)]");
-  gg::logf<gg::ERROR>("%u [via gg::logf<gg::ERROR>(...)]", evalFun());
-  gg::log<gg::ERROR>("%no %escape %sequences [via gg::log<gg::ERROR>(...)]");
-  gg::logf<>("%u [via gg::logf<>(...)]", evalFun());
-  gg::log<>("%no %escape %sequences [via gg::log<>(...)]");
-  gg::logf("%u [via gg::logf(...)]", evalFun());
-  gg::log("%no %escape %sequences [via gg::log(...)]");
-  fflush(stdout);
-}
-*/
 

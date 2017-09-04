@@ -1,97 +1,105 @@
-#ifndef LOG_HPP
-#define LOG_HPP
-
-/*
- * Log.hpp
- * log and logf
- *
- * Roughly inspired by http://www.drdobbs.com/cpp/logging-in-c/201804215
- *
- * Log messages from a program to a file. Unwanted log messages are not only
- * omitted, they are compiled to an empty function call. (easily optimized out)
- *
- * Additionally, evaluate all arguments and stay within their namespace, unlike the
- * following naieve macro implementation:
- *
- * constexpr LogLevel globalLogLevel = LOG_LEVEL;
- * #define LOG(level,fmt,...) \
- * if((level) <= globalLogLevel) \
- * log((level),(fmt),...)
- */
-
-#ifndef LOG_LEVEL
-// LOG_LEVEL may be defined as one of the following:
-//
-// ERROR, WARNING, INFO, DEBUG0, DEBUG1, DEBUG2, DEBUG3
-#define LOG_LEVEL DEBUG3
-#endif
+#ifndef RF_UTIL_LOG_HPP
+#define RF_UTIL_LOG_HPP
 
 #include <cstdio>
 #include <cstdarg>
-#include <type_traits>
 
-// logf(fmt, ...) -- logs using fmt as a *printf format string for args (...)
-// log(str) -- logs the string str
+namespace rf {
+  class Log {
+    public:
+    Log() : file(stdout) {}
+    Log(FILE * f) : file(f) {}
 
-class Log {
-  public:
-  enum LogLevel { ERROR = 0, WARNING, INFO, DEBUG0, DEBUG1, DEBUG2, DEBUG3 };
+    void logtopicvf(const char * topic, const char * fmt, va_list args) {
+      fprintf(file, "XX:XX:XX [%s] ", topic);
+      vfprintf(file, fmt, args);
+      fputs("\n", file);
+    }
+    void logvf(const char * fmt, va_list args) {
+      fprintf(file, "XX:XX:XX ");
+      vfprintf(file, fmt, args);
+      fputs("\n", file);
+    }
 
-  Log() : file(stdout) {}
-  Log(FILE * f) : file(f) {}
+    void logtopicf(const char * topic, const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      logtopicvf(topic, fmt, args);
+      va_end(args);
+    }
+    void logf(const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      logvf(fmt, args);
+      va_end(args);
+    }
 
-  void setFile(FILE * f);
-  FILE * getFile();
+    void logtopic(const char * topic, const char * str) {
+      fprintf(file, "XX:XX:XX [%s] %s\n", topic, str);
+    }
+    void log(const char * str) {
+      fprintf(file, "XX:XX:XX %s\n", str);
+    }
 
-  template <LogLevel Tlevel = INFO>
-  typename std::enable_if<(LOG_LEVEL >= Tlevel), void>::type logf(const char * fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    fputs(levelStr[Tlevel], file);
-    vfprintf(file, fmt, args);
-    fputs("\n", file);
-    va_end(args);
-  }
-  template <LogLevel Tlevel = INFO>
-  typename std::enable_if<(LOG_LEVEL >= Tlevel), void>::type log(const char * str) {
-    fputs(levelStr[Tlevel], file);
-    fputs(str, file);
-    fputs("\n", file);
-  }
+    void warntopicvf(const char * topic, const char * fmt, va_list args) {
+      fprintf(file, "\x1b[33mXX:XX:XX [%s] \x1b[33;1mWARNING:\x1b[0;33m ", topic);
+      vfprintf(file, fmt, args);
+      fputs("\x1b[0m\n", file);
+    }
+    void warnvf(const char * fmt, va_list args) {
+      fprintf(file, "\x1b[33mXX:XX:XX \x1b[33;1mWARNING:\x1b[0;33m ");
+      vfprintf(file, fmt, args);
+      fputs("\x1b[0m\n", file);
+    }
 
-  template <LogLevel Tlevel = INFO>
-  typename std::enable_if<(LOG_LEVEL < Tlevel), void>::type logf(const char * fmt, ...) {
-  }
-  template <LogLevel Tlevel = INFO>
-  typename std::enable_if<(LOG_LEVEL < Tlevel), void>::type log(const char * str) {
-  }
+    void warntopicf(const char * topic, const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      warntopicvf(topic, fmt, args);
+      va_end(args);
+    }
+    void warnf(const char * fmt, ...) {
+      va_list args;
+      va_start(args, fmt);
+      warnvf(fmt, args);
+      va_end(args);
+    }
+    void warntopic(const char * topic, const char * str) {
+      fprintf(file, "\x1b[33mXX:XX:XX [%s] \x1b[33;1mWARNING:\x1b[0;33m %s\x1b[0m\n", topic, str);
+    }
+    void warn(const char * str) {
+      fprintf(file, "\x1b[33mXX:XX:XX \x1b[33;1mWARNING:\x1b[0;33m %s\x1b[0m\n", str);
+    }
 
-#if LOG_LEVEL >= INFO
-  inline void logf(const char * fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    fputs(levelStr[INFO], file);
-    vfprintf(file, fmt, args);
-    fputs("\n", file);
-    va_end(args);
-  }
-  inline void log(const char * str) {
-    fputs(levelStr[INFO], file);
-    fputs(str, file);
-    fputs("\n", file);
-  }
-#else
-  inline void logf(const char * fmt, ...) {
-  }
-  inline void log(const char * str) {
-  }
-#endif
+    void flush() {
+      fflush(file);
+    }
 
-  void flush();
+    private:
+    FILE * file;
+  };
 
-  private:
-  FILE * file;
-  static const char * levelStr[7];
-};
+  void logtopicf(const char * topic, const char * fmt, ...);
+  void logf(const char * fmt, ...);
+  void logtopic(const char * topic, const char * str);
+  void log(const char * str);
+
+  void warntopicf(const char * topic, const char * fmt, ...);
+  void warnf(const char * fmt, ...);
+  void warntopic(const char * topic, const char * str);
+  void warn(const char * str);
+}
+
+/*
+  Log log;
+  log.warn("hi");
+  log.log("hi");
+  log.warntopic("topic!", "hi");
+  log.logtopic("topic!", "hi");
+  log.warnf("hi %d", 5);
+  log.logf("hi %d", 5);
+  log.warntopicf("topic!", "hi %d", 5);
+  log.logtopicf("topic!", "hi %d", 5);
+*/
 
 #endif
