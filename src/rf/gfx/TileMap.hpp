@@ -1,12 +1,14 @@
-#ifndef GFX_TILEMAP_HPP
-#define GFX_TILEMAP_HPP
+#ifndef RF_GFX_TILEMAP_HPP
+#define RF_GFX_TILEMAP_HPP
 
-#include <util/Vec2.hpp>
-#include <util/Map.hpp>
-#include <gfx/gl/Program.hpp>
-#include <gfx/Color.hpp>
+#include <rf/util/Vec2.hpp>
+#include <rf/util/Map.hpp>
+#include <rf/gfx/gl/Program.hpp>
+#include <rf/gfx/Color.hpp>
+
 #include <memory>
 
+namespace rf {
 namespace gfx {
 namespace draw {
   class TileMap {
@@ -60,6 +62,7 @@ namespace draw {
     GLint bg_color_loc;
     GLint index_data_loc;
   };
+}
 }
 }
 

@@ -1,25 +1,17 @@
 
-all: mvp wfc
+all: mvp
 
 OBJECTS := build/main.o \
-					 build/gfx/gfx.o \
-					 build/gfx/draw.o \
-					 build/gfx/TileMap.o \
-					 build/gfx/gl/Buffer.o \
-					 build/gfx/gl/Program.o \
-					 build/gfx/gl/Texture.o \
-					 build/game/Engine.o \
-					 build/rf/Game.o \
-					 build/game/Game.o \
-					 build/game/nc.o \
-					 build/game/parts.o \
-					 build/game/view.o \
-	         build/game/AStar.o \
-	         build/game/FOV.o \
-					 build/util/Log.o \
-					 build/util/serial.o \
-					 build/util/Image.o \
-					 build/util/load_png.o
+					 build/rf/game/Game.o \
+					 build/rf/game/FOV.o \
+					 build/rf/util/Image.o \
+					 build/rf/util/load_png.o \
+					 build/rf/gfx/gfx.o \
+					 build/rf/gfx/draw.o \
+					 build/rf/gfx/TileMap.o \
+					 build/rf/gfx/gl/Buffer.o \
+					 build/rf/gfx/gl/Program.o \
+					 build/rf/gfx/gl/Texture.o
 
 wfc: wfc2.cpp
 	clang++ -std=c++11 -Wall -g -o $@ $<

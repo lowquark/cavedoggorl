@@ -15,13 +15,14 @@
 #include <GL/glu.h>
 
 
-#include <gfx/gfx.hpp>
-#include <gfx/draw.hpp>
-#include <util/Vec2.hpp>
-#include <util/Log.hpp>
-
+#include <rf/gfx/gfx.hpp>
+#include <rf/gfx/draw.hpp>
+#include <rf/util/Vec2.hpp>
+#include <rf/util/Log.hpp>
 #include <rf/game/Game.hpp>
 
+
+using namespace rf;
 
 Vec2u window_size;
 
@@ -33,10 +34,8 @@ gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
 Vec2i mouse_tile;
 
-rf::GameSave super_save;
-rf::Game super_game(super_save);
-
-Log main_log;
+GameSave super_save;
+Game super_game(super_save);
 
 bool stop = false;
 void handle_turn() {
@@ -56,23 +55,23 @@ void handle_turn() {
       } else {
         // apply input
         if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(rf::PlayerWaitAction());
+          super_game.step(PlayerWaitAction());
         } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, 0)));
+          super_game.step(PlayerMoveAction(Vec2i(1, 0)));
         } else if(event.key.keysym.sym == SDLK_KP_9) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, -1)));
+          super_game.step(PlayerMoveAction(Vec2i(1, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(0, -1)));
+          super_game.step(PlayerMoveAction(Vec2i(0, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_7) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, -1)));
+          super_game.step(PlayerMoveAction(Vec2i(-1, -1)));
         } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, 0)));
+          super_game.step(PlayerMoveAction(Vec2i(-1, 0)));
         } else if(event.key.keysym.sym == SDLK_KP_1) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(-1, 1)));
+          super_game.step(PlayerMoveAction(Vec2i(-1, 1)));
         } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(0, 1)));
+          super_game.step(PlayerMoveAction(Vec2i(0, 1)));
         } else if(event.key.keysym.sym == SDLK_KP_3) {
-          super_game.step(rf::PlayerMoveAction(rf::Vec2i(1, 1)));
+          super_game.step(PlayerMoveAction(Vec2i(1, 1)));
         }
         return;
       }
@@ -123,8 +122,8 @@ void handle_turn() {
   }
 }
 
-class SuperVisitor : public rf::GameEventVisitor {
-  void visit(const rf::MissileEvent & event) override {
+class SuperVisitor : public GameEventVisitor {
+  void visit(const MissileEvent & event) override {
   }
 };
 
@@ -154,10 +153,10 @@ int main(int argc, char ** argv) {
   TTF_Init();
 
   const char * font = "Kingthings_Exeter.ttf";
-  main_log.logf("Loading font from %s...", font);
-  main_log.flush();
+  printf("Loading font from %s...\n", font);
+  fflush(stdout);
   gfx::load_font(font);
-  main_log.logf("Finished", font);
+  printf("Finished (%p)\n", font);
 
   const Vec2u tile_size(16, 16);
   const Vec2u view_size(30, 30);
@@ -168,7 +167,7 @@ int main(int argc, char ** argv) {
 
   // create window
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
-    main_log.logf<Log::ERROR>("%s", SDL_GetError());
+    printf("%s\n", SDL_GetError());
   }
 
   window = SDL_CreateWindow(
@@ -204,13 +203,13 @@ int main(int argc, char ** argv) {
       SDL_GL_DeleteContext(gl_ctx);
       gl_ctx = nullptr;
     } else {
-      main_log.logf<Log::ERROR>("Failed to create GL context: %s\n", SDL_GetError());
+      printf("Failed to create GL context: %s\n", SDL_GetError());
     }
 
     SDL_DestroyWindow(window);
     window = nullptr;
   } else {
-    main_log.logf<Log::ERROR>("Failed to create SDL window: %s\n", SDL_GetError());
+    printf("Failed to create SDL window: %s\n", SDL_GetError());
   }
 
 

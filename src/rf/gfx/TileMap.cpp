@@ -1,10 +1,9 @@
 
 #include "TileMap.hpp"
 
-#include <gfx/draw.hpp>
-#include <gfx/gl/Program.hpp>
-#include <util/Log.hpp>
+#include <rf/gfx/draw.hpp>
 
+namespace rf {
 namespace gfx {
 namespace draw {
   void TileMap::set_size(Vec2u size) {
@@ -72,13 +71,14 @@ namespace draw {
     _tileset_size = tileset_size;
     _tile_size = tile_size;
 
-    extern Log log;
     if((256 / tileset_size.x) * tileset_size.x != 256 ||
        (256 / tileset_size.y) * tileset_size.y != 256) {
+      /*
       log.logf<Log::WARNING>("%s: dimensions of tile set (%ux%u) are not both powers of 2",
                              __PRETTY_FUNCTION__,
                              tileset_size.x,
                              tileset_size.y);
+                             */
     }
 
     // update indices now that tile set has been set
@@ -239,6 +239,7 @@ namespace draw {
 
     shader_program.unload();
   }
+}
 }
 }
 

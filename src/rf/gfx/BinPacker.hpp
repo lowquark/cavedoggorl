@@ -3,9 +3,11 @@
 
 #include <cassert>
 
-#include <util/Vec2.hpp>
+#include <rf/util/Vec2.hpp>
 
 // Base on the algorithm found at http://blackpawn.com/texts/lightmaps/default.html
+namespace rf {
+namespace gfx {
 struct BinPacker {
   struct Node {
     Node * children[2] = { nullptr, nullptr };
@@ -109,5 +111,7 @@ struct BinPacker {
     return root.insert(dst_rect, image_size);
   }
 };
+}
+}
 
 #endif
