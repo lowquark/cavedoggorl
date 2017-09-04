@@ -1,26 +1,14 @@
 
-#include <cstdio>
-#include <cmath>
-#include <cassert>
-#include <ctime>
-
-#include <vector>
-#include <queue>
-#include <map>
-
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-
 
 #include <rf/gfx/gfx.hpp>
 #include <rf/gfx/draw.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Log.hpp>
 #include <rf/game/Game.hpp>
-
 
 using namespace rf;
 
@@ -36,6 +24,8 @@ Vec2i mouse_tile;
 
 GameSave super_save;
 Game super_game(super_save);
+
+static LogTopic & gfx_topic = logtopic("gfx");
 
 bool stop = false;
 void handle_turn() {
@@ -152,32 +142,15 @@ int main(int argc, char ** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();
 
-  warn("hi");
-  log("hi");
-  warnf("hi %d", 5);
-  logf("hi %d", 5);
-
-  logtopic("topic!").log("hi");
-  logtopic("topic!").warn("hi");
-  logtopic("topic!").logf("hi %d", 5);
-  logtopic("topic!").warnf("hi %d", 5);
-
-  const char * font = "Kingthings_Exeter.ttf";
-  printf("Loading font from %s...\n", font);
-  fflush(stdout);
-  gfx::load_font(font);
-  printf("Finished (%p)\n", font);
-
   const Vec2u tile_size(16, 16);
-  const Vec2u view_size(30, 30);
+  const Vec2u view_size(32, 32);
   window_size = Vec2u(tile_size.x * view_size.x, tile_size.y * view_size.y);
 
-  gfx::load_tiles("./tiles.png", tile_size);
   gfx::draw::set_window_size(window_size);
 
   // create window
   if(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) != 0) {
-    printf("%s\n", SDL_GetError());
+    gfx_topic.warn(SDL_GetError());
   }
 
   window = SDL_CreateWindow(
@@ -190,10 +163,10 @@ int main(int argc, char ** argv) {
 
   // grafix config
   message_log.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-  grid_world.set_size(Vec2u(32, 32));
+  grid_world.set_size(Vec2u(15, 15));
   grid_world.set_tile(Vec2i(2, 2), 1);
   grid_world.set_draw_rect(Rect2i(Vec2i(0, 0), window_size));
-  grid_world.set_camera_size(view_size);
+  grid_world.set_camera_size(Vec2u(4, 4));
   grid_world.set_camera_margin(10);
 
   if(window != nullptr) {
@@ -204,6 +177,8 @@ int main(int argc, char ** argv) {
 
       // grafix load to grafix card
       gfx::load();
+      gfx::load_font("Kingthings_Exeter.ttf");
+      gfx::load_tiles("./tiles.png");
 
       // start le game
       run();
@@ -213,13 +188,13 @@ int main(int argc, char ** argv) {
       SDL_GL_DeleteContext(gl_ctx);
       gl_ctx = nullptr;
     } else {
-      printf("Failed to create GL context: %s\n", SDL_GetError());
+      gfx_topic.warnf("Failed to create GL context: %s", SDL_GetError());
     }
 
     SDL_DestroyWindow(window);
     window = nullptr;
   } else {
-    printf("Failed to create SDL window: %s\n", SDL_GetError());
+    gfx_topic.warnf("Failed to create SDL window: %s", SDL_GetError());
   }
 
 

@@ -7,9 +7,10 @@
 namespace rf {
   Log global_log;
 
-  std::map<std::string, LogTopic> global_log_topics;
-
   LogTopic & logtopic(const char * topic) {
+    // ensure global visibility
+    static std::map<std::string, LogTopic> global_log_topics;
+
     std::string key(topic);
     auto kvpair_it = global_log_topics.find(key);
     if(kvpair_it == global_log_topics.end()) {

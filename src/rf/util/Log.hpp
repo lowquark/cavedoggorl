@@ -148,15 +148,15 @@ namespace rf {
 }
 
 /*
-  Log log;
-  log.warn("hi");
-  log.log("hi");
-  log.warntopic("topic!", "hi");
-  log.logtopic("topic!", "hi");
-  log.warnf("hi %d", 5);
-  log.logf("hi %d", 5);
-  log.warntopicf("topic!", "hi %d", 5);
-  log.logtopicf("topic!", "hi %d", 5);
+rf::warn("hi");
+rf::log("hi");
+rf::warnf("hi %d", 5);
+rf::logf("hi %d", 5);
+
+rf::logtopic("topic!").log("hi");
+rf::logtopic("topic!").warn("hi");
+rf::logtopic("topic!").logf("hi %d", 5);
+rf::logtopic("topic!").warnf("hi %d", 5);
 */
 
 #endif

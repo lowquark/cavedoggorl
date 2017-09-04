@@ -2,8 +2,11 @@
 #include <png.h>
 
 #include <rf/util/Image.hpp>
+#include <rf/util/Log.hpp>
 
 namespace rf {
+  static LogTopic & res_topic = logtopic("res");
+
   bool load_png(Image & image, const char * filename)
   {
     FILE * fp = fopen(filename, "rb");
@@ -51,7 +54,12 @@ namespace rf {
                   png_read_row(png_ptr, data + i*row_bytes, NULL);
                 }
 
-                //fileLog.logf<Log::DEBUG0>("Read PNG %s: width=%u, height=%u, color_type=%u", filename, width, height, color_type);
+                res_topic.logf(
+                  "Read PNG %s: width=%u, height=%u, color_type=%u",
+                  filename,
+                  width,
+                  height,
+                  color_type);
 
                 image.set_size(width, height);
                 uint8_t * p = image.pixels();
@@ -100,29 +108,29 @@ namespace rf {
 
                 success = true;
               } else {
-                //fileLog.logf<Log::WARNING>("PNG ERROR: Unsupported color type: %d.", color_type);
+                res_topic.warnf("PNG ERROR: Unsupported color type: %d.", color_type);
               }
             } else {
-              //fileLog.logf<Log::WARNING>("PNG ERROR: Failed to read png internals. (longjmp).");
+              res_topic.warn("PNG ERROR: Failed to read png internals. (longjmp).");
             }
 
             delete [] data;
           } else {
-            //fileLog.logf<Log::WARNING>("PNG ERROR: png_create_info_struct() failed.");
+            res_topic.warn("PNG ERROR: png_create_info_struct() failed.");
           }
 
           png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
         } else {
-          //fileLog.logf<Log::WARNING>("PNG ERROR: png_create_read_struct() failed.");
+          res_topic.warn("PNG ERROR: png_create_read_struct() failed.");
         }
       } else {
-        //fileLog.logf<Log::WARNING>("PNG ERROR: %s is not a PNG file.", filename);
+        res_topic.warnf("PNG ERROR: %s is not a PNG file.", filename);
       }
 
       fclose(fp);
       fp = NULL;
     } else {
-      //fileLog.logf<Log::WARNING>("PNG ERROR: Could not open PNG file for reading at %s", filename);
+      res_topic.warnf("PNG ERROR: Could not open PNG file for reading at %s", filename);
     }
 
     return success;

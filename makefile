@@ -9,8 +9,7 @@ OBJECTS := build/main.o \
 					 build/rf/util/load_png.o \
 					 build/rf/gfx/gfx.o \
 					 build/rf/gfx/draw.o \
-					 build/rf/gfx/TileMap.o \
-					 build/rf/gfx/gl/Buffer.o \
+					 build/rf/gfx/Tilemap.o \
 					 build/rf/gfx/gl/Program.o \
 					 build/rf/gfx/gl/Texture.o
 

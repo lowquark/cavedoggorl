@@ -4,7 +4,7 @@
 #include <rf/util/Map.hpp>
 #include <rf/game/FOV.hpp>
 #include <rf/gfx/draw.hpp>
-#include <rf/gfx/TileMap.hpp>
+#include <rf/gfx/Tilemap.hpp>
 
 #include <deque>
 
@@ -102,11 +102,9 @@ namespace rf {
       int _camera_margin = 0;
       unsigned int followed_agent_id = 0;
 
-
-      draw::TileMap tilemap; // tilemap of sprites displayed on screen
+      Tilemap tilemap; // tilemap of sprites displayed on screen
       Map<TileSprite> tile_sprites; // sprites of the world
       std::map<unsigned int, AgentSprite> agent_sprites;
-
 
       std::deque<Animation *> queued_animations;
       std::vector<Animation *> active_animations;
@@ -149,7 +147,7 @@ namespace rf {
     };
 
     void load_font(const char * ttf_path);
-    bool load_tiles(const char * png_path, Vec2u tile_size);
+    void load_tiles(const char * png_path);
 
     void load();
     void unload();

@@ -15,47 +15,43 @@ namespace rf {
     namespace gl {
       class VertexShader {
         public:
-        VertexShader()
-          : id(0) {}
+        VertexShader();
+        VertexShader(const std::string & src);
         ~VertexShader();
 
         VertexShader(const VertexShader & other) = delete;
         VertexShader & operator=(const VertexShader & other) = delete;
 
-        VertexShader(VertexShader && other) {
-          id = other.id;
-          other.id = 0;
-        }
+        VertexShader(VertexShader && other);
+        VertexShader & operator=(VertexShader && other);
 
-        bool is_loaded();
-        bool load(const std::string & src);
-        void unload();
+        bool compiled() { return _compiled; }
+        bool compile(const std::string & src);
 
         private:
-        GLuint id;
+        GLuint id = 0;
+        bool _compiled = false;
 
         friend class Program;
       };
       class FragmentShader {
         public:
-        FragmentShader()
-          : id(0) {}
+        FragmentShader();
+        FragmentShader(const std::string & src);
         ~FragmentShader();
 
         FragmentShader(const FragmentShader & other) = delete;
         FragmentShader & operator=(const FragmentShader & other) = delete;
 
-        FragmentShader(FragmentShader && other) {
-          id = other.id;
-          other.id = 0;
-        }
+        FragmentShader(FragmentShader && other);
+        FragmentShader & operator=(FragmentShader && other);
 
-        bool is_loaded();
-        bool load(const std::string & src);
-        void unload();
+        bool compiled() { return _compiled; }
+        bool compile(const std::string & src);
 
         private:
-        GLuint id;
+        GLuint id = 0;
+        bool _compiled = false;
 
         friend class Program;
       };
@@ -63,29 +59,23 @@ namespace rf {
       // Considered a shader-program by opengl
       class Program {
         public:
-        Program()
-          : programId(0) {}
+        Program();
         ~Program();
 
         Program(const Program & other) = delete;
         Program & operator=(const Program & other) = delete;
 
-        Program(Program && other) {
-          programId = other.programId;
-          other.programId = 0;
-        }
+        Program(Program && other);
+        Program & operator=(Program && other);
 
-        static constexpr GLint GG_POSITION_LOCATION = 0;
-        static constexpr GLint GG_NORMAL_LOCATION   = 1;
-        static constexpr GLint GG_COLOR_LOCATION    = 2;
-        static constexpr GLint GG_TEXCOORD_LOCATION = 3;
-
-        bool is_loaded();
-        void load();
         void attach(const VertexShader & vert);
         void attach(const FragmentShader & vert);
+        void detach(const VertexShader & vert);
+        void detach(const FragmentShader & vert);
+        void detach_all();
+
+        bool linked() { return _linked; }
         bool link();
-        void unload();
 
         GLint getUniformLocation(const std::string & name);
         GLint getAttribLocation(const std::string & name);
@@ -94,7 +84,8 @@ namespace rf {
         void use();
 
         private:
-        GLuint programId;
+        GLuint programId = 0;
+        bool _linked = false;
       };
 
       // TODO: Array versions of these

@@ -6,144 +6,200 @@
 namespace rf {
   namespace gfx {
     namespace gl {
+      VertexShader::VertexShader() {
+        id = glCreateShader(GL_VERTEX_SHADER);
+      }
+      VertexShader::VertexShader(const std::string & src) {
+        id = glCreateShader(GL_VERTEX_SHADER);
+
+        compile(src);
+      }
       VertexShader::~VertexShader() {
-        if(id) {
-          printf("Warning: Leaking vertex shader %u\n", id);
-        }
+        glDeleteShader(id);
+        id = 0;
       }
-      bool VertexShader::is_loaded() {
-        return id != 0;
+
+      VertexShader::VertexShader(VertexShader && other) {
+        id = other.id;
+        _compiled = other._compiled;
+        other.id = 0;
+        other._compiled = false;
       }
-      bool VertexShader::load(const std::string & src) {
-        if(!id) {
-          id = glCreateShader(GL_VERTEX_SHADER);
+      VertexShader & VertexShader::operator=(VertexShader && other) {
+        if(this != &other) {
+          glDeleteShader(id);
+
+          id = other.id;
+          _compiled = other._compiled;
+          other.id = 0;
+          other._compiled = false;
         }
 
+        return *this;
+      }
+
+      bool VertexShader::compile(const std::string & src) {
         const char * src_list[1] = { src.c_str() };
         glShaderSource(id, 1, src_list, 0);
 
         glCompileShader(id);
 
-        GLint compiled;
-        glGetShaderiv(id, GL_COMPILE_STATUS, &compiled);
-        if(!compiled) {
+        GLint compile_status;
+        glGetShaderiv(id, GL_COMPILE_STATUS, &compile_status);
+
+        if(!compile_status) {
           GLint blen = 0;	
           GLsizei slen = 0;
 
           glGetShaderiv(id, GL_INFO_LOG_LENGTH , &blen);       
-          if(blen > 1)
-          {
+          if(blen > 1) {
             GLchar * compiler_log = (GLchar*)malloc(blen);
             glGetShaderInfoLog(id, blen, &slen, compiler_log);
             printf("Error compiling vertex shader: %.*s\n", slen, compiler_log);
             free(compiler_log);
           }
-
-          return false;
         }
 
-        return true;
+        _compiled = compile_status;
+
+        return _compiled;
       }
-      void VertexShader::unload() {
+
+      FragmentShader::FragmentShader() {
+        id = glCreateShader(GL_FRAGMENT_SHADER);
+      }
+      FragmentShader::FragmentShader(const std::string & src) {
+        id = glCreateShader(GL_FRAGMENT_SHADER);
+
+        compile(src);
+      }
+      FragmentShader::~FragmentShader() {
         glDeleteShader(id);
         id = 0;
       }
 
-      FragmentShader::~FragmentShader() {
-        if(id) {
-          printf("Warning: Leaking fragment shader %u\n", id);
-        }
+      FragmentShader::FragmentShader(FragmentShader && other) {
+        id = other.id;
+        _compiled = other._compiled;
+        other.id = 0;
+        other._compiled = false;
       }
-      bool FragmentShader::is_loaded() {
-        return id != 0;
-      }
-      bool FragmentShader::load(const std::string & src) {
-        if(!id) {
-          id = glCreateShader(GL_FRAGMENT_SHADER);
+      FragmentShader & FragmentShader::operator=(FragmentShader && other) {
+        if(this != &other) {
+          glDeleteShader(id);
+
+          id = other.id;
+          _compiled = other._compiled;
+          other.id = 0;
+          other._compiled = false;
         }
 
+        return *this;
+      }
+
+      bool FragmentShader::compile(const std::string & src) {
         const char * src_list[1] = { src.c_str() };
         glShaderSource(id, 1, src_list, 0);
 
         glCompileShader(id);
 
-        GLint compiled;
-        glGetShaderiv(id, GL_COMPILE_STATUS, &compiled);
-        if(!compiled) {
+        GLint compile_status;
+        glGetShaderiv(id, GL_COMPILE_STATUS, &compile_status);
+
+        if(!compile_status) {
           GLint blen = 0;	
           GLsizei slen = 0;
 
           glGetShaderiv(id, GL_INFO_LOG_LENGTH , &blen);       
-          if(blen > 1)
-          {
+          if(blen > 1) {
             GLchar * compiler_log = (GLchar*)malloc(blen);
             glGetShaderInfoLog(id, blen, &slen, compiler_log);
-            printf("Error compiling fragment shader: %.*s\n", slen, compiler_log);
+            printf("Error compiling vertex shader: %.*s\n", slen, compiler_log);
             free(compiler_log);
           }
-
-          return false;
         }
 
-        return true;
-      }
-      void FragmentShader::unload() {
-        glDeleteShader(id);
-        id = 0;
+        _compiled = compile_status;
+
+        return _compiled;
       }
 
+      Program::Program() {
+        programId = glCreateProgram();
+      }
       Program::~Program() {
-        if(programId) {
-          printf("Warning: Leaking program %u\n", programId);
-        }
+        glDeleteProgram(programId);
+        programId = 0;
       }
 
-      bool Program::is_loaded() {
-        return programId != 0;
+      Program::Program(Program && other) {
+        programId = other.programId;
+        _linked = other._linked;
+        other.programId = 0;
+        other._linked = false;
       }
-      void Program::load() {
-        if(!programId) {
-          programId = glCreateProgram();
+      Program & Program::operator=(Program && other) {
+        if(this != &other) {
+          glDeleteProgram(programId);
+
+          programId = other.programId;
+          _linked = other._linked;
+          other.programId = 0;
+          other._linked = false;
         }
+
+        return *this;
       }
+
       void Program::attach(const VertexShader & vert) {
-        if(programId) {
-          glAttachShader(programId, vert.id);
-        }
+        glAttachShader(programId, vert.id);
       }
       void Program::attach(const FragmentShader & frag) {
-        if(programId) {
-          glAttachShader(programId, frag.id);
+        glAttachShader(programId, frag.id);
+      }
+      void Program::detach(const VertexShader & vert) {
+        glDetachShader(programId, vert.id);
+      }
+      void Program::detach(const FragmentShader & frag) {
+        glDetachShader(programId, frag.id);
+      }
+      void Program::detach_all() {
+        GLint num_shaders = 0;
+        glGetProgramiv(programId, GL_ATTACHED_SHADERS, &num_shaders);
+
+        if(num_shaders) {
+          GLuint * shaders = new GLuint[num_shaders];
+          glGetAttachedShaders(programId, num_shaders, NULL, shaders);
+
+          for(int i = 0 ; i < num_shaders ; i ++) {
+            glDetachShader(programId, shaders[i]);
+          }
+
+          delete [] shaders;
+          shaders = nullptr;
         }
       }
       bool Program::link() {
-        if(programId) {
-          glLinkProgram(programId);
+        glLinkProgram(programId);
 
-          GLint linked;
-          glGetProgramiv(programId, GL_LINK_STATUS, &linked);
-          if(!linked) {
-            GLint blen = 0;	
-            GLsizei slen = 0;
+        GLint link_status;
+        glGetProgramiv(programId, GL_LINK_STATUS, &link_status);
+        if(!link_status) {
+          GLint blen = 0;	
+          GLsizei slen = 0;
 
-            glGetProgramiv(programId, GL_INFO_LOG_LENGTH , &blen);       
-            if(blen > 1)
-            {
-              GLchar * compiler_log = (GLchar*)malloc(blen);
-              glGetProgramInfoLog(programId, blen, &slen, compiler_log);
-              printf("Error linking shader: %.*s\n", slen, compiler_log);
-              free(compiler_log);
-            }
-          } else {
-            return true;
+          glGetProgramiv(programId, GL_INFO_LOG_LENGTH , &blen);       
+          if(blen > 1)
+          {
+            GLchar * compiler_log = (GLchar*)malloc(blen);
+            glGetProgramInfoLog(programId, blen, &slen, compiler_log);
+            printf("Error linking shader: %.*s\n", slen, compiler_log);
+            free(compiler_log);
           }
         }
 
-        return false;
-      }
-      void Program::unload() {
-        glDeleteProgram(programId);
-        programId = 0;
+        _linked = link_status;
+        return _linked;
       }
 
       GLint Program::getUniformLocation(const std::string & name) {

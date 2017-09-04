@@ -2,19 +2,30 @@
 #include "gfx.hpp"
 
 #include <rf/util/load_png.hpp>
+#include <rf/util/Log.hpp>
 
 #include <cmath>
+#include <memory>
 
 namespace rf {
   namespace gfx {
-    static draw::FontAtlas font_atlas;
-    static draw::TileMapShader tilemap_shader;
+    static std::shared_ptr<gl::Texture> tileset;
 
-    static Image tileset_img;
-    static gl::Texture tileset;
+    static std::shared_ptr<draw::FontAtlas> font_atlas;
+    static std::unique_ptr<TilemapShader> tilemap_shader;
 
-    static Vec2u tileset_size;
-    static Vec2u tile_size;
+    extern std::shared_ptr<gl::Texture> get_texture(const std::string & uri) {
+      return tileset;
+    }
+    extern Vec2u get_tileset_size(const std::string & uri) {
+      return Vec2u(16, 16);
+    }
+    extern Vec2u get_tileset_tile_size(const std::string & uri) {
+      return Vec2u(16, 16);
+    }
+
+
+    static LogTopic & gfx_topic = logtopic("gfx");
 
     float exponential_ease_in(float p) {
       return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
@@ -84,92 +95,71 @@ namespace rf {
         update_camera(pos, _camera_margin);
       }
 
-      tilemap.set_tileset(tileset, tileset_size, tile_size);
+      tilemap.tileset_uri = "file://tiles.png";
 
       for(int j = 0 ; j < _camera_rect.size.y ; j ++) {
         for(int i = 0 ; i < _camera_rect.size.x ; i ++) {
           auto pos = Vec2i(i, j);
-          auto tile = tile_sprites.get(_camera_rect.pos + pos);
-          // HACK ALERT
-          if(tile.visible || true) {
-            if(tile.type_id == 1) {
-              tilemap.set_tile(pos, 86);
-              tilemap.set_fg_color(pos, 0x77, 0x66, 0x55);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
-            } else if(tile.type_id == 2) {
-              tilemap.set_tile(pos, 133);
-              tilemap.set_fg_color(pos, 0x77, 0x66, 0x55);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
+          auto & tile = tilemap.tiles.get(pos);
+          if(tile_sprites.valid(_camera_rect.pos + pos)) {
+            auto sprite = tile_sprites.get(_camera_rect.pos + pos);
+
+            if(sprite.type_id == 1) {
+              tile.tileset_index = 86;
+              tile.foreground_color = Tilemap::Color(0x77, 0x66, 0x55);
+              tile.background_color = Tilemap::Color(0x11, 0x11, 0x22);
+            } else if(sprite.type_id == 2) {
+              tile.tileset_index = 133;
+              tile.foreground_color = Tilemap::Color(0x77, 0x66, 0x55);
+              tile.background_color = Tilemap::Color(0x11, 0x11, 0x22);
             } else {
-              tilemap.set_tile(pos, 4);
-              tilemap.set_fg_color(pos, 0x11, 0x11, 0x22);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
-            }
-          } else if(tile.visited) {
-            if(tile.type_id == 1) {
-              tilemap.set_tile(pos, 86);
-              tilemap.set_fg_color(pos, 0x44, 0x33, 0x33);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
-            } else if(tile.type_id == 2) {
-              tilemap.set_tile(pos, 133);
-              tilemap.set_fg_color(pos, 0x44, 0x33, 0x33);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
-            } else {
-              tilemap.set_tile(pos, 4);
-              tilemap.set_fg_color(pos, 0x11, 0x11, 0x22);
-              tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
+              tile.tileset_index = 4;
+              tile.foreground_color = Tilemap::Color(0x11, 0x11, 0x22);
+              tile.background_color = Tilemap::Color(0x11, 0x11, 0x22);
             }
           } else {
-            tilemap.set_tile(pos, 4);
-            tilemap.set_fg_color(pos, 0x11, 0x11, 0x22);
-            tilemap.set_bg_color(pos, 0x11, 0x11, 0x22);
+            tile.tileset_index = 4;
+            tile.foreground_color = Tilemap::Color(0x11, 0x11, 0x22);
+            tile.background_color = Tilemap::Color(0x11, 0x11, 0x22);
           }
         }
       }
 
       for(auto & kvpairs : agent_sprites) {
-        auto & sprite = kvpairs.second;
+        auto & agent = kvpairs.second;
 
-        auto pos = Vec2i(std::round(sprite.pos.x), std::round(sprite.pos.y));
+        auto pos = Vec2i(std::round(agent.pos.x), std::round(agent.pos.y));
         auto screen_pos = pos - _camera_rect.pos;
+        auto tile = tilemap.tiles.get(screen_pos);
 
-        auto tile = tile_sprites.get(pos);
-
-        // HACK ALERT
-        if(tile.visible || true) {
-          if(sprite.type_id == 0) {
-            tilemap.set_tile(screen_pos, 3);
-            tilemap.set_fg_color(screen_pos, 0xFF, 0xCC, 0x99);
-          } else if(sprite.type_id == 1) {
-            tilemap.set_tile(screen_pos, 0);
-            tilemap.set_fg_color(screen_pos, 0xFF, 0xCC, 0x99);
-          }
+        if(agent.type_id == 0) {
+          tile.tileset_index = 3;
+          tile.foreground_color = Tilemap::Color(0xFF, 0xCC, 0x99);
+        } else if(agent.type_id == 1) {
+          tile.tileset_index = 0;
+          tile.foreground_color = Tilemap::Color(0xFF, 0xCC, 0x99);
         }
       }
 
-      //draw::clip(_draw_rect);
-      tilemap_shader.draw(tilemap, _draw_rect.pos);
-      //draw::unclip();
+      draw::clip(_draw_rect);
+      tilemap_shader->draw(tilemap, _draw_rect.pos);
+      draw::unclip();
     }
 
     void GridWorld::update_camera(Vec2i focus, int margin) {
       // TODO: Handle case where camera is larger than world
       if(focus.x < _camera_rect.pos.x + margin) {
         _camera_rect.pos.x = focus.x - margin;
-        //printf("_camera_rect.pos.x = focus.x - margin\n");
       }
       if(focus.y < _camera_rect.pos.y + margin) {
         _camera_rect.pos.y = focus.y - margin;
-        //printf("_camera_rect.pos.y = focus.y - margin\n");
       }
 
       if(focus.x > _camera_rect.pos.x + _camera_rect.size.x - margin - 1) {
         _camera_rect.pos.x = focus.x + margin - _camera_rect.size.x + 1;
-        //printf("_camera_rect.pos.x = focus.x + margin - _camera_rect.size.x\n");
       }
       if(focus.y + margin - _camera_rect.size.y > _camera_rect.pos.y - 1) {
         _camera_rect.pos.y = focus.y + margin - _camera_rect.size.y + 1;
-        //printf("_camera_rect.pos.y = focus.y + margin - _camera_rect.size.y\n");
       }
 
       if(_camera_rect.pos.x < 0) {
@@ -188,7 +178,7 @@ namespace rf {
 
     void GridWorld::set_size(Vec2u size) {
       tile_sprites.resize(size);
-      tilemap.set_size(size);
+      tilemap.tiles.resize(size);
     }
     void GridWorld::set_tile(const Vec2i & pos, unsigned int type_id) {
       TileSprite sprite;
@@ -210,12 +200,12 @@ namespace rf {
     }
 
     Vec2i GridWorld::grid_pos(Vec2i screen_pos) const {
-      return Vec2i(screen_pos.x / tile_size.x, screen_pos.y / tile_size.y) + _camera_rect.pos;
+      return Vec2i(screen_pos.x / 16, screen_pos.y / 16) + _camera_rect.pos;
     }
     Vec2i GridWorld::screen_pos(Vec2i grid_pos) const {
       Vec2i local_grid_pos = grid_pos - _camera_rect.pos;
-      return Vec2i(local_grid_pos.x * tile_size.x + tile_size.x / 2,
-                   local_grid_pos.y * tile_size.y + tile_size.y / 2);
+      return Vec2i(local_grid_pos.x * 16 + 16 / 2,
+                   local_grid_pos.y * 16 + 16 / 2);
     }
 
     void GridWorld::follow_agent(unsigned int agent_id) {
@@ -223,8 +213,6 @@ namespace rf {
     }
 
     void GridWorld::set_fov(const rf::FOV & fov) {
-      printf("%s\n", __PRETTY_FUNCTION__);
-
       for(int j = 0 ; j < tile_sprites.size().x ; j ++) {
         for(int i = 0 ; i < tile_sprites.size().y ; i ++) {
           rf::Vec2i pos(i, j);
@@ -285,7 +273,7 @@ namespace rf {
       this->look_pos = screen_pos;
       this->look_str = look_str;
 
-      text_bin.set(font_atlas, look_str);
+      text_bin.set(*font_atlas, look_str);
 
       look_enabled = true;
       look_ease_timer = look_ease_timer_max;
@@ -328,7 +316,7 @@ namespace rf {
         items.pop_front();
       }
       Item item;
-      item.text_bin.set(font_atlas, message);
+      item.text_bin.set(*font_atlas, message);
       items.push_back(item);
 
       const int y_pad = 10;
@@ -368,80 +356,67 @@ namespace rf {
 
 
     void load_font(const char * ttf_path) {
-      font_atlas.set_font(ttf_path);
+      font_atlas.reset(new draw::FontAtlas);
+      font_atlas->set_font(ttf_path);
 
       for(int i = 32 ; i < 128 ; i ++) {
         uint32_t code_point = i;
-        font_atlas.load(code_point);
+        font_atlas->load(code_point);
       }
+
+      gfx_topic.logf("font loaded from %s...", ttf_path);
     }
-    bool load_tiles(const char * png_path, Vec2u _tile_size) {
-      if(_tile_size.x == 0 || _tile_size.y == 0) {
-        return false;
-      }
+    void load_tiles(const char * png_path) {
+      Image tileset_image;
+      load_png(tileset_image, png_path);
+      tileset.reset(new gl::Texture(tileset_image));
 
-      if(load_png(tileset_img, "tiles.png")) {
-        tile_size = _tile_size;
-
-        tileset_size.x = tileset_img.width() / tile_size.x;
-        tileset_size.y = tileset_img.height() / tile_size.y;
-
-        return true;
-      } else {
-        return false;
-      }
+      gfx_topic.logf("tiles loaded from %s...", png_path);
+      gfx_topic.logf("tileset->id(): %d", tileset->id());
     }
 
     void load() {
-      tilemap_shader.load("#version 130\n\n"
-                           "in vec2 vertex_pos;\n"
-                           "in vec2 vertex_texcoord;\n"
-                           "varying vec2 texcoord;\n"
-                           "void main() {\n"
-                           "gl_Position.xy = vertex_pos;\n"
-                           "gl_Position.z = 0.0;\n"
-                           "gl_Position.w = 1.0;\n"
-                           "texcoord = vertex_texcoord;\n"
-                           "}",
-                           "#version 130\n\n"
-                           "uniform sampler2D tileset;\n"
-                           "uniform sampler2D fg_color;\n"
-                           "uniform sampler2D bg_color;\n"
-                           "uniform sampler2D index_data;\n"
-                           "uniform ivec2 tilemap_size;\n"
-                           "uniform ivec2 tileset_size;\n"
-                           "\n"
-                           "varying vec2 texcoord;\n"
-                           "void main() { \n"
-                           "vec4 fg = texture(fg_color, texcoord);\n"
-                           "vec4 bg = texture(bg_color, texcoord);\n"
-                           "vec2 tileset_coord = texture(index_data, texcoord).xy * 255/256;\n"
-                           "\n"
-                           "vec2 tile_local_texcoord = texcoord*tilemap_size - floor(texcoord*tilemap_size);\n"
-                           "vec2 tileset_texcoord = tileset_coord + tile_local_texcoord/tileset_size;\n"
-                           "vec4 tile_color = texture(tileset, tileset_texcoord);\n"
-                           "\n"
-                           "if(abs(tile_color.r - tile_color.g) < 0.001 && \n"
-                           "   abs(tile_color.g - tile_color.b) < 0.001) {\n"
-                           "gl_FragColor = bg + tile_color.r*(fg - bg);\n"
-                           "} else {\n"
-                           "gl_FragColor = tile_color;\n"
-                           "}\n"
-                           "}\n"); // lol
-
-      tileset.load(tileset_img);
-      printf("tileset.id(): %d\n", tileset.id());
-
-      font_atlas.load_textures();
+      tilemap_shader.reset(
+          new TilemapShader(
+            "#version 130\n\n"
+            "in vec2 vertex_pos;\n"
+            "in vec2 vertex_texcoord;\n"
+            "varying vec2 texcoord;\n"
+            "void main() {\n"
+            "gl_Position.xy = vertex_pos;\n"
+            "gl_Position.z = 0.0;\n"
+            "gl_Position.w = 1.0;\n"
+            "texcoord = vertex_texcoord;\n"
+            "}",
+            "#version 130\n\n"
+            "uniform sampler2D tileset;\n"
+            "uniform sampler2D fg_color;\n"
+            "uniform sampler2D bg_color;\n"
+            "uniform sampler2D index_data;\n"
+            "uniform ivec2 tilemap_size;\n"
+            "uniform ivec2 tileset_size;\n"
+            "\n"
+            "varying vec2 texcoord;\n"
+            "void main() { \n"
+            "vec4 fg = texture(fg_color, texcoord);\n"
+            "vec4 bg = texture(bg_color, texcoord);\n"
+            "vec2 tileset_coord = texture(index_data, texcoord).xy * 255/256;\n"
+            "\n"
+            "vec2 tile_local_texcoord = texcoord*tilemap_size - floor(texcoord*tilemap_size);\n"
+            "vec2 tileset_texcoord = tileset_coord + tile_local_texcoord/tileset_size;\n"
+            "vec4 tile_color = texture(tileset, tileset_texcoord);\n"
+            "\n"
+            "if(abs(tile_color.r - tile_color.g) < 0.001 && \n"
+            "   abs(tile_color.g - tile_color.b) < 0.001) {\n"
+            "gl_FragColor = bg + tile_color.r*(fg - bg);\n"
+            "} else {\n"
+            "gl_FragColor = tile_color;\n"
+            "}\n"
+            "}\n")); // lol
     }
     void unload() {
-      tilemap_shader.unload();
-
-      tileset.unload();
-      tileset_size = Vec2u(0, 0);
-      tile_size = Vec2u(0, 0);
-
-      font_atlas.unload_textures();
+      tilemap_shader.reset();
+      tileset.reset();
     }
   }
 }
