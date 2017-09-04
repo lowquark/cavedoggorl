@@ -1,7 +1,7 @@
 *.swp
 *.swo
-mvp
-wfc
+cavedoggorl
+wfc/wfc
 build/
 gmon.out
 prof_out

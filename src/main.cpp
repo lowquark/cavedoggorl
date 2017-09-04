@@ -207,8 +207,8 @@ int main(int argc, char ** argv) {
 
       // grafix load to grafix card
       gfx::load();
-      gfx::load_font("Kingthings_Exeter.ttf");
-      gfx::load_tiles("./tiles.png");
+      gfx::load_font("./res/Kingthings_Exeter.ttf");
+      gfx::load_tiles("./res/tiles.png");
 
       // start le game
       run();

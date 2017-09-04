@@ -142,14 +142,14 @@ namespace rf {
         font_atlas->load(code_point);
       }
 
-      gfx_topic.logf("font loaded from %s...", ttf_path);
+      gfx_topic.logf("font loaded from %s", ttf_path);
     }
     void load_tiles(const char * png_path) {
       Image tileset_image;
       load_png(tileset_image, png_path);
       tileset.reset(new gl::Texture(tileset_image));
 
-      gfx_topic.logf("tiles loaded from %s...", png_path);
+      gfx_topic.logf("tiles loaded from %s", png_path);
       gfx_topic.logf("tileset->id(): %d", tileset->id());
     }
 
