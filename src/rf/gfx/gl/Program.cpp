@@ -3,9 +3,13 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include <rf/util/Log.hpp>
+
 namespace rf {
   namespace gfx {
     namespace gl {
+      static LogTopic & gl_topic = logtopic("gl");
+
       VertexShader::VertexShader() {
         id = glCreateShader(GL_VERTEX_SHADER);
       }
@@ -55,7 +59,7 @@ namespace rf {
           if(blen > 1) {
             GLchar * compiler_log = (GLchar*)malloc(blen);
             glGetShaderInfoLog(id, blen, &slen, compiler_log);
-            printf("Error compiling vertex shader: %.*s\n", slen, compiler_log);
+            gl_topic.warnf("Error compiling vertex shader: %.*s", slen, compiler_log);
             free(compiler_log);
           }
         }
@@ -114,7 +118,7 @@ namespace rf {
           if(blen > 1) {
             GLchar * compiler_log = (GLchar*)malloc(blen);
             glGetShaderInfoLog(id, blen, &slen, compiler_log);
-            printf("Error compiling vertex shader: %.*s\n", slen, compiler_log);
+            gl_topic.warnf("Error compiling vertex shader: %.*s", slen, compiler_log);
             free(compiler_log);
           }
         }
@@ -193,7 +197,7 @@ namespace rf {
           {
             GLchar * compiler_log = (GLchar*)malloc(blen);
             glGetProgramInfoLog(programId, blen, &slen, compiler_log);
-            printf("Error linking shader: %.*s\n", slen, compiler_log);
+            gl_topic.warnf("Error linking shader: %.*s", slen, compiler_log);
             free(compiler_log);
           }
         }

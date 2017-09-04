@@ -2,9 +2,12 @@
 #include "Tilemap.hpp"
 
 #include <rf/gfx/draw.hpp>
+#include <rf/util/Log.hpp>
 
 namespace rf {
   namespace gfx {
+    static LogTopic & gfx_topic = logtopic("gfx");
+
     extern std::shared_ptr<gl::Texture> get_texture(const std::string & uri);
     extern Vec2u get_tileset_size(const std::string & uri);
     extern Vec2u get_tileset_tile_size(const std::string & uri);
@@ -156,7 +159,7 @@ namespace rf {
           shader_program.bindAttribLocation(1, "vertex_texcoord");
 
           if(shader_program.link()) {
-            printf("Successfully linked Tilemap::shader_program\n");
+            gfx_topic.log("Successfully linked Tilemap::shader_program");
 
             tilemap_size_loc = shader_program.getUniformLocation("tilemap_size");
             tileset_size_loc = shader_program.getUniformLocation("tileset_size");
@@ -166,35 +169,35 @@ namespace rf {
             bg_color_loc = shader_program.getUniformLocation("bg_color");
             index_data_loc = shader_program.getUniformLocation("index_data");
 
-            printf("shader_program.getAttribLocation(\"vertex_pos\"): %d\n",
+            gfx_topic.logf("shader_program.getAttribLocation(\"vertex_pos\"): %d",
                 shader_program.getAttribLocation("vertex_pos"));
-            printf("shader_program.getAttribLocation(\"vertex_texcoord\"): %d\n",
+            gfx_topic.logf("shader_program.getAttribLocation(\"vertex_texcoord\"): %d",
                 shader_program.getAttribLocation("vertex_texcoord"));
 
-            printf("shader_program.getUniformLocation(\"tilemap_size\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"tilemap_size\"): %d",
                 shader_program.getUniformLocation("tilemap_size"));
-            printf("shader_program.getUniformLocation(\"tileset_size\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"tileset_size\"): %d",
                 shader_program.getUniformLocation("tileset_size"));
 
-            printf("shader_program.getUniformLocation(\"tileset\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"tileset\"): %d",
                 shader_program.getUniformLocation("tileset"));
-            printf("shader_program.getUniformLocation(\"fg_color\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"fg_color\"): %d",
                 shader_program.getUniformLocation("fg_color"));
-            printf("shader_program.getUniformLocation(\"bg_color\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"bg_color\"): %d",
                 shader_program.getUniformLocation("bg_color"));
-            printf("shader_program.getUniformLocation(\"index_data\"): %d\n",
+            gfx_topic.logf("shader_program.getUniformLocation(\"index_data\"): %d",
                 shader_program.getUniformLocation("index_data"));
           } else {
-            printf("Failed to link shader\n");
+            gfx_topic.warn("Failed to link shader");
           }
         } else {
-          printf("ERROR: Fragment shader failed to load\n");
+          gfx_topic.warn("ERROR: Fragment shader failed to load");
         }
       } else {
-        printf("ERROR: Vertex shader failed to load\n");
+        gfx_topic.warn("ERROR: Vertex shader failed to load");
       }
 
-      printf("index_data_tex.id(): %u\n", index_data_tex.id());
+      gfx_topic.logf("index_data_tex.id(): %u", index_data_tex.id());
 
       return shader_program.linked();
     }

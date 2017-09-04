@@ -14,6 +14,9 @@ namespace rf {
     static std::shared_ptr<draw::FontAtlas> font_atlas;
     std::unique_ptr<TilemapShader> tilemap_shader;
 
+    static LogTopic & gfx_topic = logtopic("gfx");
+
+
     extern std::shared_ptr<gl::Texture> get_texture(const std::string & uri) {
       return tileset;
     }
@@ -24,8 +27,6 @@ namespace rf {
       return Vec2u(16, 16);
     }
 
-
-    static LogTopic & gfx_topic = logtopic("gfx");
 
     float exponential_ease_in(float p) {
       return (p == 0.0) ? p : std::pow(2, 10 * (p - 1));
