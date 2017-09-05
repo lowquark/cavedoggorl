@@ -29,18 +29,34 @@ namespace rf {
 
     // attaches handlers, and is serializable ; exists to be deleted when the
     // object is deleted
-    class Part {
+    class ObjectPart {
       public:
-      virtual ~Part() = default;
+      virtual ~ObjectPart() = default;
       virtual void init(ObjectHandlers & oh) {}
+    };
+
+    class BasicObjectGlyph : public ObjectPart {
+      class GlyphHandler : public game::GlyphHandler {
+        Glyph g;
+        Glyph operator()() const override {
+          return g;
+        }
+        public:
+        GlyphHandler(const Glyph & g) : g(g) {}
+      };
+
+      GlyphHandler glyph;
+
+      void init(ObjectHandlers & oh) override {
+        oh.add(glyph);
+      }
+
+      public:
+      BasicObjectGlyph(const Glyph & g) : glyph(g) {}
     };
 
     // extremely composed, homogeneous, universal game objects
     class Object {
-      std::vector<Part *> parts;
-
-      ObjectHandlers handlers;
-
       public:
       Object() = default;
       Object(const Object & other) = delete;
@@ -52,10 +68,17 @@ namespace rf {
           delete p;
         }
       }
-      // Part must be allocated via `operator new`
-      void add(Part * p) {
+      // `p` must be allocated via `operator new`
+      void add(ObjectPart * p) {
         parts.push_back(p);
         p->init(handlers);
+      }
+
+      Vec2i pos() const {
+        return _pos;
+      }
+      void set_pos(Vec2i pos) {
+        _pos = pos;
       }
 
       std::vector<Glyph> glyphs() const {
@@ -99,6 +122,13 @@ namespace rf {
           (*h)(d);
         }
       }
+
+      private:
+      std::vector<ObjectPart *> parts;
+
+      ObjectHandlers handlers;
+
+      Vec2i _pos;
     };
   }
 }

@@ -22,7 +22,7 @@ namespace rf {
       virtual void init(TileHandlers & oh) {}
     };
 
-    class BasicGlyph : public TilePart {
+    class BasicTileGlyph : public TilePart {
       class GlyphHandler : public game::GlyphHandler {
         Glyph g;
         Glyph operator()() const override {
@@ -39,7 +39,7 @@ namespace rf {
       }
 
       public:
-      BasicGlyph(const Glyph & g) : glyph(g) {}
+      BasicTileGlyph(const Glyph & g) : glyph(g) {}
     };
 
     class Tile {

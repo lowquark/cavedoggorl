@@ -25,17 +25,19 @@ namespace rf {
       Level lv;
       lv.tiles.resize(Vec2u(32, 32));
 
+      lv.objects[0].add(new BasicObjectGlyph(Glyph(3, Color(0xFF, 0xCC, 0x99))));
+
       for(unsigned int j = 0 ; j < 32 ; j ++) {
         for(unsigned int i = 0 ; i < 32 ; i ++) {
           Vec2u pi(i, j);
           auto & tile = lv.tiles.get(pi);
           unsigned int r = (rand() % 100);
           if(r == 0) {
-            tile.add(new BasicGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
+            tile.add(new BasicTileGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
           } else if(r <= 8) {
-            tile.add(new BasicGlyph(Glyph(5 + 4*16, Color(0x33, 0x66, 0x33))));
+            tile.add(new BasicTileGlyph(Glyph(5 + 4*16, Color(0x33, 0x66, 0x33))));
           } else {
-            tile.add(new BasicGlyph(Glyph(5 + 6*16, Color(0x22, 0x44, 0x44))));
+            tile.add(new BasicTileGlyph(Glyph(5 + 6*16, Color(0x22, 0x44, 0x44))));
           }
         }
       }
@@ -86,12 +88,27 @@ namespace rf {
 
           auto & cell = st.cells.get(pi);
 
-          if(level.tiles.valid(p)) {
+          if(p.x >= 0 && p.y >= 0 && level.tiles.valid(Vec2u(p))) {
             auto & tile = level.tiles.get(p);
             cell.tile.glyph = tile.glyph();
           } else {
             cell.tile.glyph = Glyph(0, Color());
           }
+        }
+      }
+
+      for(auto & kvpair : level.objects) {
+        auto id = kvpair.first;
+        auto & o = kvpair.second;
+
+        // check to make sure the object will fit on screen
+        Vec2i pi = o.pos() - roi.pos;
+
+        if(pi.x >= 0 && pi.y >= 0 && st.cells.valid(Vec2u(pi))) {
+          auto & cell = st.cells.get(pi);
+          cell.objects.emplace_back();
+          cell.objects.back().glyph = o.glyph();
+          cell.objects.back().object_id = id;
         }
       }
 
