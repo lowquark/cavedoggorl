@@ -34,37 +34,37 @@ void handle_turn() {
   SDL_Event event;
 
   while(true) {
-    SDL_WaitEvent(&event);
-
-    if(event.type == SDL_QUIT) {
-      stop = true;
-      return;
-    } else if(event.type == SDL_KEYDOWN) {
-      if(event.key.keysym.sym == SDLK_0) {
+    while(SDL_PollEvent(&event)) {
+      if(event.type == SDL_QUIT) {
         stop = true;
         return;
-      } else {
-        // apply input
-        if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(game::PlayerWaitAction());
-        } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          super_game.step(game::PlayerMoveAction(Vec2i(1, 0)));
-        } else if(event.key.keysym.sym == SDLK_KP_9) {
-          super_game.step(game::PlayerMoveAction(Vec2i(1, -1)));
-        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          super_game.step(game::PlayerMoveAction(Vec2i(0, -1)));
-        } else if(event.key.keysym.sym == SDLK_KP_7) {
-          super_game.step(game::PlayerMoveAction(Vec2i(-1, -1)));
-        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          super_game.step(game::PlayerMoveAction(Vec2i(-1, 0)));
-        } else if(event.key.keysym.sym == SDLK_KP_1) {
-          super_game.step(game::PlayerMoveAction(Vec2i(-1, 1)));
-        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          super_game.step(game::PlayerMoveAction(Vec2i(0, 1)));
-        } else if(event.key.keysym.sym == SDLK_KP_3) {
-          super_game.step(game::PlayerMoveAction(Vec2i(1, 1)));
+      } else if(event.type == SDL_KEYDOWN) {
+        if(event.key.keysym.sym == SDLK_0) {
+          stop = true;
+          return;
+        } else {
+          // apply input
+          if(event.key.keysym.sym == SDLK_KP_5) {
+            super_game.step(game::PlayerWaitAction());
+          } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
+            super_game.step(game::PlayerMoveAction(Vec2i(1, 0)));
+          } else if(event.key.keysym.sym == SDLK_KP_9) {
+            super_game.step(game::PlayerMoveAction(Vec2i(1, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+            super_game.step(game::PlayerMoveAction(Vec2i(0, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_7) {
+            super_game.step(game::PlayerMoveAction(Vec2i(-1, -1)));
+          } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+            super_game.step(game::PlayerMoveAction(Vec2i(-1, 0)));
+          } else if(event.key.keysym.sym == SDLK_KP_1) {
+            super_game.step(game::PlayerMoveAction(Vec2i(-1, 1)));
+          } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+            super_game.step(game::PlayerMoveAction(Vec2i(0, 1)));
+          } else if(event.key.keysym.sym == SDLK_KP_3) {
+            super_game.step(game::PlayerMoveAction(Vec2i(1, 1)));
+          }
+          return;
         }
-        return;
       }
     }
 
@@ -89,8 +89,6 @@ void handle_turn() {
     hud.tick();
     message_log.tick();
 
-
-    //glClearColor(0.3f, 0.1f, 0.0f, 0.0f);
     glClearColor((float)0x11/0xFF, (float)0x11/0xFF, (float)0x11/0xFF, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -102,11 +100,10 @@ void handle_turn() {
 
     glEnable(GL_STENCIL_TEST);
 
-
+    gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
     gfx_scene.draw();
     hud.draw();
     message_log.draw();
-
 
     SDL_GL_SwapWindow(window);
 
@@ -114,37 +111,37 @@ void handle_turn() {
   }
 }
 
-    /*
-    void GridWorld::update_camera(Vec2i focus, int margin) {
-      // TODO: Handle case where camera is larger than world
-      if(focus.x < _camera_rect.pos.x + margin) {
-        _camera_rect.pos.x = focus.x - margin;
-      }
-      if(focus.y < _camera_rect.pos.y + margin) {
-        _camera_rect.pos.y = focus.y - margin;
-      }
+/*
+void GridWorld::update_camera(Vec2i focus, int margin) {
+  // TODO: Handle case where camera is larger than world
+  if(focus.x < _camera_rect.pos.x + margin) {
+    _camera_rect.pos.x = focus.x - margin;
+  }
+  if(focus.y < _camera_rect.pos.y + margin) {
+    _camera_rect.pos.y = focus.y - margin;
+  }
 
-      if(focus.x > _camera_rect.pos.x + _camera_rect.size.x - margin - 1) {
-        _camera_rect.pos.x = focus.x + margin - _camera_rect.size.x + 1;
-      }
-      if(focus.y + margin - _camera_rect.size.y > _camera_rect.pos.y - 1) {
-        _camera_rect.pos.y = focus.y + margin - _camera_rect.size.y + 1;
-      }
+  if(focus.x > _camera_rect.pos.x + _camera_rect.size.x - margin - 1) {
+    _camera_rect.pos.x = focus.x + margin - _camera_rect.size.x + 1;
+  }
+  if(focus.y + margin - _camera_rect.size.y > _camera_rect.pos.y - 1) {
+    _camera_rect.pos.y = focus.y + margin - _camera_rect.size.y + 1;
+  }
 
-      if(_camera_rect.pos.x < 0) {
-        _camera_rect.pos.x = 0;
-      }
-      if(_camera_rect.pos.y < 0) {
-        _camera_rect.pos.y = 0;
-      }
-      if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.size().x) {
-        _camera_rect.pos.x = tile_sprites.size().x - _camera_rect.size.x;
-      }
-      if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.size().y) {
-        _camera_rect.pos.y = tile_sprites.size().y - _camera_rect.size.y;
-      }
-    }
-    */
+  if(_camera_rect.pos.x < 0) {
+    _camera_rect.pos.x = 0;
+  }
+  if(_camera_rect.pos.y < 0) {
+    _camera_rect.pos.y = 0;
+  }
+  if(_camera_rect.pos.x + _camera_rect.size.x > tile_sprites.size().x) {
+    _camera_rect.pos.x = tile_sprites.size().x - _camera_rect.size.x;
+  }
+  if(_camera_rect.pos.y + _camera_rect.size.y > tile_sprites.size().y) {
+    _camera_rect.pos.y = tile_sprites.size().y - _camera_rect.size.y;
+  }
+}
+*/
 
 class SuperVisitor : public game::GameEventVisitor {
   void visit(const game::MissileEvent & event) override {

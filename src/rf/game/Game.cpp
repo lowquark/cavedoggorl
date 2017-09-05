@@ -1,6 +1,8 @@
 
 #include "Game.hpp"
 
+#include <cassert>
+
 namespace rf {
   namespace game {
     void GameSave::open() {
@@ -22,6 +24,8 @@ namespace rf {
     }
 
     Level GameSave::level(Id id) {
+      assert(id == 0);
+
       Level lv;
       lv.tiles.resize(Vec2u(32, 32));
 
@@ -74,6 +78,15 @@ namespace rf {
     }
     void Game::step(const PlayerMoveAction & action) {
       step();
+
+      auto kvpair_it = level.objects.find(player_object_id);
+      if(kvpair_it != level.objects.end()) {
+        auto & player_obj = kvpair_it->second;
+        Vec2i pos(player_obj.pos());
+        pos += action.delta;
+        player_obj.set_pos(pos);
+        printf("%d, %d\n", pos.x, pos.y);
+      }
     }
 
     SceneState Game::draw(Rect2i roi) {
