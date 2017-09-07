@@ -116,6 +116,8 @@ namespace rf {
       Level level;
 
       std::deque<GameEvent *> events;
+
+      void walk(Object & object, Vec2i delta);
     };
   }
 }
