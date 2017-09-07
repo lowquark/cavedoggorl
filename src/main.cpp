@@ -9,6 +9,7 @@
 #include <rf/gfx/draw.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Log.hpp>
+#include <rf/util/Dijkstra.hpp>
 #include <rf/game/Game.hpp>
 
 using namespace rf;
@@ -169,6 +170,8 @@ void run() {
 }
 
 int main(int argc, char ** argv) {
+  DijkstraMap::test();
+
   // I hate these
   SDL_Init(SDL_INIT_VIDEO);
   TTF_Init();

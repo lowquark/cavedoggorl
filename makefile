@@ -7,6 +7,7 @@ OBJECTS := build/main.o \
 					 build/rf/util/Log.o \
 					 build/rf/util/Image.o \
 					 build/rf/util/load_png.o \
+					 build/rf/util/Dijkstra.o \
 					 build/rf/gfx/gfx.o \
 					 build/rf/gfx/draw.o \
 					 build/rf/gfx/Scene.o \
