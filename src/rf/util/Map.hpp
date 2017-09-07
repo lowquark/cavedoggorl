@@ -3,7 +3,9 @@
 
 #include "Vec2.hpp"
 #include <vector>
+#include <cassert>
 #include <stdexcept>
+#include <limits>
 
 namespace rf {
   template <typename T>
@@ -19,8 +21,13 @@ namespace rf {
       _data.clear();
     }
     void resize(Vec2u size) {
+      assert(size.x <= std::numeric_limits<unsigned int>::max()/size.y);
       _size = size;
       _data.resize(_size.x * _size.y);
+    }
+
+    void fill(const T & t) {
+      std::fill(_data.begin(), _data.end(), t);
     }
 
     bool valid(Vec2u pos) const noexcept {
@@ -32,26 +39,31 @@ namespace rf {
       return pos.x + pos.y*_size.x;
     }
 
-    T & get(Vec2u pos) {
+    T & operator[](Vec2u pos) noexcept {
+      return _data[index(pos)];
+    }
+    const T & operator[](Vec2u pos) const noexcept {
+      return _data[index(pos)];
+    }
+    T & at(Vec2u pos) {
       if(valid(pos)) {
         return _data[index(pos)];
       } else {
         throw std::out_of_range("Map::get(...)");
       }
+    }
+    const T & at(Vec2u pos) const {
+      if(valid(pos)) {
+        return _data[index(pos)];
+      } else {
+        throw std::out_of_range("Map::get(...)");
+      }
+    }
+    T & get(Vec2u pos) {
+      return at(pos);
     }
     const T & get(Vec2u pos) const {
-      if(valid(pos)) {
-        return _data[index(pos)];
-      } else {
-        throw std::out_of_range("Map::get(...)");
-      }
-    }
-    void set(Vec2u pos, const T & t) {
-      if(valid(pos)) {
-        _data[index(pos)] = t;
-      } else {
-        throw std::out_of_range("Map::set(...)");
-      }
+      return at(pos);
     }
 
     Vec2u size() const noexcept { return _size; }
