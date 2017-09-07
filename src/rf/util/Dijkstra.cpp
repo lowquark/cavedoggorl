@@ -9,52 +9,39 @@ namespace rf {
     delete [] graph_nodes;
   }
 
-  void DijkstraMap::compute(const Map<unsigned int> & costs, Vec2u start) {
+  void DijkstraMap::compute(Map<Distance> & distances,
+                            const Map<unsigned int> & costs,
+                            Vec2u start) {
     init(costs, start);
-
-    while(heap_size > 0) {
-      GraphNode * closest_node = heap_pop();
-
-      for(int i = 0 ; i < 8 ; i ++) {
-        GraphNode * neighbor = closest_node->neighbors[i];
-
-        if(neighbor && neighbor->heap_node != nullptr) {
-          unsigned int possible_distance = closest_node->distance + neighbor->cost;
-
-          if(possible_distance < neighbor->distance) {
-            heap_decrease(neighbor, possible_distance);
-          }
-        }
-      }
-    }
-
-    _distances.resize(costs.size());
-    unsigned int idx = 0;
-    for(unsigned int y = 0 ; y < costs.size().x ; y ++) {
-      for(unsigned int x = 0 ; x < costs.size().x ; x ++) {
-        auto & node = graph_nodes[idx];
-        _distances.get(Vec2u(x, y)) = node.distance;
-        idx ++;
-      }
-    }
+    do_dijkstra(distances);
+  }
+  void DijkstraMap::compute(Map<Distance> & distances,
+                            const Map<unsigned int> & costs,
+                            const std::vector<Vec2u> & start) {
+    init(costs, start);
+    do_dijkstra(distances);
+  }
+  void DijkstraMap::compute(Map<Distance> & distances,
+                            const Map<unsigned int> & costs,
+                            const std::vector<Goal> & start) {
+    init(costs, start);
+    do_dijkstra(distances);
+  }
+  void DijkstraMap::compute(Map<Distance> & distances_out,
+                            const Map<unsigned int> & costs,
+                            const Map<Distance> & distances_in) {
+    init(costs, distances_in);
+    do_dijkstra(distances_out);
   }
 
   void DijkstraMap::test_heap() {
     rf::DijkstraMap dm;
 
     rf::Map<unsigned int> costs(Vec2u(3, 3));
-    costs.get(Vec2u(0, 0)) = 1;
-    costs.get(Vec2u(1, 0)) = 1;
-    costs.get(Vec2u(2, 0)) = 1;
-    costs.get(Vec2u(0, 1)) = 1;
-    costs.get(Vec2u(1, 1)) = 1;
-    costs.get(Vec2u(2, 1)) = 1;
-    costs.get(Vec2u(0, 2)) = 1;
-    costs.get(Vec2u(1, 2)) = 1;
-    costs.get(Vec2u(2, 2)) = 1;
+    costs.fill(1);
     dm.init(costs, Vec2u(1, 1));
 
-    assert(dm.graph_size == 9);
+    assert(dm.graph_size == Vec2u(3, 3));
     assert(dm.heap_size == 9);
 
     assert(dm.heap_nodes[0]->distance == 0);
@@ -128,17 +115,64 @@ namespace rf {
     for(unsigned int y = 0 ; y < costs.size().x ; y ++) {
       for(unsigned int x = 0 ; x < costs.size().x ; x ++) {
         if(x == 5) {
-          costs.get(Vec2u(x, y)) = 20;
+          costs[Vec2u(x, y)] = 20;
         } else {
-          costs.get(Vec2u(x, y)) = 1;
+          costs[Vec2u(x, y)] = 1;
         }
       }
     }
-    dm.compute(costs, Vec2u(1, 1));
+
+    auto map = dm.compute(costs, Vec2u(1, 1));
+
+    for(unsigned int y = 0 ; y < map.size().x ; y ++) {
+      for(unsigned int x = 0 ; x < map.size().x ; x ++) {
+        printf("%4d ", map[Vec2u(x, y)]);
+      }
+      printf("\n");
+    }
+
+    map = dm.compute(costs, { Vec2u(1, 1), Vec2u(2, 2) });
+
+    printf("---\n");
+    for(unsigned int y = 0 ; y < map.size().x ; y ++) {
+      for(unsigned int x = 0 ; x < map.size().x ; x ++) {
+        printf("%4d ", map[Vec2u(x, y)]);
+      }
+      printf("\n");
+    }
+
+    map = dm.compute(costs, { std::make_pair(Vec2u(1, 1), -5),
+                              std::make_pair(Vec2u(2, 2), -2),
+                              std::make_pair(Vec2u(3, 3), 0) });
+
+    printf("---\n");
+    for(unsigned int y = 0 ; y < map.size().x ; y ++) {
+      for(unsigned int x = 0 ; x < map.size().x ; x ++) {
+        printf("%4d ", map[Vec2u(x, y)]);
+      }
+      printf("\n");
+    }
+
+    // multiply each by -1.2
+    for(unsigned int y = 0 ; y < map.size().x ; y ++) {
+      for(unsigned int x = 0 ; x < map.size().x ; x ++) {
+        map[Vec2u(x, y)] = -(map[Vec2u(x, y)] * 6 / 5);
+      }
+    }
+
+    dm.compute(map, costs, map);
+
+    printf("---\n");
+    for(unsigned int y = 0 ; y < map.size().x ; y ++) {
+      for(unsigned int x = 0 ; x < map.size().x ; x ++) {
+        printf("%4d ", map[Vec2u(x, y)]);
+      }
+      printf("\n");
+    }
   }
 
-  void DijkstraMap::init(const Map<unsigned int> & costs, Vec2u start) {
-    auto size = costs.size();
+  void DijkstraMap::init_graph(const Map<unsigned int> & costs) {
+    Vec2u size = costs.size();
 
     assert(size.x != 0);
     assert(size.y != 0);
@@ -146,13 +180,13 @@ namespace rf {
     unsigned int node_num = size.x * size.y;
 
     // reallocate if we need more space
-    if(node_num > graph_size) {
+    if(node_num > graph_size.x * graph_size.y) {
       delete [] graph_nodes;
       graph_nodes = new GraphNode [node_num];
       delete [] heap_nodes;
       heap_nodes = new HeapNode [node_num];
     }
-    graph_size = node_num;
+    graph_size = size;
     heap_size = node_num;
 
     unsigned int idx = 0;
@@ -217,17 +251,56 @@ namespace rf {
         }
 
         node.distance = infinity;
-        node.cost = costs.get(Vec2u(x, y));
+        node.cost = costs[Vec2u(x, y)];
         node.heap_node = &heap_nodes[idx];
         heap_nodes[idx] = &graph_nodes[idx];
         idx ++;
       }
     }
+  }
+  void DijkstraMap::init(const Map<unsigned int> & costs, Vec2u start) {
+    assert(costs.valid(start));
+    init_graph(costs);
 
     // Update the starting node's distance
-    GraphNode * start_node = &graph_nodes[(start.x) + (start.y)*size.x];
+    GraphNode * start_node = &graph_nodes[(start.x) + (start.y)*costs.size().x];
     // Update it in the heap
     heap_decrease(start_node, 0);
+  }
+  void DijkstraMap::init(const Map<unsigned int> & costs, const std::vector<Vec2u> & start) {
+    for(auto & p : start) {
+      assert(costs.valid(p));
+    }
+    init_graph(costs);
+
+    for(auto & p : start) {
+      GraphNode * start_node = &graph_nodes[(p.x) + (p.y)*costs.size().x];
+      heap_decrease(start_node, 0);
+    }
+  }
+  void DijkstraMap::init(const Map<unsigned int> & costs, const std::vector<Goal> & start) {
+    for(auto & p : start) {
+      assert(costs.valid(p.first));
+    }
+    init_graph(costs);
+
+    for(auto & p : start) {
+      GraphNode * start_node = &graph_nodes[(p.first.x) + (p.first.y)*costs.size().x];
+      heap_decrease(start_node, p.second);
+    }
+  }
+  void DijkstraMap::init(const Map<unsigned int> & costs, const Map<Distance> & start) {
+    assert(costs.size() == start.size());
+    init_graph(costs);
+
+    unsigned int idx = 0;
+    for(unsigned int y = 0 ; y < graph_size.x ; y ++) {
+      for(unsigned int x = 0 ; x < graph_size.x ; x ++) {
+        GraphNode * node = &graph_nodes[idx];
+        heap_decrease(node, start[Vec2u(x, y)]);
+        idx ++;
+      }
+    }
   }
 
   DijkstraMap::GraphNode * DijkstraMap::heap_pop() {
@@ -299,7 +372,7 @@ namespace rf {
 
     return top;
   }
-  void DijkstraMap::heap_decrease(GraphNode * node, unsigned int new_distance) {
+  void DijkstraMap::heap_decrease(GraphNode * node, Distance new_distance) {
     // the value must decrease
     assert(new_distance <= node->distance);
 
@@ -337,6 +410,38 @@ namespace rf {
       } else {
         // no more swapping
         break;
+      }
+    }
+  }
+
+  void DijkstraMap::do_dijkstra(Map<Distance> & distances) {
+    while(heap_size > 0) {
+      GraphNode * closest_node = heap_pop();
+
+      for(int i = 0 ; i < 8 ; i ++) {
+        GraphNode * neighbor = closest_node->neighbors[i];
+
+        if(neighbor && neighbor->heap_node != nullptr) {
+          Distance possible_distance = closest_node->distance + neighbor->cost;
+
+          // possible_distance >= closest_node->distance verifies that 
+          // the result did not wrap around
+          if(possible_distance >= closest_node->distance &&
+             possible_distance < neighbor->distance) {
+            heap_decrease(neighbor, possible_distance);
+          }
+        }
+      }
+    }
+
+    distances.resize(graph_size);
+
+    unsigned int idx = 0;
+    for(unsigned int y = 0 ; y < graph_size.y ; y ++) {
+      for(unsigned int x = 0 ; x < graph_size.x ; x ++) {
+        auto & node = graph_nodes[idx];
+        distances[Vec2u(x, y)] = node.distance;
+        idx ++;
       }
     }
   }
