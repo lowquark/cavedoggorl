@@ -2,71 +2,19 @@
 #include "Game.hpp"
 
 #include <cassert>
+#include <limits>
 
 namespace rf {
   namespace game {
-    void GameSave::open() {
-      close();
-    }
-    void GameSave::close() {
-    }
-
-    Id GameSave::player_level_id() const {
-      return 0;
-    }
-    void GameSave::set_player_level_id(Id id) {
-    }
-
-    Id GameSave::player_object_id() const {
-      return 0;
-    }
-    void GameSave::set_player_object_id(Id id) {
-    }
-
-    Level GameSave::level(Id id) {
-      assert(id == 0);
-
-      Vec2u level_size(32, 32);
-
-      Level lv;
-      lv.tiles.resize(level_size);
-
-      srand(time(NULL));
-
-      lv.objects[0].add(new BasicObjectGlyph(Glyph(3, Color(0xFF, 0xCC, 0x99))));
-      lv.objects[1].add(new BasicObjectGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
-      lv.objects[2].add(new BasicObjectGlyph(Glyph(1, Color(0xFF, 0xCC, 0x99))));
-      lv.objects[3].add(new BasicObjectGlyph(Glyph(2, Color(0xFF, 0xCC, 0x99))));
-
-      lv.objects[0].set_pos(Vec2i(5, 5));
-      lv.objects[1].set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      lv.objects[2].set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      lv.objects[3].set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-
-      for(unsigned int j = 0 ; j < level_size.y ; j ++) {
-        for(unsigned int i = 0 ; i < level_size.x ; i ++) {
-          Vec2u pi(i, j);
-          auto & tile = lv.tiles.get(pi);
-          unsigned int r = (rand() % 100);
-          if(r <= 8) {
-            tile.add(new BasicTileGlyph(Glyph(5 + 7*16, Color(0x33, 0x66, 0x33))));
-          } else {
-            tile.add(new BasicTileGlyph(Glyph(5 + 6*16, Color(0x22, 0x44, 0x44))));
-          }
-        }
-      }
-
-      return lv;
-    }
-    void GameSave::set_level(Id id, const Level & l) {
-    }
-
     Game::Game(GameSave & gamesave)
       : gamesave(gamesave) {
       player_level_id = gamesave.player_level_id();
       player_object_id = gamesave.player_object_id();
 
       level = gamesave.level(player_level_id);
+
+      walk_costs.resize(level.tiles.size());
+      walk_costs.fill(1);
     }
     Game::~Game() {
       save();
@@ -83,26 +31,61 @@ namespace rf {
     void Game::step() {
       // object turn, or step environment
 
-      for(auto & kvpair : level.objects) {
-        auto object_id = kvpair.first;
-        auto & object = kvpair.second;
+      if(turn_queue.size()) {
+        Id object_id = turn_queue.front();
+        Object & object = level.objects.at(object_id);
+
+        assert(object_id != 0);
 
         if(object_id != player_object_id) {
-          walk(object, Vec2i((rand() % 3) - 1, (rand() % 3) - 1));
+          // ai turn
+          ai_turn(object);
+        } else {
+          // player turn, default to wait
+          wait(object);
+        }
+
+        if(object.turn_energy() < 0) {
+          turn_queue.pop_front();
+        }
+      } else {
+        // environment turn
+      }
+    }
+    void Game::step(const ObjectWait & action) {
+      // player turn, if it is indeed the player's turn
+      // otherwise, step the world normally
+      if(turn_queue.size()) {
+        Id object_id = turn_queue.front();
+
+        if(object_id == player_object_id) {
+          Object & object = level.objects.at(object_id);
+
+          wait(object);
+
+          if(object.turn_energy() < 0) {
+            turn_queue.pop_front();
+          }
+        } else {
+          // step other
+          step();
+        }
+      } else {
+        // step other
+        step();
+      }
+    }
+    void Game::step(const ObjectMove & action) {
+      if(turn_queue.size() && turn_queue.front() == player_object_id) {
+        Object & player_object = level.objects.at(turn_queue.front());
+        walk(player_object, action.delta);
+
+        player_walk_distance_dijkstra.compute(player_walk_distances, walk_costs, player_object.pos());
+
+        if(player_object.turn_energy() < 0) {
+          turn_queue.pop_front();
         }
       }
-    }
-    void Game::step(const PlayerWaitAction & action) {
-      step();
-    }
-    void Game::step(const PlayerMoveAction & action) {
-      auto kvpair_it = level.objects.find(player_object_id);
-      if(kvpair_it != level.objects.end()) {
-        auto & player_object = kvpair_it->second;
-        walk(player_object, action.delta);
-      }
-
-      step();
     }
 
     SceneState Game::draw(Rect2i roi) {
@@ -163,16 +146,56 @@ namespace rf {
       }
     }
 
-    bool Game::is_player_turn() const {
-      return true;
+    bool Game::is_object_turn() const {
+      return !turn_queue.empty();
+    }
+    bool Game::is_environment_turn() const {
+      return turn_queue.empty();
     }
 
+    bool Game::is_player_turn() const {
+      if(turn_queue.empty()) {
+        return false;
+      } else {
+        return player_object_id && turn_queue.front() == player_object_id;
+      }
+    }
+
+    void Game::ai_turn(Object & object) {
+      std::vector<Vec2i> min_deltas;
+      int min_distance = DijkstraMap::infinity;
+      for(int y = -1 ; y <= 1 ; y ++) {
+        for(int x = -1 ; x <= 1 ; x ++) {
+          if(!(x == 0 && y == 0)) {
+            Vec2i delta(x, y);
+            Vec2u pos = object.pos() + delta;
+            if(player_walk_distances.valid(pos)) {
+              unsigned int distance = player_walk_distances[pos];
+              if(distance < min_distance) {
+                min_deltas.clear();
+                min_deltas.push_back(delta);
+                min_distance = distance;
+              } else if(distance == min_distance) {
+                min_deltas.push_back(delta);
+              }
+            }
+          }
+        }
+      }
+      if(min_deltas.size()) {
+        walk(object, min_deltas[rand() % min_deltas.size()]);
+      }
+    }
+    void Game::wait(Object & object) {
+      object.add_turn_energy(10);
+    }
     void Game::walk(Object & object, Vec2i delta) {
       Vec2i destination = object.pos() + delta;
       if(destination.x >= 0 && destination.x < level.tiles.size().x &&
          destination.y >= 0 && destination.y < level.tiles.size().y) {
         object.set_pos(destination);
       }
+      object.add_turn_energy(10);
     }
   }
 }

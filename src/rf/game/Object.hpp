@@ -81,6 +81,19 @@ namespace rf {
         _pos = pos;
       }
 
+      bool has_turn() const {
+        return _has_turn;
+      }
+      void set_has_turn(bool b) {
+        _has_turn = b;
+      }
+      int turn_energy() const {
+        return _turn_energy;
+      }
+      void add_turn_energy(int amt) {
+        _turn_energy += amt;
+      }
+
       std::vector<Glyph> glyphs() const {
         std::vector<Glyph> ret;
         for(auto & h : handlers.glyph) {
@@ -129,6 +142,8 @@ namespace rf {
       ObjectHandlers handlers;
 
       Vec2i _pos;
+      bool _has_turn = false;
+      int _turn_energy = 0;
     };
   }
 }

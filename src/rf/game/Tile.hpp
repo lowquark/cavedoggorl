@@ -1,6 +1,7 @@
 #ifndef RF_GAME_TILE_HPP
 #define RF_GAME_TILE_HPP
 
+#include <vector>
 #include <rf/game/Glyph.hpp>
 #include <rf/game/Handlers.hpp>
 
