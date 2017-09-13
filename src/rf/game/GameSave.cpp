@@ -46,6 +46,8 @@ namespace rf {
       lv.objects[3].set_has_turn(true);
       lv.objects[4].set_has_turn(true);
 
+      lv.objects[1].set_playable(true);
+
       for(unsigned int j = 0 ; j < level_size.y ; j ++) {
         for(unsigned int i = 0 ; i < level_size.x ; i ++) {
           Vec2u pi(i, j);

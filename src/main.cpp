@@ -11,7 +11,6 @@
 #include <rf/util/Log.hpp>
 #include <rf/util/Dijkstra.hpp>
 #include <rf/game/Game.hpp>
-#include <rf/game/Engine.hpp>
 
 using namespace rf;
 
