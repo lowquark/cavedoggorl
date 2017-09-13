@@ -46,6 +46,18 @@ namespace rf {
       }
     };
 
+    class Environment {
+      public:
+      Id player_level_id = 0;
+      Id player_object_id = 0;
+
+      Level level;
+
+      Map<unsigned int> walk_costs;
+      Map<int> player_walk_distances;
+      DijkstraMap player_walk_distance_dijkstra;
+    };
+
     class Game {
       public:
       Game(GameSave & gamesave);
@@ -55,41 +67,32 @@ namespace rf {
 
       void save() const;
 
-      void step();
-      void step(const ObjectWait & action);
-      void step(const ObjectMove & action);
+      SceneState draw(Rect2i roi) const;
 
-      SceneState draw(Rect2i roi);
+      void step();
+      void wait();
+      void move(Vec2i delta);
+
+      Id next_object_turn() const;
+      bool is_player_turn() const;
 
       void handle_events(GameEventVisitor & v);
       void clear_events();
 
-
-      bool is_object_turn() const;
-      bool is_environment_turn() const;
-      bool is_player_turn() const;
-
-      Tick tick() const { return level.tick; }
-
       private:
       GameSave & gamesave;
-
-      Id player_level_id = 0;
-      Id player_object_id = 0;
-
-      Level level;
-
-      Map<unsigned int> walk_costs;
-      Map<int> player_walk_distances;
-      DijkstraMap player_walk_distance_dijkstra;
-
-      std::deque<Id> turn_queue;
+      Environment env;
 
       std::deque<GameEvent *> events;
 
-      void ai_turn(Object & object);
+      void step_environment();
+      void auto_turn(Object & object);
       void walk(Object & object, Vec2i delta);
       void wait(Object & object);
+
+      void on_spawn(Object & object);
+      void on_death(Object & object);
+      void on_update_position(Object & object);
     };
   }
 }

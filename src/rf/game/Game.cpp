@@ -8,87 +8,26 @@ namespace rf {
   namespace game {
     Game::Game(GameSave & gamesave)
       : gamesave(gamesave) {
-      player_level_id = gamesave.player_level_id();
-      player_object_id = gamesave.player_object_id();
+      env.player_level_id = gamesave.player_level_id();
+      env.player_object_id = gamesave.player_object_id();
 
-      level = gamesave.level(player_level_id);
+      env.level = gamesave.level(env.player_level_id);
 
-      walk_costs.resize(level.tiles.size());
-      walk_costs.fill(1);
+      env.walk_costs.resize(env.level.tiles.size());
+      env.walk_costs.fill(1);
     }
     Game::~Game() {
-      save();
       clear_events();
     }
 
     void Game::save() const {
-      gamesave.set_player_level_id(player_level_id);
-      gamesave.set_player_object_id(player_object_id);
+      gamesave.set_player_level_id(env.player_level_id);
+      gamesave.set_player_object_id(env.player_object_id);
 
-      gamesave.set_level(player_level_id, level);
+      gamesave.set_level(env.player_level_id, env.level);
     }
 
-    void Game::step() {
-      // object turn, or step environment
-
-      if(turn_queue.size()) {
-        Id object_id = turn_queue.front();
-        Object & object = level.objects.at(object_id);
-
-        assert(object_id != 0);
-
-        if(object_id != player_object_id) {
-          // ai turn
-          ai_turn(object);
-        } else {
-          // player turn, default to wait
-          wait(object);
-        }
-
-        if(object.turn_energy() < 0) {
-          turn_queue.pop_front();
-        }
-      } else {
-        // environment turn
-      }
-    }
-    void Game::step(const ObjectWait & action) {
-      // player turn, if it is indeed the player's turn
-      // otherwise, step the world normally
-      if(turn_queue.size()) {
-        Id object_id = turn_queue.front();
-
-        if(object_id == player_object_id) {
-          Object & object = level.objects.at(object_id);
-
-          wait(object);
-
-          if(object.turn_energy() < 0) {
-            turn_queue.pop_front();
-          }
-        } else {
-          // step other
-          step();
-        }
-      } else {
-        // step other
-        step();
-      }
-    }
-    void Game::step(const ObjectMove & action) {
-      if(turn_queue.size() && turn_queue.front() == player_object_id) {
-        Object & player_object = level.objects.at(turn_queue.front());
-        walk(player_object, action.delta);
-
-        player_walk_distance_dijkstra.compute(player_walk_distances, walk_costs, player_object.pos());
-
-        if(player_object.turn_energy() < 0) {
-          turn_queue.pop_front();
-        }
-      }
-    }
-
-    SceneState Game::draw(Rect2i roi) {
+    SceneState Game::draw(Rect2i roi) const {
       SceneState st;
 
       st.cells.resize(roi.size);
@@ -100,8 +39,8 @@ namespace rf {
 
           auto & cell = st.cells.get(pi);
 
-          if(p.x >= 0 && p.y >= 0 && level.tiles.valid(Vec2u(p))) {
-            auto & tile = level.tiles.get(p);
+          if(p.x >= 0 && p.y >= 0 && env.level.tiles.valid(Vec2u(p))) {
+            auto & tile = env.level.tiles.get(p);
             cell.tile.glyph = tile.glyph();
           } else {
             cell.tile.glyph = Glyph(0, Color());
@@ -109,7 +48,7 @@ namespace rf {
         }
       }
 
-      for(auto & kvpair : level.objects) {
+      for(auto & kvpair : env.level.objects) {
         auto id = kvpair.first;
         auto & o = kvpair.second;
 
@@ -125,6 +64,60 @@ namespace rf {
       }
 
       return st;
+    }
+
+    void Game::step() {
+      Id object_id = next_object_turn();
+
+      if(object_id == 0) {
+        step_environment();
+      } else {
+        Object & object = env.level.objects.at(object_id);
+        auto_turn(object);
+      }
+    }
+    void Game::wait() {
+      Id object_id = next_object_turn();
+
+      if(object_id == 0) {
+        step_environment();
+      } else {
+        Object & object = env.level.objects.at(object_id);
+        if(object.playable()) {
+          wait(object);
+        } else {
+          auto_turn(object);
+        }
+      }
+    }
+    void Game::move(Vec2i delta) {
+      Id object_id = next_object_turn();
+
+      if(object_id == 0) {
+        step_environment();
+      } else {
+        Object & object = env.level.objects.at(object_id);
+        if(object.playable()) {
+          walk(object, delta);
+        } else {
+          auto_turn(object);
+        }
+      }
+    }
+
+    Id Game::next_object_turn() const {
+      for(auto & kvpair : env.level.objects) {
+        auto & id = kvpair.first;
+        auto & object = kvpair.second;
+        if(object.has_turn() && object.turn_energy() > 0) {
+          return id;
+        }
+      }
+      return 0;
+    }
+    bool Game::is_player_turn() const {
+      Id turn_id = next_object_turn();
+      return turn_id && turn_id == env.player_object_id;
     }
 
     void Game::handle_events(GameEventVisitor & v) {
@@ -146,22 +139,13 @@ namespace rf {
       }
     }
 
-    bool Game::is_object_turn() const {
-      return !turn_queue.empty();
-    }
-    bool Game::is_environment_turn() const {
-      return turn_queue.empty();
-    }
-
-    bool Game::is_player_turn() const {
-      if(turn_queue.empty()) {
-        return false;
-      } else {
-        return player_object_id && turn_queue.front() == player_object_id;
+    void Game::step_environment() {
+      for(auto & kvpair : env.level.objects) {
+        auto & o = kvpair.second;
+        o.add_turn_energy(10);
       }
     }
-
-    void Game::ai_turn(Object & object) {
+    void Game::auto_turn(Object & object) {
       std::vector<Vec2i> min_deltas;
       int min_distance = DijkstraMap::infinity;
       for(int y = -1 ; y <= 1 ; y ++) {
@@ -169,8 +153,8 @@ namespace rf {
           if(!(x == 0 && y == 0)) {
             Vec2i delta(x, y);
             Vec2u pos = object.pos() + delta;
-            if(player_walk_distances.valid(pos)) {
-              unsigned int distance = player_walk_distances[pos];
+            if(env.player_walk_distances.valid(pos)) {
+              unsigned int distance = env.player_walk_distances[pos];
               if(distance < min_distance) {
                 min_deltas.clear();
                 min_deltas.push_back(delta);
@@ -184,18 +168,31 @@ namespace rf {
       }
       if(min_deltas.size()) {
         walk(object, min_deltas[rand() % min_deltas.size()]);
+      } else {
+        walk(object, Vec2i((rand() % 3) - 1, (rand() % 3) - 1));
       }
     }
     void Game::wait(Object & object) {
-      object.add_turn_energy(10);
+      object.use_turn_energy(10);
     }
     void Game::walk(Object & object, Vec2i delta) {
       Vec2i destination = object.pos() + delta;
-      if(destination.x >= 0 && destination.x < level.tiles.size().x &&
-         destination.y >= 0 && destination.y < level.tiles.size().y) {
+      if(destination.x >= 0 && destination.x < env.level.tiles.size().x &&
+         destination.y >= 0 && destination.y < env.level.tiles.size().y) {
         object.set_pos(destination);
+        on_update_position(object);
       }
-      object.add_turn_energy(10);
+      object.use_turn_energy(10);
+    }
+
+    void Game::on_spawn(Object & object) {
+      // recompute dijkstra maps based on goals
+    }
+    void Game::on_death(Id object_id) {
+      // recompute dijkstra maps based on goals
+    }
+    void Game::on_update_position(Object & object) {
+      // recompute dijkstra maps based on goals
     }
   }
 }

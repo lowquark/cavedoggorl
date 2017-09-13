@@ -93,6 +93,12 @@ namespace rf {
       void add_turn_energy(int amt) {
         _turn_energy += amt;
       }
+      void use_turn_energy(int amt) {
+        _turn_energy -= amt;
+      }
+
+      bool playable() const { return _playable; }
+      void set_playable(bool b) { _playable = b; }
 
       std::vector<Glyph> glyphs() const {
         std::vector<Glyph> ret;
@@ -144,6 +150,8 @@ namespace rf {
       Vec2i _pos;
       bool _has_turn = false;
       int _turn_energy = 0;
+
+      bool _playable = false;
     };
   }
 }

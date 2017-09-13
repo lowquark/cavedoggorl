@@ -47,23 +47,23 @@ void handle_turn() {
         } else {
           // apply input
           if(event.key.keysym.sym == SDLK_KP_5) {
-            super_game.step(game::ObjectWait());
+            super_game.wait();
           } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-            super_game.step(game::ObjectMove(Vec2i(1, 0)));
+            super_game.move(Vec2i(1, 0));
           } else if(event.key.keysym.sym == SDLK_KP_9) {
-            super_game.step(game::ObjectMove(Vec2i(1, -1)));
+            super_game.move(Vec2i(1, -1));
           } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-            super_game.step(game::ObjectMove(Vec2i(0, -1)));
+            super_game.move(Vec2i(0, -1));
           } else if(event.key.keysym.sym == SDLK_KP_7) {
-            super_game.step(game::ObjectMove(Vec2i(-1, -1)));
+            super_game.move(Vec2i(-1, -1));
           } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-            super_game.step(game::ObjectMove(Vec2i(-1, 0)));
+            super_game.move(Vec2i(-1, 0));
           } else if(event.key.keysym.sym == SDLK_KP_1) {
-            super_game.step(game::ObjectMove(Vec2i(-1, 1)));
+            super_game.move(Vec2i(-1, 1));
           } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-            super_game.step(game::ObjectMove(Vec2i(0, 1)));
+            super_game.move(Vec2i(0, 1));
           } else if(event.key.keysym.sym == SDLK_KP_3) {
-            super_game.step(game::ObjectMove(Vec2i(1, 1)));
+            super_game.move(Vec2i(1, 1));
           }
           return;
         }

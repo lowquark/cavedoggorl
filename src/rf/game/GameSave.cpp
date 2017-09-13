@@ -41,6 +41,11 @@ namespace rf {
       lv.objects[3].set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
       lv.objects[4].set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
 
+      lv.objects[1].set_has_turn(true);
+      lv.objects[2].set_has_turn(true);
+      lv.objects[3].set_has_turn(true);
+      lv.objects[4].set_has_turn(true);
+
       for(unsigned int j = 0 ; j < level_size.y ; j ++) {
         for(unsigned int i = 0 ; i < level_size.x ; i ++) {
           Vec2u pi(i, j);
