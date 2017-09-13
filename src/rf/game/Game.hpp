@@ -91,7 +91,7 @@ namespace rf {
       void wait(Object & object);
 
       void on_spawn(Object & object);
-      void on_death(Object & object);
+      void on_death(Id object_id);
       void on_update_position(Object & object);
     };
   }
