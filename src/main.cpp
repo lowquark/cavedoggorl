@@ -92,7 +92,7 @@ void handle_turn() {
         return;
       } else {
         // apply input
-        if(event.key.keysym.sym == SDLK_KP_5) {
+        if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_SPACE) {
           super_game.wait();
         } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
           super_game.move(Vec2i(1, 0));
