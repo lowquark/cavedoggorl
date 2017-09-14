@@ -3,30 +3,10 @@
 
 #include <rf/game/Game.hpp>
 #include <rf/gfx/Tilemap.hpp>
-#include <rf/gfx/Color.hpp>
+#include <rf/gfx/ParticleSystem.hpp>
 
 namespace rf {
   namespace gfx {
-    class ParticleSystem {
-      public:
-      void resize(size_t max);
-      void draw(Tilemap & tilemap, Rect2i viewport);
-      void tick();
-
-      private:
-      struct Particle {
-        Vec2f pos;
-        Vec2f dir;
-        Color color;
-      };
-
-      std::unique_ptr<Particle[]> particles;
-      size_t max_particles = 0;
-
-      Particle * alloc_particle();
-      void free_particle(Particle * p);
-    };
-
     class Animation {
       public:
       virtual ~Animation() = default;
@@ -44,6 +24,7 @@ namespace rf {
       private:
       unsigned int t = 0;
       std::vector<Vec2i> path;
+      ParticleSystem explosion;
     };
 
     class Scene {

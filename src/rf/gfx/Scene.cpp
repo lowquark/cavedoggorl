@@ -11,16 +11,25 @@ namespace rf {
 
         if(tilemap.tiles.valid(p)) {
           tilemap.tiles[p].foreground_color = Tilemap::Color(0x00, 0x00, 0xFF);
-          tilemap.tiles[p].background_color = Tilemap::Color(0x00, 0x00, 0x80);
-          tilemap.tiles[p].tileset_index = 5 + 6*16;
+          //tilemap.tiles[p].background_color = Tilemap::Color(0x00, 0x00, 0x80);
+          tilemap.tiles[p].tileset_index = 8 + 7*16;
         }
+      } else {
+        explosion.draw(tilemap, viewport);
       }
     }
     void BlueMissile::tick() {
-      t ++;
+      if(t < path.size()) {
+        t ++;
+        if(t == path.size()) {
+          explosion.start(path.back());
+        }
+      } else {
+        explosion.tick();
+      }
     }
     bool BlueMissile::finished() {
-      return t >= path.size();
+      return t >= path.size() && explosion.finished();
     }
 
     extern std::unique_ptr<TilemapShader> tilemap_shader;

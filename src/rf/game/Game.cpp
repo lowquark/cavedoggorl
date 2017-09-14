@@ -203,7 +203,7 @@ namespace rf {
       std::vector<Vec2i> path;
       Vec2i dir = select_dir8(rand() % 8);
 
-      unsigned int length = (rand() % 10) + 10;
+      unsigned int length = (rand() % 2) + 8;
       for(unsigned int i = 0 ; i < length ; i ++) {
         path.push_back(pos);
         pos += dir;

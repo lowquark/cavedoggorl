@@ -25,7 +25,28 @@ namespace rf {
         uint8_t a = 0x00;
 
         Color() = default;
-        Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF) : r(r), g(g), b(b), a(a) {}
+        Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0xFF) noexcept
+          : r(r), g(g), b(b), a(a) {}
+
+        Color & operator+=(const Color & other) noexcept {
+          this->r += other.r;
+          this->g += other.g;
+          this->b += other.b;
+          return *this;
+        }
+        Color operator+(const Color & other) const noexcept {
+          return Color(*this) += other;
+        }
+
+        Color & operator-=(const Color & other) noexcept {
+          this->r -= other.r;
+          this->g -= other.g;
+          this->b -= other.b;
+          return *this;
+        }
+        Color operator-(const Color & other) const noexcept {
+          return Color(*this) -= other;
+        }
       };
 
       struct Tile {
