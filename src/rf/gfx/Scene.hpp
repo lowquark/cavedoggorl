@@ -3,9 +3,49 @@
 
 #include <rf/game/Game.hpp>
 #include <rf/gfx/Tilemap.hpp>
+#include <rf/gfx/Color.hpp>
 
 namespace rf {
   namespace gfx {
+    class ParticleSystem {
+      public:
+      void resize(size_t max);
+      void draw(Tilemap & tilemap, Rect2i viewport);
+      void tick();
+
+      private:
+      struct Particle {
+        Vec2f pos;
+        Vec2f dir;
+        Color color;
+      };
+
+      std::unique_ptr<Particle[]> particles;
+      size_t max_particles = 0;
+
+      Particle * alloc_particle();
+      void free_particle(Particle * p);
+    };
+
+    class Animation {
+      public:
+      virtual ~Animation() = default;
+      virtual void draw(Tilemap & tilemap, Rect2i viewport) = 0;
+      virtual void tick() = 0;
+      virtual bool finished() = 0;
+    };
+
+    class BlueMissile : public Animation {
+      public:
+      BlueMissile(const std::vector<Vec2i> & path) : path(path) {}
+      void draw(Tilemap & tilemap, Rect2i viewport) override;
+      void tick() override;
+      bool finished() override;
+      private:
+      unsigned int t = 0;
+      std::vector<Vec2i> path;
+    };
+
     class Scene {
       public:
       Rect2i viewport() const { return _viewport; }
@@ -13,7 +53,10 @@ namespace rf {
 
       void set_tileset(const std::string & uri);
       void set_state(const game::SceneState & state);
-      void add_missile();
+
+      void add_animation(const game::MissileEvent & event);
+      void cancel_animations();
+      bool animations_pending() const;
 
       void tick();
       void draw() const;
@@ -38,6 +81,8 @@ namespace rf {
       game::SceneState state;
 
       mutable Tilemap tilemap;
+
+      std::vector<std::unique_ptr<Animation>> animations;
     };
   }
 }

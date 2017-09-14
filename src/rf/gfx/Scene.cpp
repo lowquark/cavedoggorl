@@ -5,6 +5,24 @@
 
 namespace rf {
   namespace gfx {
+    void BlueMissile::draw(Tilemap & tilemap, Rect2i viewport) {
+      if(t < path.size()) {
+        Vec2u p = path[t] - viewport.pos;
+
+        if(tilemap.tiles.valid(p)) {
+          tilemap.tiles[p].foreground_color = Tilemap::Color(0x00, 0x00, 0xFF);
+          tilemap.tiles[p].background_color = Tilemap::Color(0x00, 0x00, 0x80);
+          tilemap.tiles[p].tileset_index = 5 + 6*16;
+        }
+      }
+    }
+    void BlueMissile::tick() {
+      t ++;
+    }
+    bool BlueMissile::finished() {
+      return t >= path.size();
+    }
+
     extern std::unique_ptr<TilemapShader> tilemap_shader;
     extern Vec2u get_tileset_tile_size(const std::string & uri);
 
@@ -50,10 +68,29 @@ namespace rf {
         }
       }
     }
-    void Scene::add_missile() {
+    void Scene::add_animation(const game::MissileEvent & event) {
+      animations.push_back(std::unique_ptr<Animation>(new BlueMissile(event.path)));
+    }
+    void Scene::cancel_animations() {
+      animations.clear();
+    }
+    bool Scene::animations_pending() const {
+      return !animations.empty();
     }
 
     void Scene::tick() {
+      for(auto & m : animations) {
+        m->tick();
+      }
+
+      for(auto it = animations.begin();
+          it != animations.end();) {
+        if((*it)->finished()) {
+          it = animations.erase(it);
+        } else {
+          it ++;
+        }
+      }
     }
     void Scene::draw() const {
       draw::clip(_draw_rect);
@@ -62,6 +99,11 @@ namespace rf {
         (_draw_rect.size.y/2) - (_viewport.size.y*tile_size.y/2)
       );
       Vec2i pos = _draw_rect.pos + pixel_offset;
+
+      for(auto & m : animations) {
+        m->draw(tilemap, _viewport);
+      }
+
       tilemap_shader->draw(tilemap, pos);
       draw::unclip();
     }

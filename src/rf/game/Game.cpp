@@ -17,7 +17,7 @@ namespace rf {
       env.walk_costs.fill(1);
     }
     Game::~Game() {
-      clear_events();
+      clear_draw_events();
     }
 
     void Game::save() const {
@@ -120,22 +120,22 @@ namespace rf {
       return turn_id && turn_id == env.player_object_id;
     }
 
-    void Game::handle_events(GameEventVisitor & v) {
-      if(events.size()) {
-        auto events_copy = std::move(events);
-        for(auto & ev : events_copy) {
+    void Game::handle_draw_events(DrawEventVisitor & v) {
+      if(draw_events.size()) {
+        auto draw_events_copy = std::move(draw_events);
+        for(auto & ev : draw_events_copy) {
           ev->visit(v);
         }
-        while(events_copy.size()) {
-          delete events_copy.front();
-          events_copy.pop_front();
+        while(draw_events_copy.size()) {
+          delete draw_events_copy.front();
+          draw_events_copy.pop_front();
         }
       }
     }
-    void Game::clear_events() {
-      while(events.size()) {
-        delete events.front();
-        events.pop_front();
+    void Game::clear_draw_events() {
+      while(draw_events.size()) {
+        delete draw_events.front();
+        draw_events.pop_front();
       }
     }
 
@@ -172,8 +172,50 @@ namespace rf {
         walk(object, Vec2i((rand() % 3) - 1, (rand() % 3) - 1));
       }
     }
+
+    static Vec2i select_dir8(unsigned int x) {
+      switch(x) {
+        default:
+          return Vec2i(0, 0);
+        case 0:
+          return Vec2i(1, 0);
+        case 1:
+          return Vec2i(1, 1);
+        case 2:
+          return Vec2i(0, 1);
+        case 3:
+          return Vec2i(-1, 1);
+        case 4:
+          return Vec2i(-1, 0);
+        case 5:
+          return Vec2i(-1, -1);
+        case 6:
+          return Vec2i(0, -1);
+        case 7:
+          return Vec2i(1, -1);
+      }
+    }
+
     void Game::wait(Object & object) {
       object.use_turn_energy(10);
+
+      auto pos = object.pos();
+      std::vector<Vec2i> path;
+      Vec2i dir = select_dir8(rand() % 8);
+
+      unsigned int length = (rand() % 10) + 10;
+      for(unsigned int i = 0 ; i < length ; i ++) {
+        path.push_back(pos);
+        pos += dir;
+        if((rand() % 3) == 0) {
+          dir = select_dir8(rand() % 8);
+        }
+      }
+
+      MissileEvent * ev = new MissileEvent;
+      ev->path = path;
+
+      draw_events.push_back(ev);
     }
     void Game::walk(Object & object, Vec2i delta) {
       Vec2i destination = object.pos() + delta;

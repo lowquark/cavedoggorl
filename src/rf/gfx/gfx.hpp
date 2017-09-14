@@ -10,18 +10,6 @@
 
 namespace rf {
   namespace gfx {
-    class Animation {
-      public:
-      virtual ~Animation() = default;
-
-      virtual unsigned int type_id() const { return 0; }
-      virtual void step() { }
-      virtual void start() { }
-      virtual void finish() { }
-      virtual bool is_finished() const { return true; }
-    };
-
-
     struct AgentSprite {
       unsigned int type_id = 0;
       Vec2f pos;

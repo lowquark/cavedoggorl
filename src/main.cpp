@@ -29,86 +29,95 @@ game::Game super_game(super_save);
 
 static LogTopic & gfx_topic = logtopic("gfx");
 
+void tick() {
+  /*
+  Vec2i mouse_pos;
+  SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+
+  Vec2i new_mouse_tile = gfx_scene.grid_pos(mouse_pos - gfx_scene.draw_rect().pos);
+  if(new_mouse_tile != mouse_tile) {
+    mouse_tile = new_mouse_tile;
+
+    std::string look_str;
+    if(gfx_scene.look_str(look_str, mouse_tile)) {
+      hud.look(gfx_scene.draw_rect().pos + gfx_scene.screen_pos(mouse_tile), look_str);
+    } else {
+      hud.look_finish();
+    }
+  }
+  */
+
+  gfx_scene.tick();
+  hud.tick();
+  message_log.tick();
+}
+void draw() {
+  glClearColor((float)0x11/0xFF, (float)0x11/0xFF, (float)0x11/0xFF, 0.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  glEnable(GL_STENCIL_TEST);
+
+  gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
+  gfx_scene.draw();
+  hud.draw();
+  message_log.draw();
+
+  SDL_GL_SwapWindow(window);
+
+  SDL_Delay(14);
+}
+
 bool stop = false;
 void handle_turn() {
   // wait for input
   SDL_Event event;
 
+  draw();
+
   while(true) {
-    while(SDL_PollEvent(&event)) {
-      if(event.type == SDL_QUIT) {
+    SDL_WaitEvent(&event);
+
+    if(event.type == SDL_QUIT) {
+      stop = true;
+      return;
+    } else if(event.type == SDL_KEYDOWN) {
+      if(event.key.keysym.sym == SDLK_0) {
         stop = true;
         return;
-      } else if(event.type == SDL_KEYDOWN) {
-        if(event.key.keysym.sym == SDLK_0) {
-          stop = true;
-          return;
-        } else {
-          // apply input
-          if(event.key.keysym.sym == SDLK_KP_5) {
-            super_game.wait();
-          } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-            super_game.move(Vec2i(1, 0));
-          } else if(event.key.keysym.sym == SDLK_KP_9) {
-            super_game.move(Vec2i(1, -1));
-          } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-            super_game.move(Vec2i(0, -1));
-          } else if(event.key.keysym.sym == SDLK_KP_7) {
-            super_game.move(Vec2i(-1, -1));
-          } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-            super_game.move(Vec2i(-1, 0));
-          } else if(event.key.keysym.sym == SDLK_KP_1) {
-            super_game.move(Vec2i(-1, 1));
-          } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-            super_game.move(Vec2i(0, 1));
-          } else if(event.key.keysym.sym == SDLK_KP_3) {
-            super_game.move(Vec2i(1, 1));
-          }
-          return;
-        }
-      }
-    }
-
-    /*
-    Vec2i mouse_pos;
-    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
-
-    Vec2i new_mouse_tile = gfx_scene.grid_pos(mouse_pos - gfx_scene.draw_rect().pos);
-    if(new_mouse_tile != mouse_tile) {
-      mouse_tile = new_mouse_tile;
-
-      std::string look_str;
-      if(gfx_scene.look_str(look_str, mouse_tile)) {
-        hud.look(gfx_scene.draw_rect().pos + gfx_scene.screen_pos(mouse_tile), look_str);
       } else {
-        hud.look_finish();
+        // apply input
+        if(event.key.keysym.sym == SDLK_KP_5) {
+          super_game.wait();
+        } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
+          super_game.move(Vec2i(1, 0));
+        } else if(event.key.keysym.sym == SDLK_KP_9) {
+          super_game.move(Vec2i(1, -1));
+        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+          super_game.move(Vec2i(0, -1));
+        } else if(event.key.keysym.sym == SDLK_KP_7) {
+          super_game.move(Vec2i(-1, -1));
+        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+          super_game.move(Vec2i(-1, 0));
+        } else if(event.key.keysym.sym == SDLK_KP_1) {
+          super_game.move(Vec2i(-1, 1));
+        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+          super_game.move(Vec2i(0, 1));
+        } else if(event.key.keysym.sym == SDLK_KP_3) {
+          super_game.move(Vec2i(1, 1));
+        }
+        return;
+      }
+    } else if(event.type == SDL_WINDOWEVENT) {
+      if(event.window.event == SDL_WINDOWEVENT_EXPOSED) {
+        draw();
       }
     }
-    */
-
-    gfx_scene.tick();
-    hud.tick();
-    message_log.tick();
-
-    glClearColor((float)0x11/0xFF, (float)0x11/0xFF, (float)0x11/0xFF, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0.0f, window_size.x, window_size.y, 0.0f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glEnable(GL_STENCIL_TEST);
-
-    gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
-    gfx_scene.draw();
-    hud.draw();
-    message_log.draw();
-
-    SDL_GL_SwapWindow(window);
-
-    SDL_Delay(14);
   }
 }
 
@@ -144,8 +153,9 @@ void GridWorld::update_camera(Vec2i focus, int margin) {
 }
 */
 
-class SuperVisitor : public game::GameEventVisitor {
+class SuperVisitor : public game::DrawEventVisitor {
   void visit(const game::MissileEvent & event) override {
+    gfx_scene.add_animation(event);
   }
 };
 
@@ -160,10 +170,23 @@ void run() {
     }
 
     SuperVisitor v;
-    super_game.handle_events(v);
+    super_game.handle_draw_events(v);
 
     // draw animations
-    //...
+    while(gfx_scene.animations_pending()) {
+      SDL_Event event;
+      while(SDL_PollEvent(&event)) {
+        if(event.type == SDL_MOUSEBUTTONDOWN ||
+           event.type == SDL_KEYDOWN) {
+          gfx_scene.cancel_animations();
+        }
+      }
+      if(gfx_scene.animations_pending()) {
+        draw();
+        tick();
+        SDL_Delay(14);
+      }
+    }
   }
 
   super_game.save();

@@ -27,21 +27,21 @@ namespace rf {
 
     struct MissileEvent;
 
-    class GameEventVisitor {
+    class DrawEventVisitor {
       public:
-      virtual ~GameEventVisitor() = default;
+      virtual ~DrawEventVisitor() = default;
       virtual void visit(const MissileEvent & event) {}
     };
 
-    struct GameEvent {
-      virtual ~GameEvent() = default;
-      virtual void visit(GameEventVisitor & h) = 0;
+    struct DrawEvent {
+      virtual ~DrawEvent() = default;
+      virtual void visit(DrawEventVisitor & h) = 0;
     };
-    struct MissileEvent : public GameEvent {
-      Id type;
+    struct MissileEvent : public DrawEvent {
+      Id type = 0;
       std::vector<Vec2i> path;
       // May even contain scene states (mid-explosion, for example)
-      void visit(GameEventVisitor & h) override {
+      void visit(DrawEventVisitor & h) override {
         h.visit(*this);
       }
     };
@@ -76,14 +76,14 @@ namespace rf {
       Id next_object_turn() const;
       bool is_player_turn() const;
 
-      void handle_events(GameEventVisitor & v);
-      void clear_events();
+      void handle_draw_events(DrawEventVisitor & v);
+      void clear_draw_events();
 
       private:
       GameSave & gamesave;
       Environment env;
 
-      std::deque<GameEvent *> events;
+      std::deque<DrawEvent *> draw_events;
 
       void step_environment();
       void auto_turn(Object & object);
