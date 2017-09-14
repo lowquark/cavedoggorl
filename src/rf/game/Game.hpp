@@ -75,6 +75,7 @@ namespace rf {
 
       Id next_object_turn() const;
       bool is_player_turn() const;
+      bool player_exists() const;
 
       void handle_draw_events(DrawEventVisitor & v);
       void clear_draw_events();
@@ -87,12 +88,13 @@ namespace rf {
 
       void step_environment();
       void auto_turn(Object & object);
-      void walk(Object & object, Vec2i delta);
       void wait(Object & object);
+      void walk(Object & object, Vec2i delta);
 
-      void on_spawn(Object & object);
-      void on_death(Id object_id);
-      void on_update_position(Object & object);
+      void crush(Vec2i pos, unsigned int radius);
+
+      void notify_death(Id object_id);
+      void notify_move(Object & object);
     };
   }
 }

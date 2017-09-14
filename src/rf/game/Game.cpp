@@ -119,6 +119,9 @@ namespace rf {
       Id turn_id = next_object_turn();
       return turn_id && turn_id == env.player_object_id;
     }
+    bool Game::player_exists() const {
+      return env.player_object_id != 0;
+    }
 
     void Game::handle_draw_events(DrawEventVisitor & v) {
       if(draw_events.size()) {
@@ -212,9 +215,10 @@ namespace rf {
         }
       }
 
+      crush(path.back(), 1);
+
       MissileEvent * ev = new MissileEvent;
       ev->path = path;
-
       draw_events.push_back(ev);
     }
     void Game::walk(Object & object, Vec2i delta) {
@@ -222,18 +226,37 @@ namespace rf {
       if(destination.x >= 0 && destination.x < env.level.tiles.size().x &&
          destination.y >= 0 && destination.y < env.level.tiles.size().y) {
         object.set_pos(destination);
-        on_update_position(object);
+        notify_move(object);
       }
       object.use_turn_energy(10);
     }
 
-    void Game::on_spawn(Object & object) {
+    void Game::crush(Vec2i pos, unsigned int radius) {
+      std::vector<Id> kill_list;
+      for(auto & kvpair : env.level.objects) {
+        auto id = kvpair.first;
+        auto & o = kvpair.second;
+        if(o.pos().x < pos.x - radius) { continue; }
+        if(o.pos().x > pos.x + radius) { continue; }
+        if(o.pos().y < pos.y - radius) { continue; }
+        if(o.pos().y > pos.y + radius) { continue; }
+        kill_list.push_back(id);
+      }
+
+      for(auto & id : kill_list) {
+        env.level.objects.erase(id);
+        notify_death(id);
+      }
+    }
+
+    void Game::notify_death(Id object_id) {
+      if(object_id == env.player_object_id) {
+        env.player_object_id = 0;
+      }
+
       // recompute dijkstra maps based on goals
     }
-    void Game::on_death(Id object_id) {
-      // recompute dijkstra maps based on goals
-    }
-    void Game::on_update_position(Object & object) {
+    void Game::notify_move(Object & object) {
       // recompute dijkstra maps based on goals
     }
   }

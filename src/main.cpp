@@ -63,7 +63,6 @@ void draw() {
 
   glEnable(GL_STENCIL_TEST);
 
-  gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
   gfx_scene.draw();
   hud.draw();
   message_log.draw();
@@ -78,6 +77,7 @@ void handle_turn() {
   // wait for input
   SDL_Event event;
 
+  gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
   draw();
 
   while(true) {
@@ -160,8 +160,13 @@ class SuperVisitor : public game::DrawEventVisitor {
 };
 
 void run() {
+  stop = false;
+
   while(!stop) {
-    // draw world
+    if(!super_game.player_exists()) {
+      printf("Player has died or is non-existent.\n");
+      stop = true;
+    }
 
     if(super_game.is_player_turn()) {
       handle_turn();

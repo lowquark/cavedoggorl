@@ -48,7 +48,32 @@ namespace rf {
       this->state = state;
 
       assert(state.cells.size() == _viewport.size);
+    }
+    void Scene::add_animation(const game::MissileEvent & event) {
+      animations.push_back(std::unique_ptr<Animation>(new BlueMissile(event.path)));
+    }
+    void Scene::cancel_animations() {
+      animations.clear();
+    }
+    bool Scene::animations_pending() const {
+      return !animations.empty();
+    }
 
+    void Scene::tick() {
+      for(auto & m : animations) {
+        m->tick();
+      }
+
+      for(auto it = animations.begin();
+          it != animations.end();) {
+        if((*it)->finished()) {
+          it = animations.erase(it);
+        } else {
+          it ++;
+        }
+      }
+    }
+    void Scene::draw() const {
       for(unsigned int j = 0 ; j < _viewport.size.y ; j ++) {
         for(unsigned int i = 0 ; i < _viewport.size.x ; i ++) {
           Vec2u pi(i, j);
@@ -76,32 +101,7 @@ namespace rf {
           }
         }
       }
-    }
-    void Scene::add_animation(const game::MissileEvent & event) {
-      animations.push_back(std::unique_ptr<Animation>(new BlueMissile(event.path)));
-    }
-    void Scene::cancel_animations() {
-      animations.clear();
-    }
-    bool Scene::animations_pending() const {
-      return !animations.empty();
-    }
 
-    void Scene::tick() {
-      for(auto & m : animations) {
-        m->tick();
-      }
-
-      for(auto it = animations.begin();
-          it != animations.end();) {
-        if((*it)->finished()) {
-          it = animations.erase(it);
-        } else {
-          it ++;
-        }
-      }
-    }
-    void Scene::draw() const {
       draw::clip(_draw_rect);
       Vec2i pixel_offset(
         (_draw_rect.size.x/2) - (_viewport.size.x*tile_size.x/2),
