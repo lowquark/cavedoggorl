@@ -313,7 +313,8 @@ namespace rf {
     if(heap_size != 0) {
       // bring last element to top
       heap_nodes[0] = heap_nodes[heap_size];
-      heap_nodes[heap_size] = nullptr;;
+      heap_nodes[0]->heap_node = &heap_nodes[0]; // here lies the rare assertion bug
+      heap_nodes[heap_size] = nullptr;
 
       // percolate it down
       unsigned int index = 0;
