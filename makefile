@@ -24,5 +24,5 @@ cavedoggorl: $(OBJECTS)
 
 build/%.o: src/%.cpp
 	@mkdir --parents $(@D)
-	clang++ -g -Wall -std=c++11 -I src/ -DLOG_LEVEL=DEBUG3 -c -o $@ $<
+	clang++ -g -Wall -std=c++11 -I src/ -c -o $@ $<
 
