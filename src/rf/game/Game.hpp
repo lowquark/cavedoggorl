@@ -15,6 +15,7 @@
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 #include <rf/util/Dijkstra.hpp>
+#include <rf/util/FOV.hpp>
 
 namespace rf {
   namespace game {
@@ -48,9 +49,12 @@ namespace rf {
 
       DijkstraMap level_dijkstra;
 
+      BresenhamFOV player_fov;
+
       Map<unsigned int> walk_costs;
       Map<int> player_walk_distances;
       Map<int> missile_distances;
+      Map<bool> player_los;
     };
 
     class Game {
@@ -86,6 +90,7 @@ namespace rf {
       void wait(Object & object);
       void walk(Object & object, Vec2i delta);
 
+      void update_player_fov();
       void update_walk_costs();
       void update_player_walk_distances();
       void update_missile_distances();

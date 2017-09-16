@@ -50,7 +50,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius + i + (_radius + j)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(i, j)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(i, j);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -66,7 +68,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius + j + (_radius + i)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(j, i)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(j, i);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -82,7 +86,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius - j + (_radius + i)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(-j, i)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(-j, i);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -98,7 +104,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius - i + (_radius + j)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(-i, j)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(-i, j);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -114,7 +122,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius - i + (_radius - j)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(-i, -j)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(-i, -j);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -130,7 +140,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius - j + (_radius - i)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(-j, -i)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(-j, -i);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -146,7 +158,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius + j + (_radius - i)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(j, -i)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(j, -i);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 
@@ -162,7 +176,9 @@ namespace rf {
 
     for(int i = 0 ; i <= ray.x ; i ++) {
       values[_radius + i + (_radius - j)*_width] = visible_value;
-      if(solid_map.get(p + Vec2i(i, -j)) == 1) { return; }
+
+      Vec2i q = p + Vec2i(i, -j);
+      if(!solid_map.valid(q) || solid_map[q] == 1) { return; }
 
       if(diagonal_len(Vec2i(i, j)) > _radius) { return; }
 

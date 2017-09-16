@@ -13,6 +13,8 @@ namespace rf {
 
       env.level = gamesave.level(env.player_level_id);
 
+      update_player_fov();
+
       update_walk_costs();
       update_player_walk_distances();
       update_missile_distances();
@@ -38,13 +40,16 @@ namespace rf {
           Vec2u pi(i, j);
           Vec2i p(pi + roi.pos);
 
-          auto & cell = st.cells.get(pi);
+          // only draw if visible
+          if(env.player_fov.is_visible(p)) {
+            auto & cell = st.cells.get(pi);
 
-          if(p.x >= 0 && p.y >= 0 && env.level.tiles.valid(Vec2u(p))) {
-            auto & tile = env.level.tiles.get(p);
-            cell.tile.glyph = tile.glyph();
-          } else {
-            cell.tile.glyph = Glyph(0, Color());
+            if(p.x >= 0 && p.y >= 0 && env.level.tiles.valid(Vec2u(p))) {
+              auto & tile = env.level.tiles.get(p);
+              cell.tile.glyph = tile.glyph();
+            } else {
+              cell.tile.glyph = Glyph(0, Color());
+            }
           }
         }
       }
@@ -53,14 +58,17 @@ namespace rf {
         auto id = kvpair.first;
         auto & o = kvpair.second;
 
-        // check to make sure the object will fit on screen
-        Vec2i pi = o.pos() - roi.pos;
+        // only draw if visible
+        if(env.player_fov.is_visible(o.pos())) {
+          // check to make sure the object will fit on screen
+          Vec2i pi = o.pos() - roi.pos;
 
-        if(pi.x >= 0 && pi.y >= 0 && st.cells.valid(Vec2u(pi))) {
-          auto & cell = st.cells.get(pi);
-          cell.objects.emplace_back();
-          cell.objects.back().glyph = o.glyph();
-          cell.objects.back().object_id = id;
+          if(pi.x >= 0 && pi.y >= 0 && st.cells.valid(Vec2u(pi))) {
+            auto & cell = st.cells.get(pi);
+            cell.objects.emplace_back();
+            cell.objects.back().glyph = o.glyph();
+            cell.objects.back().object_id = id;
+          }
         }
       }
 
@@ -270,6 +278,21 @@ namespace rf {
       object.use_turn_energy(10);
     }
 
+    void Game::update_player_fov() {
+      if(env.player_object_id) {
+        Map<unsigned int> tile_opacity;
+        tile_opacity.resize(env.level.tiles.size());
+        tile_opacity.fill(0);
+        for(auto & kvpair : env.level.objects) {
+          auto & obj = kvpair.second;
+          if(!obj.has_turn()) {
+            tile_opacity.at(obj.pos()) = 1;
+          }
+        }
+        Object & player_obj = env.level.objects.at(env.player_object_id);
+        env.player_fov.update(tile_opacity, player_obj.pos(), 15);
+      }
+    }
     void Game::update_walk_costs() {
       env.walk_costs.resize(env.level.tiles.size());
       env.walk_costs.fill(1);
@@ -277,7 +300,7 @@ namespace rf {
       for(auto & kvpair : env.level.objects) {
         auto & obj = kvpair.second;
         //env.objects[obj.pos()] = &obj;
-        env.walk_costs[obj.pos()] = 0xFFFFFFFF;
+        env.walk_costs.at(obj.pos()) = 0xFFFFFFFF;
       }
     }
     void Game::update_player_walk_distances() {
@@ -297,8 +320,7 @@ namespace rf {
         auto id = kvpair.first;
         auto & obj = kvpair.second;
 
-        if(id != env.player_object_id) {
-          // TODO: only seek objects that aren't trees :(
+        if(id != env.player_object_id && obj.has_turn()) {
           goals.push_back(obj.pos());
         }
       }
@@ -354,12 +376,16 @@ namespace rf {
         env.player_object_id = 0;
       }
 
+      // recompute player fov
+      update_player_fov();
       // recompute dijkstra maps based on goals
       update_walk_costs();
       update_player_walk_distances();
       update_missile_distances();
     }
     void Game::notify_move(Object & object) {
+      // recompute player fov
+      update_player_fov();
       // recompute dijkstra maps based on goals
       update_walk_costs();
       update_player_walk_distances();
