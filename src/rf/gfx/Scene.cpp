@@ -12,7 +12,7 @@ namespace rf {
         if(tilemap.tiles.valid(p)) {
           tilemap.tiles[p].foreground_color = Tilemap::Color(0x00, 0x00, 0xFF);
           //tilemap.tiles[p].background_color = Tilemap::Color(0x00, 0x00, 0x80);
-          tilemap.tiles[p].tileset_index = 8 + 7*16;
+          tilemap.tiles[p].tileset_index = 8 + 8*16;
         }
       } else {
         explosion.draw(tilemap, viewport);

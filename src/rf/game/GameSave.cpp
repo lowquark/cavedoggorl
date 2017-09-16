@@ -33,7 +33,7 @@ namespace rf {
       Color color(0x11, 0x22, 0x22);
       Tile tile;
       tile.add(new BasicTileGlyph(
-        Glyph(4, color, color)
+        Glyph(4 + 1*16, color, color)
       ));
       return tile;
     }
@@ -42,7 +42,7 @@ namespace rf {
       Color bg_color(0x11, 0x22, 0x22);
       Tile tile;
       tile.add(new BasicTileGlyph(
-        Glyph(5 + 6*16, fg_color, bg_color)
+        Glyph(5 + 7*16, fg_color, bg_color)
       ));
       return tile;
     }
@@ -51,7 +51,7 @@ namespace rf {
       Color bg_color(0x11, 0x22, 0x22);
       Tile tile;
       tile.add(new BasicTileGlyph(
-        Glyph(5 + 7*16, fg_color, bg_color)
+        Glyph(5 + 8*16, fg_color, bg_color)
       ));
       return tile;
     }
@@ -60,7 +60,7 @@ namespace rf {
       Color bg_color(0x11, 0x22, 0x22);
       Tile tile;
       tile.add(new BasicTileGlyph(
-        Glyph(5 + 6*16, fg_color, bg_color)
+        Glyph(5 + 7*16, fg_color, bg_color)
       ));
       return tile;
     }
@@ -69,7 +69,7 @@ namespace rf {
       Object obj;
       obj.add(new BasicObjectGlyph(
         Glyph(
-          (rand() % 3) + 5 + 4*16,
+          (rand() % 3) + 5 + 5*16,
           Color(0x33, 0x66, 0x33)
         )
       ));
@@ -79,7 +79,7 @@ namespace rf {
       Object obj;
       obj.add(new BasicObjectGlyph(
         Glyph(
-          (rand() % 3) + 8 + 3*16,
+          (rand() % 3) + 8 + 4*16,
           Color(0x88, 0x66, 0x44)
         )
       ));
@@ -95,7 +95,7 @@ namespace rf {
       lv.tiles.resize(level_size);
 
       auto & doggo = lv.objects[lv.new_object_id()];
-      doggo.add(new BasicObjectGlyph(Glyph(3, Color(0xFF, 0xCC, 0x99))));
+      doggo.add(new BasicObjectGlyph(Glyph(3 + 1*16, Color(0xFF, 0xCC, 0x99))));
       doggo.set_pos(Vec2i(5, 5));
       doggo.set_has_turn(true);
       doggo.set_playable(true);
@@ -185,17 +185,17 @@ namespace rf {
       }
 
       auto & orc = lv.objects[lv.new_object_id()];
-      orc.add(new BasicObjectGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
+      orc.add(new BasicObjectGlyph(Glyph(0 + 1*16, Color(0xFF, 0xCC, 0x99))));
       orc.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
       orc.set_has_turn(true);
 
       auto & nymph = lv.objects[lv.new_object_id()];
-      nymph.add(new BasicObjectGlyph(Glyph(1, Color(0xFF, 0xCC, 0x99))));
+      nymph.add(new BasicObjectGlyph(Glyph(1 + 1*16, Color(0xFF, 0xCC, 0x99))));
       nymph.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
       nymph.set_has_turn(true);
 
       auto & wizard = lv.objects[lv.new_object_id()];
-      wizard.add(new BasicObjectGlyph(Glyph(2, Color(0xFF, 0xCC, 0x99))));
+      wizard.add(new BasicObjectGlyph(Glyph(2 + 1*16, Color(0xFF, 0xCC, 0x99))));
       wizard.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
       wizard.set_has_turn(true);
 
