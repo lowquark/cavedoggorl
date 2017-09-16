@@ -81,6 +81,13 @@ namespace rf {
         _pos = pos;
       }
 
+      bool on_ground() const {
+        return _on_ground;
+      }
+      void set_on_ground(bool b) {
+        _on_ground = b;
+      }
+
       bool has_turn() const {
         return _has_turn;
       }
@@ -148,6 +155,8 @@ namespace rf {
       ObjectHandlers handlers;
 
       Vec2i _pos;
+      bool _on_ground = false;
+
       bool _has_turn = false;
       int _turn_energy = 0;
 

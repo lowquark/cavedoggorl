@@ -357,7 +357,8 @@ namespace rf {
     }
     bool Game::is_occupied(Vec2i pos) {
       for(auto & kvpair : env.level.objects) {
-        if(kvpair.second.pos() == pos) {
+        auto & obj = kvpair.second;
+        if(obj.pos() == pos && !obj.on_ground()) {
           return true;
         }
       }
@@ -377,9 +378,19 @@ namespace rf {
       }
 
       for(auto & id : kill_list) {
+        auto & lv = env.level;
+        auto & obj = lv.objects[id];
+
+        if(obj.has_turn()) {
+          auto & bones = lv.objects[lv.new_object_id()];
+          bones.add(new BasicObjectGlyph(Glyph(10 + 8*16, Color(0xCC, 0xCC, 0xCC))));
+          bones.set_pos(obj.pos());
+          bones.set_on_ground(true);
+        }
+
         env.level.objects.erase(id);
         notify_death(id);
-        message("Ka-BOOOM!");
+        //message("Ka-BOOOM!");
       }
     }
 
