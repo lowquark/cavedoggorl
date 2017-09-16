@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <deque>
 #include <memory>
 
@@ -17,14 +18,6 @@
 
 namespace rf {
   namespace game {
-    struct ObjectMove {
-      Vec2i delta;
-      ObjectMove() {}
-      ObjectMove(Vec2i delta) : delta(delta) {}
-    };
-    struct ObjectWait {
-    };
-
     struct MissileEvent;
 
     class DrawEventVisitor {
@@ -53,9 +46,11 @@ namespace rf {
 
       Level level;
 
+      DijkstraMap level_dijkstra;
+
       Map<unsigned int> walk_costs;
       Map<int> player_walk_distances;
-      DijkstraMap player_walk_distance_dijkstra;
+      Map<int> missile_distances;
     };
 
     class Game {
@@ -91,7 +86,11 @@ namespace rf {
       void wait(Object & object);
       void walk(Object & object, Vec2i delta);
 
-      void crush(Vec2i pos, unsigned int radius);
+      void update_walk_costs();
+      void update_player_walk_distances();
+      void update_missile_distances();
+      bool is_occupied(Vec2i pos);
+      void crush(Vec2i pos, int radius);
 
       void notify_death(Id object_id);
       void notify_move(Object & object);

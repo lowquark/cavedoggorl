@@ -55,6 +55,15 @@ namespace rf {
       ));
       return tile;
     }
+    Tile grass_pine_needles() {
+      Color fg_color(0x22, 0x44, 0x44);
+      Color bg_color(0x11, 0x22, 0x22);
+      Tile tile;
+      tile.add(new BasicTileGlyph(
+        Glyph(5 + 6*16, fg_color, bg_color)
+      ));
+      return tile;
+    }
 
     Object tree() {
       Object obj;
@@ -62,6 +71,16 @@ namespace rf {
         Glyph(
           (rand() % 3) + 5 + 4*16,
           Color(0x33, 0x66, 0x33)
+        )
+      ));
+      return obj;
+    }
+    Object rock() {
+      Object obj;
+      obj.add(new BasicObjectGlyph(
+        Glyph(
+          (rand() % 3) + 8 + 3*16,
+          Color(0x88, 0x66, 0x44)
         )
       ));
       return obj;
@@ -94,7 +113,7 @@ namespace rf {
       nymph.set_has_turn(true);
 
       auto & wizard = lv.objects[lv.new_object_id()];
-      wizard.add(new BasicObjectGlyph(Glyph(1, Color(0xFF, 0xCC, 0x99))));
+      wizard.add(new BasicObjectGlyph(Glyph(2, Color(0xFF, 0xCC, 0x99))));
       wizard.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
       wizard.set_has_turn(true);
 
@@ -108,6 +127,7 @@ namespace rf {
         }
       }
 
+      // drunken walk trees
       for(unsigned int j = 0 ; j < 10 ; j ++) {
         Vec2i drunkard((rand() % level_size.x), (rand() % level_size.y));
         for(unsigned int i = 0 ; i < 50 ; i ++) {
@@ -119,65 +139,66 @@ namespace rf {
           if(drunkard.y < 0) { drunkard.y = 0; }
           if(drunkard.y > level_size.y - 1) { drunkard.y = level_size.y - 1; }
 
-          if(rand() % 2) {
-            tile_ids[drunkard] = 1; // grass_dirt_tile
-          } else {
-            tile_ids[drunkard] = 2; // grass_path_tile
-          }
+          tile_ids[drunkard] = 1; // here be trees
         }
       }
 
-      for(unsigned int j = 0 ; j < level_size.y ; j ++) {
-        for(unsigned int i = 0 ; i < level_size.x ; i ++) {
-          int id = tile_ids[Vec2u(i, j)];
-          if(id == 0) {
-            lv.tiles[Vec2u(i, j)] = grass_tile();
-          } else if(id == 1) {
-            lv.tiles[Vec2u(i, j)] = grass_dirt_tile();
-          } else if(id == 2) {
-            lv.tiles[Vec2u(i, j)] = grass_path_tile();
-          }
-        }
+      // add randomly placed trees
+      for(int i = 0 ; i < 20 ; i ++) {
+        tile_ids[Vec2u(rand() % level_size.x, rand() % level_size.y)] = 1; // here be trees
       }
 
+      // add trees on top
       int min_height = 1;
       int height = 2;
       int max_height = 4;
       for(unsigned int x = 0 ; x < level_size.x ; x ++) {
         for(int y = 0 ; y < height ; y ++) {
-          auto & tree_obj = lv.objects[lv.new_object_id()];
-          tree_obj = tree();
-          tree_obj.set_pos(Vec2i(x, y));
+          tile_ids[Vec2u(x, y)] = 1; // here be trees
         }
         height += (rand() % 3) - 1;
         if(height < min_height) { height = min_height; }
         if(height > max_height) { height = max_height; }
       }
 
-      for(int i = 0 ; i < 20 ; i ++) {
-        auto & tree_obj = lv.objects[lv.new_object_id()];
-        tree_obj = tree();
-        tree_obj.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      }
+      // add rocks on bottom
 
       height = 1;
       //int max_height = 2;
       for(unsigned int x = 0 ; x < level_size.x ; x ++) {
         for(int y = level_size.y - height ; y < level_size.y ; y ++) {
-          Vec2u pi(x, y);
-          auto & tile = lv.tiles[pi];
-          tile = Tile();
-          tile.add(new BasicTileGlyph(
-            Glyph(
-              (rand() % 3) + 8 + 3*16,
-              Color(0x88, 0x66, 0x44),
-              bg_color
-            )
-          ));
+          tile_ids[Vec2u(x, y)] = 2; // here be rocks
         }
         height += (rand() % 3) - 1;
         if(height < min_height) { height = min_height; }
         if(height > max_height) { height = max_height; }
+      }
+
+      // populate region based on generation
+      for(unsigned int j = 0 ; j < level_size.y ; j ++) {
+        for(unsigned int i = 0 ; i < level_size.x ; i ++) {
+          int id = tile_ids[Vec2u(i, j)];
+          if(id == 0) {
+            int r = rand() % 10;
+            if(r == 0) {
+              lv.tiles[Vec2u(i, j)] = grass_dirt_tile();
+            } else if(r == 1) {
+              lv.tiles[Vec2u(i, j)] = grass_path_tile();
+            } else {
+              lv.tiles[Vec2u(i, j)] = grass_tile();
+            }
+          } else if(id == 1) {
+            auto & tree_obj = lv.objects[lv.new_object_id()];
+            tree_obj = tree();
+            tree_obj.set_pos(Vec2i(i, j));
+            lv.tiles[Vec2u(i, j)] = grass_pine_needles();
+          } else {
+            auto & rock_obj = lv.objects[lv.new_object_id()];
+            rock_obj = rock();
+            rock_obj.set_pos(Vec2i(i, j));
+            lv.tiles[Vec2u(i, j)] = grass_path_tile();
+          }
+        }
       }
 
       return lv;

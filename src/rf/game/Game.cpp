@@ -13,8 +13,9 @@ namespace rf {
 
       env.level = gamesave.level(env.player_level_id);
 
-      env.walk_costs.resize(env.level.tiles.size());
-      env.walk_costs.fill(1);
+      update_walk_costs();
+      update_player_walk_distances();
+      update_missile_distances();
     }
     Game::~Game() {
       clear_draw_events();
@@ -202,17 +203,53 @@ namespace rf {
     void Game::wait(Object & object) {
       object.use_turn_energy(10);
 
-      auto pos = object.pos();
+      auto start_pos = object.pos();
+
+      auto pos = start_pos;
       std::vector<Vec2i> path;
       Vec2i dir = select_dir8(rand() % 8);
 
       unsigned int length = (rand() % 2) + 8;
       for(unsigned int i = 0 ; i < length ; i ++) {
+        // add current position
         path.push_back(pos);
-        pos += dir;
-        if((rand() % 3) == 0) {
-          dir = select_dir8(rand() % 8);
+
+        if(is_occupied(pos) && pos != start_pos) {
+          break;
         }
+
+        if((rand() % 3) == 0) {
+          // decide next direction
+          std::vector<Vec2i> min_deltas;
+          int min_distance = DijkstraMap::infinity;
+          for(int y = -1 ; y <= 1 ; y ++) {
+            for(int x = -1 ; x <= 1 ; x ++) {
+              if(!(x == 0 && y == 0)) {
+                Vec2i delta(x, y);
+                Vec2u pos = object.pos() + delta;
+                if(env.missile_distances.valid(pos)) {
+                  unsigned int distance = env.missile_distances[pos];
+                  if(distance < min_distance) {
+                    min_deltas.clear();
+                    min_deltas.push_back(delta);
+                    min_distance = distance;
+                  } else if(distance == min_distance) {
+                    min_deltas.push_back(delta);
+                  }
+                }
+              }
+            }
+          }
+
+          if(min_deltas.size()) {
+            dir = min_deltas[rand() % min_deltas.size()];
+          } else {
+            // just choose randomly
+            dir = select_dir8(rand() % 8);
+          }
+        }
+
+        pos += dir;
       }
 
       crush(path.back(), 1);
@@ -223,19 +260,82 @@ namespace rf {
     }
     void Game::walk(Object & object, Vec2i delta) {
       Vec2i destination = object.pos() + delta;
-      if(destination.x >= 0 && destination.x < env.level.tiles.size().x &&
-         destination.y >= 0 && destination.y < env.level.tiles.size().y) {
-        object.set_pos(destination);
-        notify_move(object);
+      if(!is_occupied(destination)) {
+        if(destination.x >= 0 && destination.x < env.level.tiles.size().x &&
+           destination.y >= 0 && destination.y < env.level.tiles.size().y) {
+          object.set_pos(destination);
+          notify_move(object);
+        }
       }
       object.use_turn_energy(10);
     }
 
-    void Game::crush(Vec2i pos, unsigned int radius) {
+    void Game::update_walk_costs() {
+      env.walk_costs.resize(env.level.tiles.size());
+      env.walk_costs.fill(1);
+
+      for(auto & kvpair : env.level.objects) {
+        auto & obj = kvpair.second;
+        //env.objects[obj.pos()] = &obj;
+        env.walk_costs[obj.pos()] = 0xFFFFFFFF;
+      }
+    }
+    void Game::update_player_walk_distances() {
+      if(env.player_object_id) {
+        Object & object = env.level.objects.at(env.player_object_id);
+        env.level_dijkstra.compute(
+            env.player_walk_distances,
+            env.walk_costs,
+            object.pos()
+        );
+      }
+    }
+    void Game::update_missile_distances() {
+      std::vector<Vec2u> goals;
+
+      for(auto & kvpair : env.level.objects) {
+        auto id = kvpair.first;
+        auto & obj = kvpair.second;
+
+        if(id != env.player_object_id) {
+          // TODO: only seek objects that aren't trees :(
+          goals.push_back(obj.pos());
+        }
+      }
+
+      env.level_dijkstra.compute(
+          env.missile_distances,
+          env.walk_costs,
+          goals
+      );
+
+      /*
+      for(unsigned int y = 0 ;
+          y < env.missile_distances.size().x ;
+          y ++ ) {
+        for(unsigned int x = 0 ;
+            x < env.missile_distances.size().x ;
+            x ++ ) {
+          printf("%2d ", env.missile_distances[Vec2u(x, y)]);
+        }
+        printf("\n");
+      }
+      */
+    }
+    bool Game::is_occupied(Vec2i pos) {
+      for(auto & kvpair : env.level.objects) {
+        if(kvpair.second.pos() == pos) {
+          return true;
+        }
+      }
+      return false;
+    }
+    void Game::crush(Vec2i pos, int radius) {
       std::vector<Id> kill_list;
       for(auto & kvpair : env.level.objects) {
         auto id = kvpair.first;
         auto & o = kvpair.second;
+        if(id == env.player_object_id) { continue; } // don't harm the player
         if(o.pos().x < pos.x - radius) { continue; }
         if(o.pos().x > pos.x + radius) { continue; }
         if(o.pos().y < pos.y - radius) { continue; }
@@ -255,9 +355,15 @@ namespace rf {
       }
 
       // recompute dijkstra maps based on goals
+      update_walk_costs();
+      update_player_walk_distances();
+      update_missile_distances();
     }
     void Game::notify_move(Object & object) {
       // recompute dijkstra maps based on goals
+      update_walk_costs();
+      update_player_walk_distances();
+      update_missile_distances();
     }
   }
 }
