@@ -24,8 +24,11 @@ namespace rf {
       Map<Tile> tiles;
       std::map<Id, Object> objects;
 
-      Id new_object_id() const;
+      Id new_object_id() ;
       void reindex(Object & object);
+
+      private:
+      Id last_id = 0;
     };
   }
 }

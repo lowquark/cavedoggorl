@@ -156,6 +156,17 @@ namespace rf {
         auto & o = kvpair.second;
         o.add_turn_energy(10);
       }
+
+      if((rand() % 30) == 0) {
+        auto & lv = env.level;
+        auto id = lv.new_object_id();
+
+        //printf("Spawning new orc (%u)\n", id);
+        auto & orc = lv.objects[id];
+        orc.add(new BasicObjectGlyph(Glyph(0 + 1*16, Color(0xFF, 0xCC, 0x99))));
+        orc.set_pos(Vec2i(rand() % lv.tiles.size().x, rand() % lv.tiles.size().y));
+        orc.set_has_turn(true);
+      }
     }
     void Game::auto_turn(Object & object) {
       std::vector<Vec2i> min_deltas;
@@ -226,7 +237,7 @@ namespace rf {
           break;
         }
 
-        if((rand() % 3) == 0) {
+        if((rand() % 5) != 0) {
           // decide next direction
           std::vector<Vec2i> min_deltas;
           int min_distance = DijkstraMap::infinity;

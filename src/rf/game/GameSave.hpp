@@ -6,26 +6,11 @@
 #include <rf/game/types.hpp>
 #include <rf/game/Tile.hpp>
 #include <rf/game/Object.hpp>
+#include <rf/game/Level.hpp>
 #include <rf/util/Map.hpp>
 
 namespace rf {
   namespace game {
-    // Represents a level, should contain no game logic
-    struct Level {
-      Level() = default;
-      Level(const Level & other) = delete;
-      Level & operator=(const Level & other) = delete;
-      Level(Level && other) = default;
-      Level & operator=(Level && other) = default;
-
-      Tick tick = 0;
-
-      Map<Tile> tiles;
-      std::map<Id, Object> objects;
-
-      Id new_object_id() const;
-    };
-
     class GameSave {
       public:
       void open();
