@@ -104,8 +104,10 @@ namespace rf {
           float speed = (float)rand() / RAND_MAX * 0.1f;
           float theta = (float)rand() / RAND_MAX * 2.0f * 3.14159f;
           p.dpos = Vec2f(speed*cos(theta), speed*sin(theta));
-          p.bg_color = Color(0.4f, 0.4f, 0.4f);
+          p.bg_color = Color(0.3f, 0.3f, 0.3f);
           p.bg_colormode = Particle::SET;
+          p.fg_color = Color(0.15f, 0.15f, 0.15f);
+          p.fg_colormode = Particle::SET;
           p.life = (rand() % 15) + 5;
           particles.push_back(p);
         }
@@ -117,8 +119,6 @@ namespace rf {
           p.dpos = Vec2f(speed*cos(theta), speed*sin(theta));
           p.bg_color = Color(0.2f, 0.1f, 0.0f);
           p.bg_colormode = Particle::ADD;
-          p.fg_color = Color(0.5f, 0.5f, 0.5f);
-          p.fg_colormode = Particle::SET;
           p.life = (rand() % 10) + 5;
           particles.push_back(p);
         }
