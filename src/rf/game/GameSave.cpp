@@ -94,30 +94,13 @@ namespace rf {
       Level lv;
       lv.tiles.resize(level_size);
 
-      srand(time(NULL));
-
       auto & doggo = lv.objects[lv.new_object_id()];
       doggo.add(new BasicObjectGlyph(Glyph(3, Color(0xFF, 0xCC, 0x99))));
       doggo.set_pos(Vec2i(5, 5));
       doggo.set_has_turn(true);
       doggo.set_playable(true);
 
-      auto & orc = lv.objects[lv.new_object_id()];
-      orc.add(new BasicObjectGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
-      orc.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      orc.set_has_turn(true);
-
-      auto & nymph = lv.objects[lv.new_object_id()];
-      nymph.add(new BasicObjectGlyph(Glyph(1, Color(0xFF, 0xCC, 0x99))));
-      nymph.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      nymph.set_has_turn(true);
-
-      auto & wizard = lv.objects[lv.new_object_id()];
-      wizard.add(new BasicObjectGlyph(Glyph(2, Color(0xFF, 0xCC, 0x99))));
-      wizard.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
-      wizard.set_has_turn(true);
-
-      Color bg_color(0x11, 0x22, 0x22);
+      srand(time(NULL));
 
       Map<int> tile_ids(level_size);
 
@@ -200,6 +183,21 @@ namespace rf {
           }
         }
       }
+
+      auto & orc = lv.objects[lv.new_object_id()];
+      orc.add(new BasicObjectGlyph(Glyph(0, Color(0xFF, 0xCC, 0x99))));
+      orc.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
+      orc.set_has_turn(true);
+
+      auto & nymph = lv.objects[lv.new_object_id()];
+      nymph.add(new BasicObjectGlyph(Glyph(1, Color(0xFF, 0xCC, 0x99))));
+      nymph.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
+      nymph.set_has_turn(true);
+
+      auto & wizard = lv.objects[lv.new_object_id()];
+      wizard.add(new BasicObjectGlyph(Glyph(2, Color(0xFF, 0xCC, 0x99))));
+      wizard.set_pos(Vec2i(rand() % level_size.x, rand() % level_size.y));
+      wizard.set_has_turn(true);
 
       return lv;
     }
