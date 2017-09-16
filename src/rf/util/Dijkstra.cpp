@@ -376,6 +376,9 @@ namespace rf {
     // the value must decrease
     assert(new_distance <= node->distance);
 
+    assert(node);
+    assert(node->heap_node);
+
     // determine index of node
     unsigned int index = node->heap_node - heap_nodes;
 
