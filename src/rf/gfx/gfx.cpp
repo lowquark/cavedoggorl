@@ -142,6 +142,8 @@ namespace rf {
         font_atlas->load(code_point);
       }
 
+      font_atlas->load_textures();
+
       gfx_topic.logf("font loaded from %s", ttf_path);
     }
     void load_tiles(const char * png_path) {

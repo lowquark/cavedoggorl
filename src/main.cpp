@@ -37,13 +37,7 @@ void tick() {
   Vec2i new_mouse_tile = gfx_scene.grid_pos(mouse_pos - gfx_scene.draw_rect().pos);
   if(new_mouse_tile != mouse_tile) {
     mouse_tile = new_mouse_tile;
-
-    std::string look_str;
-    if(gfx_scene.look_str(look_str, mouse_tile)) {
-      hud.look(gfx_scene.draw_rect().pos + gfx_scene.screen_pos(mouse_tile), look_str);
-    } else {
-      hud.look_finish();
-    }
+    hud.look(gfx_scene.draw_rect().pos + gfx_scene.screen_pos(mouse_tile), "hi there");
   }
   */
 
@@ -74,50 +68,55 @@ void draw() {
 
 bool stop = false;
 void handle_turn() {
-  // wait for input
-  SDL_Event event;
-
   gfx_scene.set_state(super_game.draw(gfx_scene.viewport()));
   draw();
 
   while(true) {
-    SDL_WaitEvent(&event);
+    // wait for input
+    SDL_Event event;
 
-    if(event.type == SDL_QUIT) {
-      stop = true;
-      return;
-    } else if(event.type == SDL_KEYDOWN) {
-      if(event.key.keysym.sym == SDLK_0) {
+    while(SDL_PollEvent(&event)) {
+      if(event.type == SDL_QUIT) {
         stop = true;
         return;
-      } else {
-        // apply input
-        if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_SPACE) {
-          super_game.wait();
-        } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
-          super_game.move(Vec2i(1, 0));
-        } else if(event.key.keysym.sym == SDLK_KP_9) {
-          super_game.move(Vec2i(1, -1));
-        } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
-          super_game.move(Vec2i(0, -1));
-        } else if(event.key.keysym.sym == SDLK_KP_7) {
-          super_game.move(Vec2i(-1, -1));
-        } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
-          super_game.move(Vec2i(-1, 0));
-        } else if(event.key.keysym.sym == SDLK_KP_1) {
-          super_game.move(Vec2i(-1, 1));
-        } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
-          super_game.move(Vec2i(0, 1));
-        } else if(event.key.keysym.sym == SDLK_KP_3) {
-          super_game.move(Vec2i(1, 1));
+      } else if(event.type == SDL_KEYDOWN) {
+        if(event.key.keysym.sym == SDLK_0) {
+          stop = true;
+          return;
+        } else {
+          // apply input
+          if(event.key.keysym.sym == SDLK_KP_5 || event.key.keysym.sym == SDLK_SPACE) {
+            super_game.wait();
+          } else if(event.key.keysym.sym == SDLK_KP_6 || event.key.keysym.sym == SDLK_d) {
+            super_game.move(Vec2i(1, 0));
+          } else if(event.key.keysym.sym == SDLK_KP_9) {
+            super_game.move(Vec2i(1, -1));
+          } else if(event.key.keysym.sym == SDLK_KP_8 || event.key.keysym.sym == SDLK_w) {
+            super_game.move(Vec2i(0, -1));
+          } else if(event.key.keysym.sym == SDLK_KP_7) {
+            super_game.move(Vec2i(-1, -1));
+          } else if(event.key.keysym.sym == SDLK_KP_4 || event.key.keysym.sym == SDLK_a) {
+            super_game.move(Vec2i(-1, 0));
+          } else if(event.key.keysym.sym == SDLK_KP_1) {
+            super_game.move(Vec2i(-1, 1));
+          } else if(event.key.keysym.sym == SDLK_KP_2 || event.key.keysym.sym == SDLK_s) {
+            super_game.move(Vec2i(0, 1));
+          } else if(event.key.keysym.sym == SDLK_KP_3) {
+            super_game.move(Vec2i(1, 1));
+          }
+          return;
         }
-        return;
-      }
-    } else if(event.type == SDL_WINDOWEVENT) {
-      if(event.window.event == SDL_WINDOWEVENT_EXPOSED) {
-        draw();
+      } else if(event.type == SDL_WINDOWEVENT) {
+        if(event.window.event == SDL_WINDOWEVENT_EXPOSED) {
+          draw();
+        }
       }
     }
+
+    tick();
+    draw();
+
+    SDL_Delay(14);
   }
 }
 
@@ -156,6 +155,9 @@ void GridWorld::update_camera(Vec2i focus, int margin) {
 class SuperVisitor : public game::DrawEventVisitor {
   void visit(const game::MissileEvent & event) override {
     gfx_scene.add_animation(event);
+  }
+  void visit(const game::MessageEvent & event) override {
+    message_log.push(event.message);
   }
 };
 

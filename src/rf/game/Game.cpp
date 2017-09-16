@@ -368,6 +368,7 @@ namespace rf {
       for(auto & id : kill_list) {
         env.level.objects.erase(id);
         notify_death(id);
+        message("Ka-BOOOM!");
       }
     }
 
@@ -390,6 +391,12 @@ namespace rf {
       update_walk_costs();
       update_player_walk_distances();
       update_missile_distances();
+    }
+
+    void Game::message(const std::string & str) {
+      MessageEvent * ev = new MessageEvent;
+      ev->message = str;
+      draw_events.push_back(ev);
     }
   }
 }

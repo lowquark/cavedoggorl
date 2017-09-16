@@ -20,11 +20,13 @@
 namespace rf {
   namespace game {
     struct MissileEvent;
+    struct MessageEvent;
 
     class DrawEventVisitor {
       public:
       virtual ~DrawEventVisitor() = default;
       virtual void visit(const MissileEvent & event) {}
+      virtual void visit(const MessageEvent & event) {}
     };
 
     struct DrawEvent {
@@ -35,6 +37,12 @@ namespace rf {
       Id type = 0;
       std::vector<Vec2i> path;
       // May even contain scene states (mid-explosion, for example)
+      void visit(DrawEventVisitor & h) override {
+        h.visit(*this);
+      }
+    };
+    struct MessageEvent : public DrawEvent {
+      std::string message;
       void visit(DrawEventVisitor & h) override {
         h.visit(*this);
       }
@@ -99,6 +107,8 @@ namespace rf {
 
       void notify_death(Id object_id);
       void notify_move(Object & object);
+
+      void message(const std::string & str);
     };
   }
 }

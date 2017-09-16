@@ -129,7 +129,7 @@ namespace rf {
           }
           font = nullptr;
         }
-        font = TTF_OpenFont(ttf_path.c_str(), 20);
+        font = TTF_OpenFont(ttf_path.c_str(), 18);
       }
 
       bool FontAtlas::load(uint32_t unicode) {
