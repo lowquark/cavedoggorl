@@ -341,19 +341,6 @@ namespace rf {
           env.walk_costs,
           goals
       );
-
-      /*
-      for(unsigned int y = 0 ;
-          y < env.missile_distances.size().x ;
-          y ++ ) {
-        for(unsigned int x = 0 ;
-            x < env.missile_distances.size().x ;
-            x ++ ) {
-          printf("%2d ", env.missile_distances[Vec2u(x, y)]);
-        }
-        printf("\n");
-      }
-      */
     }
     bool Game::is_occupied(Vec2i pos) {
       for(auto & kvpair : env.level.objects) {
