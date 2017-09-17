@@ -59,12 +59,6 @@ namespace rf {
         throw std::out_of_range("Map::get(...)");
       }
     }
-    T & get(Vec2u pos) {
-      return at(pos);
-    }
-    const T & get(Vec2u pos) const {
-      return at(pos);
-    }
 
     Vec2u size() const noexcept { return _size; }
     const T * data() const noexcept { return _data.data(); }

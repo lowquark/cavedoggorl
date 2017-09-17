@@ -42,10 +42,10 @@ namespace rf {
 
           // only draw if visible
           if(env.player_fov.is_visible(p)) {
-            auto & cell = st.cells.get(pi);
+            auto & cell = st.cells[pi];
 
-            if(p.x >= 0 && p.y >= 0 && env.level.tiles.valid(Vec2u(p))) {
-              auto & tile = env.level.tiles.get(p);
+            if(p.x >= 0 && p.y >= 0 && env.level.tiles.valid(p)) {
+              auto & tile = env.level.tiles[p];
               cell.tile.glyph = tile.glyph();
             } else {
               cell.tile.glyph = Glyph(0, Color());
@@ -63,8 +63,8 @@ namespace rf {
           // check to make sure the object will fit on screen
           Vec2i pi = o.pos() - roi.pos;
 
-          if(pi.x >= 0 && pi.y >= 0 && st.cells.valid(Vec2u(pi))) {
-            auto & cell = st.cells.get(pi);
+          if(pi.x >= 0 && pi.y >= 0 && st.cells.valid(pi)) {
+            auto & cell = st.cells[pi];
             cell.objects.emplace_back();
             cell.objects.back().glyph = o.glyph();
             cell.objects.back().object_id = id;

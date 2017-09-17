@@ -78,26 +78,31 @@ namespace rf {
         for(unsigned int i = 0 ; i < _viewport.size.x ; i ++) {
           Vec2u pi(i, j);
 
-          auto & tile = tilemap.tiles.get(pi);
-          auto & cell = state.cells.get(pi);
+          // only tilemap can be assumed to be the same size as _viewport
+          auto & tile = tilemap.tiles.at(pi);
 
-          if(cell.objects.empty()) {
-            tile.tileset_index = cell.tile.glyph.index;
-            tile.foreground_color.r = cell.tile.glyph.foreground.r;
-            tile.foreground_color.g = cell.tile.glyph.foreground.g;
-            tile.foreground_color.b = cell.tile.glyph.foreground.b;
-            tile.background_color.r = cell.tile.glyph.background.r;
-            tile.background_color.g = cell.tile.glyph.background.g;
-            tile.background_color.b = cell.tile.glyph.background.b;
-          } else {
-            auto & object = cell.objects.back();
-            tile.tileset_index = object.glyph.index;
-            tile.foreground_color.r = object.glyph.foreground.r;
-            tile.foreground_color.g = object.glyph.foreground.g;
-            tile.foreground_color.b = object.glyph.foreground.b;
-            tile.background_color.r = cell.tile.glyph.background.r;
-            tile.background_color.g = cell.tile.glyph.background.g;
-            tile.background_color.b = cell.tile.glyph.background.b;
+          // scene state must be checked
+          if(state.cells.valid(pi)) {
+            auto & cell = state.cells[pi];
+
+            if(cell.objects.empty()) {
+              tile.tileset_index = cell.tile.glyph.index;
+              tile.foreground_color.r = cell.tile.glyph.foreground.r;
+              tile.foreground_color.g = cell.tile.glyph.foreground.g;
+              tile.foreground_color.b = cell.tile.glyph.foreground.b;
+              tile.background_color.r = cell.tile.glyph.background.r;
+              tile.background_color.g = cell.tile.glyph.background.g;
+              tile.background_color.b = cell.tile.glyph.background.b;
+            } else {
+              auto & object = cell.objects.back();
+              tile.tileset_index = object.glyph.index;
+              tile.foreground_color.r = object.glyph.foreground.r;
+              tile.foreground_color.g = object.glyph.foreground.g;
+              tile.foreground_color.b = object.glyph.foreground.b;
+              tile.background_color.r = cell.tile.glyph.background.r;
+              tile.background_color.g = cell.tile.glyph.background.g;
+              tile.background_color.b = cell.tile.glyph.background.b;
+            }
           }
         }
       }

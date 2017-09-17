@@ -32,7 +32,8 @@ namespace rf {
       unsigned int i = 0;
       for(unsigned int y = 0 ; y < tiles.size().y ; y ++) {
         for(unsigned int x = 0 ; x < tiles.size().x ; x ++) {
-          auto & tile = tiles.get(Vec2u(x, y));
+          auto & tile = tiles[Vec2u(x, y)];
+
           d.fg_color_data[4*i + 0] = tile.foreground_color.r;
           d.fg_color_data[4*i + 1] = tile.foreground_color.g;
           d.fg_color_data[4*i + 2] = tile.foreground_color.b;

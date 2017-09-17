@@ -10,6 +10,7 @@
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Log.hpp>
 #include <rf/util/Dijkstra.hpp>
+#include <rf/util/Field.hpp>
 #include <rf/game/Game.hpp>
 
 using namespace rf;
