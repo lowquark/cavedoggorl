@@ -25,8 +25,8 @@ gfx::HUDOverlay hud;
 gfx::WorldMessageLog message_log;
 Vec2i mouse_tile;
 
-game::GameSave super_save;
-game::Game super_game(super_save);
+game::World world;
+game::Game super_game(world);
 
 static LogTopic & gfx_topic = logtopic("gfx");
 

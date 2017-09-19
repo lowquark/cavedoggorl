@@ -3,8 +3,9 @@ all: cavedoggorl
 
 OBJECTS := build/main.o \
 					 build/rf/game/Game.o \
-					 build/rf/game/GameSave.o \
+					 build/rf/game/World.o \
 					 build/rf/game/Level.o \
+					 build/rf/game/worldgen.o \
 					 build/rf/util/Log.o \
 					 build/rf/util/Image.o \
 					 build/rf/util/load_png.o \

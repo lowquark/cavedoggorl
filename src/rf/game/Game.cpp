@@ -6,12 +6,12 @@
 
 namespace rf {
   namespace game {
-    Game::Game(GameSave & gamesave)
-      : gamesave(gamesave) {
-      env.player_level_id = gamesave.player_level_id();
-      env.player_object_id = gamesave.player_object_id();
+    Game::Game(World & world)
+      : world(world) {
+      env.player_level_id = 1;
+      env.player_object_id = 1;
 
-      env.level = gamesave.level(env.player_level_id);
+      env.level = world.render(env.player_level_id);
 
       update_player_fov();
 
@@ -24,10 +24,6 @@ namespace rf {
     }
 
     void Game::save() const {
-      gamesave.set_player_level_id(env.player_level_id);
-      gamesave.set_player_object_id(env.player_object_id);
-
-      gamesave.set_level(env.player_level_id, env.level);
     }
 
     SceneState Game::draw(Rect2i roi) const {

@@ -11,7 +11,8 @@
 #include <rf/game/SceneState.hpp>
 #include <rf/game/Object.hpp>
 #include <rf/game/Tile.hpp>
-#include <rf/game/GameSave.hpp>
+#include <rf/game/Level.hpp>
+#include <rf/game/World.hpp>
 #include <rf/util/Vec2.hpp>
 #include <rf/util/Map.hpp>
 #include <rf/util/Dijkstra.hpp>
@@ -67,7 +68,7 @@ namespace rf {
 
     class Game {
       public:
-      Game(GameSave & gamesave);
+      Game(World & world);
       Game(const Game & other) = delete;
       Game & operator=(const Game & other) = delete;
       ~Game();
@@ -88,7 +89,7 @@ namespace rf {
       void clear_draw_events();
 
       private:
-      GameSave & gamesave;
+      World & world;
       Environment env;
 
       std::deque<DrawEvent *> draw_events;
