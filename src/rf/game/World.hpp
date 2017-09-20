@@ -17,7 +17,7 @@ namespace rf {
     */
 
     struct LevelNode {
-      uint64_t seed = 0;
+      uint32_t seed = 0;
     };
 
     class World {
@@ -34,7 +34,7 @@ namespace rf {
 
       private:
       std::map<Id, LevelNode> levels;
-      uint64_t seed = 0;
+      uint32_t seed = 0;
     };
   }
 }

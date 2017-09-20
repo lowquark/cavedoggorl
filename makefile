@@ -11,6 +11,7 @@ OBJECTS := build/main.o \
 					 build/rf/util/load_png.o \
 					 build/rf/util/Dijkstra.o \
 					 build/rf/util/FOV.o \
+					 build/rf/util/random.o \
 					 build/rf/gfx/gfx.o \
 					 build/rf/gfx/draw.o \
 					 build/rf/gfx/Scene.o \

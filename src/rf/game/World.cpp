@@ -2,9 +2,9 @@
 #include "World.hpp"
 
 #include <rf/game/worldgen.hpp>
+#include <rf/util/random.hpp>
 
 #include <chrono>
-#include <random>
 
 namespace rf {
   namespace game {
@@ -15,12 +15,14 @@ namespace rf {
 
       seed = 0;
 
-      printf("world seed: %016lX\n", seed);
-      std::mt19937_64 generator(seed);
+      printf("world seed: %08X\n", seed);
+      CMWC4096 generator(seed);
+
+      printf("random::lerp(generator): %f\n", random::lerp(generator));
 
       for(int i = 0 ; i < 10 ; i ++) {
         levels[i].seed = generator();
-        printf("level %d seed: %016lX\n", i, levels[i].seed);
+        printf("level %d seed: %08X\n", i, levels[i].seed);
       }
     }
     LevelNode & World::level(Id id) {
